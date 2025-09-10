@@ -8,8 +8,8 @@ export const useInitializeData = () => {
     }
     if (!localStorage.getItem('clientes')) {
       localStorage.setItem('clientes', JSON.stringify([
-        { id: 'c1', nombre: 'Ana López', cumple: '1990-06-15', comentarios: '', posibleBaja: false },
-        { id: 'c2', nombre: 'María García', cumple: '1985-11-23', comentarios: '', posibleBaja: false }
+        { id: 'c1', nombre: 'Ana López', "email": "ana@email.com", "telefono": "+5215512345678", cumple: '1990-06-15', comentarios: '', posibleBaja: false },
+        { id: 'c2', nombre: 'María García', "email": "ana@email.com", "telefono": "+526621462145", cumple: '1985-11-23', comentarios: '', posibleBaja: false }
       ]));
     }
     if (!localStorage.getItem('ventas')) {

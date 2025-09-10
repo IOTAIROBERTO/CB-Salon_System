@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from "react-router-dom";
+import { useState } from "react";
+import { Menu, X } from "lucide-react";
 import CitasPage from "./pages/CitasPage";
 import VentasPage from "./pages/VentasPage";
 import InventarioPage from "./pages/InventarioPage";
@@ -9,33 +11,135 @@ import { useInitializeData } from "./hooks/useInitializeData";
 
 export default function App() {
   useInitializeData();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const navLinks = [
+    { to: "/citas", label: "Citas" },
+    { to: "/ventas", label: "Ventas" },
+    { to: "/inventario", label: "Inventario" },
+    { to: "/clientes", label: "Clientes" },
+    { to: "/precios", label: "Servicios" },
+    { to: "/reportes", label: "Reportes" }
+  ];
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <Router>
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen w-full flex flex-col bg-gray-50">
         {/* Barra de navegación */}
-        <nav className="bg-purple-600 text-white p-4 flex justify-around shadow-lg">
-          <Link className="hover:bg-purple-800 px-3 py-1 rounded-lg" to="/citas">Citas</Link>
-          <Link className="hover:bg-purple-800 px-3 py-1 rounded-lg" to="/ventas">Ventas</Link>
-          <Link className="hover:bg-purple-800 px-3 py-1 rounded-lg" to="/inventario">Inventario</Link>
-          <Link className="hover:bg-purple-800 px-3 py-1 rounded-lg" to="/clientes">Clientes</Link>
-          <Link className="hover:bg-purple-800 px-3 py-1 rounded-lg" to="/precios">Servicios</Link>
-          <Link className="hover:bg-purple-800 px-3 py-1 rounded-lg" to="/reportes">Reportes</Link>
+        <nav className="bg-purple-600 text-white shadow-lg relative z-50">
+          <div className="max-w-full px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              {/* Logo/Título */}
+              <div className="flex-shrink-0">
+                <h1 className="text-xl font-bold">Salón Control</h1>
+              </div>
+
+              {/* Navegación Desktop */}
+              <div className="hidden md:block">
+                <div className="ml-10 flex items-baseline space-x-4">
+                  {navLinks.map((link) => (
+                    <Link
+                      key={link.to}
+                      className="hover:bg-purple-700 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                      to={link.to}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Botón hamburguesa móvil */}
+              <div className="md:hidden">
+                <button
+                  onClick={toggleMobileMenu}
+                  className="inline-flex items-center justify-center p-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors duration-200"
+                >
+                  <span className="sr-only">Abrir menú principal</span>
+                  {isMobileMenuOpen ? (
+                    <X className="block h-6 w-6" />
+                  ) : (
+                    <Menu className="block h-6 w-6" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Menú móvil */}
+          <div className={`md:hidden transition-all duration-300 ease-in-out ${
+            isMobileMenuOpen 
+              ? 'max-h-96 opacity-100 visible' 
+              : 'max-h-0 opacity-0 invisible overflow-hidden'
+          }`}>
+            <div className="px-2 pt-2 pb-3 space-y-1 bg-purple-700">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  className="block hover:bg-purple-800 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
+                  to={link.to}
+                  onClick={closeMobileMenu}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
         </nav>
 
-        {/* Área donde se cargan las páginas */}
-        <main className="flex-1 p-6 bg-gray-50">
-          <Routes>
-            <Route path="/" element={<Navigate to="/citas" replace />} />
-            <Route path="/citas" element={<CitasPage />} />
-            <Route path="/ventas" element={<VentasPage />} />
-            <Route path="/inventario" element={<InventarioPage />} />
-            <Route path="/clientes" element={<ClientesPage />} />
-            <Route path="/precios" element={<PreciosPage />} />
-            <Route path="/reportes" element={<ReportesPage />} />
-            <Route path="*" element={<div>Página no encontrada</div>} />
-          </Routes>
+        {/* Área principal de contenido */}
+        <main className="flex-1 w-full max-w-full">
+          <div className="h-full px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-7xl">
+              <Routes>
+                <Route path="/" element={<Navigate to="/citas" replace />} />
+                <Route path="/citas" element={<CitasPage />} />
+                <Route path="/ventas" element={<VentasPage />} />
+                <Route path="/inventario" element={<InventarioPage />} />
+                <Route path="/clientes" element={<ClientesPage />} />
+                <Route path="/precios" element={<PreciosPage />} />
+                <Route path="/reportes" element={<ReportesPage />} />
+                <Route 
+                  path="*" 
+                  element={
+                    <div className="flex items-center justify-center h-64">
+                      <div className="text-center">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                          Página no encontrada
+                        </h2>
+                        <p className="text-gray-600">
+                          La página que buscas no existe.
+                        </p>
+                        <Link 
+                          to="/citas" 
+                          className="mt-4 inline-block bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors duration-200"
+                        >
+                          Volver al inicio
+                        </Link>
+                      </div>
+                    </div>
+                  } 
+                />
+              </Routes>
+            </div>
+          </div>
         </main>
+
+        {/* Overlay para cerrar menú móvil */}
+        {isMobileMenuOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            onClick={closeMobileMenu}
+          ></div>
+        )}
       </div>
     </Router>
   );
