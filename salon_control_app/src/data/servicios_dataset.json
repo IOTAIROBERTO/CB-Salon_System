@@ -3,30 +3,54 @@
     "id": "s1",
     "nombre": "Corte de cabello",
     "precioActualizado": 450.0,
-    "anticipo": 150.0
+    "anticipo": 150.0,
+    "categoria": "corte",
+    "duracion": 60,
+    "descripcion": "Corte personalizado según el tipo de rostro y preferencias del cliente"
   },
   {
     "id": "s2",
     "nombre": "Ampolleta hidratación intensiva",
     "precioActualizado": 150.0,
-    "anticipo": 0.0
+    "anticipo": 0.0,
+    "categoria": "tratamiento",
+    "duracion": 30,
+    "descripcion": "Tratamiento intensivo para cabello seco y maltratado"
   },
   {
     "id": "s3",
     "nombre": "Corte de cabello + ampolleta hidratación intensiva",
     "precioActualizado": 600.0,
-    "anticipo": 150.0
+    "anticipo": 150.0,
+    "categoria": "corte",
+    "duracion": 90,
+    "descripcion": "Paquete completo: corte personalizado más tratamiento hidratante"
   },
   {
     "id": "s4",
     "nombre": "Spa reconstrucción / hidratación",
     "precioActualizado": 500.0,
-    "anticipo": 150.0
+    "anticipo": 150.0,
+    "categoria": "tratamiento",
+    "duracion": 120,
+    "descripcion": "Tratamiento completo de reconstrucción capilar con hidratación profunda"
   },
   {
     "id": "s5",
     "nombre": "Matiz corto",
     "precioActualizado": 550.0,
-    "anticipo": 150.0
+    "anticipo": 150.0,
+    "categoria": "color",
+    "duracion": 90,
+    "descripcion": "Aplicación de matiz para neutralizar tonos no deseados en cabello corto"
+  },
+  {
+    "id": "s6",
+    "nombre": "Peinado de fiesta",
+    "precioActualizado": 350.0,
+    "anticipo": 100.0,
+    "categoria": "peinado",
+    "duracion": 75,
+    "descripcion": "Peinado elegante para eventos especiales y celebraciones"
   }
 ]

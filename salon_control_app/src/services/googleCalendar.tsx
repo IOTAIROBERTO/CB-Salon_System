@@ -178,7 +178,7 @@ class GoogleCalendarService {
   // Convertir cita a evento de Google Calendar
   citaToCalendarEvent(cita: any, cliente: any, servicio: any): CalendarEvent {
     const startDateTime = new Date(`${cita.fecha}T${cita.hora}`);
-    const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // Asume 1 hora de duración
+    const endDateTime = new Date(startDateTime.getTime() + (servicio.duracion || 60) * 60 * 1000);
 
     return {
       summary: `${servicio.nombre} - ${cliente.nombre}`,
