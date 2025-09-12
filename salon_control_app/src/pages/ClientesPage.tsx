@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Calendar, MessageCircle, User, X, Phone, Mail } from 'lucide-react';
+import { Plus, Edit, Trash2, Calendar, MessageCircle, User, X, Phone, Mail, Gift } from 'lucide-react';
 
 interface Cliente {
   id: string;
@@ -19,6 +19,7 @@ export default function ClientesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [showInactivos, setShowInactivos] = useState(true);
+  const [showCumpleaneros, setShowCumpleaneros] = useState(false);
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -80,13 +81,13 @@ export default function ClientesPage() {
 
   // Obtener cumpleañeros del mes actual
   const getCumpleanerosMes = () => {
-    const mesActual = new Date().getMonth();
+    const mesActual = new Date().getMonth() + 1; // Los meses van de 1-12
     return clientes.filter(cliente => {
-      const fechaCumple = new Date(cliente.cumple);
-      return fechaCumple.getMonth() === mesActual && cliente.activo;
+      const fechaCumple = new Date(cliente.cumple + 'T00:00:00');
+      return fechaCumple.getMonth() + 1 === mesActual && cliente.activo;
     }).sort((a, b) => {
-      const fechaA = new Date(a.cumple).getDate();
-      const fechaB = new Date(b.cumple).getDate();
+      const fechaA = new Date(a.cumple + 'T00:00:00').getDate();
+      const fechaB = new Date(b.cumple + 'T00:00:00').getDate();
       return fechaA - fechaB;
     });
   };
@@ -102,10 +103,18 @@ export default function ClientesPage() {
   const conTelefono = clientes.filter(c => c.telefono && c.telefono.trim() !== '').length;
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
+    return new Date(dateString + 'T00:00:00').toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
+    });
+  };
+
+  const formatDateBirthday = (dateString: string) => {
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'long'
     });
   };
 
@@ -273,6 +282,54 @@ export default function ClientesPage() {
           </div>
         </div>
 
+        {/* Sección de cumpleañeros del mes */}
+        {cumpleanerosMes.length > 0 && (
+          <div className="mt-4 bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Gift size={20} className="text-pink-600" />
+                <h3 className="text-lg font-semibold text-pink-800">
+                  🎉 Cumpleañeros de {new Date().toLocaleDateString('es-ES', { month: 'long' })}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowCumpleaneros(!showCumpleaneros)}
+                className="text-pink-600 hover:text-pink-800 text-sm font-medium"
+              >
+                {showCumpleaneros ? 'Ocultar' : 'Ver todos'}
+              </button>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              {cumpleanerosMes.slice(0, showCumpleaneros ? undefined : 3).map(cliente => (
+                <div
+                  key={cliente.id}
+                  className="bg-white border border-pink-200 rounded-lg px-3 py-2 shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-pink-600">🎂</span>
+                    <span className="font-medium text-gray-900">{cliente.nombre}</span>
+                    <span className="text-sm text-gray-600">- {formatDateBirthday(cliente.cumple)}</span>
+                  </div>
+                </div>
+              ))}
+              {!showCumpleaneros && cumpleanerosMes.length > 3 && (
+                <div className="bg-pink-100 border border-pink-200 rounded-lg px-3 py-2">
+                  <span className="text-pink-700 text-sm">
+                    +{cumpleanerosMes.length - 3} más
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            {cumpleanerosMes.length > 0 && (
+              <p className="text-xs text-pink-600 mt-2">
+                💡 ¡No olvides enviar felicitaciones y promociones especiales!
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Controles */}
         <div className="mt-4 flex flex-col sm:flex-row gap-2">
           {/* Toggle para mostrar inactivos */}
@@ -376,6 +433,20 @@ export default function ClientesPage() {
                         )}
                         {!cliente.email && !cliente.telefono && (
                           <span className="text-gray-400">Sin contacto</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="max-w-xs">
+                        {cliente.comentarios ? (
+                          <div className="flex items-start gap-2">
+                            <MessageCircle size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                            <p className="text-sm text-gray-600 line-clamp-2 leading-tight">
+                              {cliente.comentarios}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm italic">Sin comentarios</span>
                         )}
                       </div>
                     </td>
