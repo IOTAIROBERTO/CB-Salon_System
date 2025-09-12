@@ -2,10 +2,10 @@ import { BrowserRouter as Router, Routes, Route, Link, Navigate } from "react-ro
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import CitasPage from "./pages/CitasPage";
-import VentasPage from "./pages/VentasPage";
+import ServiciosPage from "./pages/ServiciosPage"; // antes VentasPage
 import InventarioPage from "./pages/InventarioPage";
 import ClientesPage from "./pages/ClientesPage";
-import PreciosPage from "./pages/PreciosPage";
+import CatalogoPreciosPage from "./pages/CatalogoPreciosPage"; // antes PreciosPage
 import ReportesPage from "./pages/ReportesPage";
 import { useInitializeData } from "./hooks/useInitializeData";
 
@@ -15,10 +15,10 @@ export default function App() {
 
   const navLinks = [
     { to: "/citas", label: "Citas" },
-    { to: "/ventas", label: "Ventas" },
+    { to: "/servicios", label: "Servicios" }, // antes Ventas
     { to: "/inventario", label: "Inventario" },
     { to: "/clientes", label: "Clientes" },
-    { to: "/precios", label: "Servicios" },
+    { to: "/catalogo", label: "Catálogo" }, // antes Servicios
     { to: "/reportes", label: "Reportes" }
   ];
 
@@ -39,7 +39,7 @@ export default function App() {
             <div className="flex justify-between items-center h-16">
               {/* Logo/Título */}
               <div className="flex-shrink-0">
-                <h1 className="text-xl font-bold">Salón Control</h1>
+                <h1 className="text-lg sm:text-xl font-bold">Beauty Salon Total Control</h1>
               </div>
 
               {/* Navegación Desktop */}
@@ -102,10 +102,10 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Navigate to="/citas" replace />} />
                 <Route path="/citas" element={<CitasPage />} />
-                <Route path="/ventas" element={<VentasPage />} />
+                <Route path="/servicios" element={<ServiciosPage />} />
                 <Route path="/inventario" element={<InventarioPage />} />
                 <Route path="/clientes" element={<ClientesPage />} />
-                <Route path="/precios" element={<PreciosPage />} />
+                <Route path="/catalogo" element={<CatalogoPreciosPage />} />
                 <Route path="/reportes" element={<ReportesPage />} />
                 <Route 
                   path="*" 

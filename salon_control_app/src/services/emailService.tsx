@@ -17,23 +17,24 @@ interface EmailReminder {
 }
 
 class EmailService {
-  private apiUrl = process.env.REACT_APP_EMAIL_API_URL || '';
-  private apiKey = process.env.REACT_APP_EMAIL_API_KEY || '';
+  private apiUrl = '';
+  private apiKey = '';
 
   // Configuración para diferentes proveedores de email
   private emailProviders = {
     emailjs: {
-      serviceId: process.env.REACT_APP_EMAILJS_SERVICE_ID || '',
-      templateId: process.env.REACT_APP_EMAILJS_TEMPLATE_ID || '',
-      publicKey: process.env.REACT_APP_EMAILJS_PUBLIC_KEY || ''
+      serviceId: '',
+      templateId: '',
+      publicKey: ''
     },
     resend: {
-      apiKey: process.env.REACT_APP_RESEND_API_KEY || '',
-      from: process.env.REACT_APP_EMAIL_FROM || 'noreply@tusalon.com'
+      apiKey: '',
+      from: 'noreply@beautysalon.com'
     }
   };
 
   constructor() {
+    // Configuración temporal - se pueden cambiar más tarde
     this.initializeEmailJS();
   }
 
@@ -112,7 +113,7 @@ class EmailService {
               </div>
               <div class="footer">
                 <p>¡Gracias por elegirnos!</p>
-                <p>Tu Salón de Belleza</p>
+                <p>Beauty Salon Total Control</p>
               </div>
             </div>
           `,
@@ -130,7 +131,7 @@ class EmailService {
             
             Te esperamos puntualmente.
             
-            Tu Salón de Belleza
+            Beauty Salon Total Control
           `
         };
 
@@ -168,7 +169,7 @@ class EmailService {
               </div>
               <div class="footer">
                 <p>¡Te esperamos!</p>
-                <p>Tu Salón de Belleza</p>
+                <p>Beauty Salon Total Control</p>
               </div>
             </div>
           `,
@@ -186,7 +187,7 @@ class EmailService {
             
             Llega 10 minutos antes.
             
-            Tu Salón de Belleza
+            Beauty Salon Total Control
           `
         };
 
@@ -219,7 +220,7 @@ class EmailService {
               </div>
               <div class="footer">
                 <p>Gracias por tu comprensión</p>
-                <p>Tu Salón de Belleza</p>
+                <p>Beauty Salon Total Control</p>
               </div>
             </div>
           `,
@@ -235,7 +236,7 @@ class EmailService {
             Hora: ${formatTime(data.hora)}
             ${data.notas ? `Notas: ${data.notas}` : ''}
             
-            Tu Salón de Belleza
+            Beauty Salon Total Control
           `
         };
 
@@ -248,7 +249,8 @@ class EmailService {
   private async sendWithEmailJS(templateData: any): Promise<boolean> {
     try {
       if (!window.emailjs || !this.emailProviders.emailjs.serviceId) {
-        throw new Error('EmailJS not configured');
+        console.log('EmailJS not configured');
+        return false;
       }
 
       const result = await window.emailjs.send(
@@ -264,46 +266,12 @@ class EmailService {
     }
   }
 
-  // Enviar email usando Resend API (opción profesional)
-  private async sendWithResend(to: string, template: EmailTemplate): Promise<boolean> {
-    try {
-      if (!this.emailProviders.resend.apiKey) {
-        throw new Error('Resend API not configured');
-      }
-
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.emailProviders.resend.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: this.emailProviders.resend.from,
-          to: [to],
-          subject: template.subject,
-          html: template.html,
-          text: template.text
-        }),
-      });
-
-      return response.ok;
-    } catch (error) {
-      console.error('Error sending email with Resend:', error);
-      return false;
-    }
-  }
-
   // Método principal para enviar recordatorios
   async sendReminder(reminderData: EmailReminder): Promise<boolean> {
     try {
       const template = this.getEmailTemplate(reminderData.type, reminderData);
 
-      // Intentar con Resend primero (más profesional)
-      if (this.emailProviders.resend.apiKey) {
-        return await this.sendWithResend(reminderData.to, template);
-      }
-
-      // Fallback a EmailJS (gratuito)
+      // Intentar con EmailJS si está configurado
       if (this.emailProviders.emailjs.serviceId) {
         const emailJSData = {
           to_email: reminderData.to,
@@ -317,7 +285,7 @@ class EmailService {
       }
 
       // Si no hay ningún proveedor configurado, simular envío
-      console.warn('No email provider configured, simulating email send');
+      console.log('Email service not configured, simulating email send');
       console.log('Email would be sent to:', reminderData.to);
       console.log('Subject:', template.subject);
       
@@ -334,7 +302,7 @@ class EmailService {
     const now = new Date();
     const delay = sendDate.getTime() - now.getTime();
 
-    if (delay > 0) {
+    if (delay > 0 && delay < 24 * 60 * 60 * 1000) { // Solo programar si es en las próximas 24 horas
       setTimeout(async () => {
         await this.sendReminder(reminderData);
       }, delay);

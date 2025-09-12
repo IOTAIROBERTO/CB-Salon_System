@@ -1,302 +1,370 @@
 import { useState, useEffect } from 'react';
-import { Plus, Package, Search, Edit, Trash2, AlertTriangle, X } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Package, TrendingDown, AlertTriangle } from 'lucide-react';
 
 interface Producto {
   id: string;
   nombre: string;
   cantidad: number;
-  cantidadMinima: number;
   precio: number;
-  proveedor: string;
-  categoria: 'shampoo' | 'tinte' | 'tratamiento' | 'herramientas' | 'otros';
-  fechaVencimiento?: string;
-  notas?: string;
+  stockMinimo: number;
+  categoria: string;
+  fechaUltimaCompra?: string;
+  proveedor?: string;
 }
 
 export default function InventarioPage() {
-  const [productos, setProductos] = useState<Producto[]>([]);
+  const [inventario, setInventario] = useState<Producto[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Producto | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [lowStockFilter, setLowStockFilter] = useState(false);
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
-
-  // Formulario
+  const [editingProducto, setEditingProducto] = useState<Producto | null>(null);
+  const [modalType, setModalType] = useState<'create' | 'edit' | 'stock'>('create');
+  
   const [formData, setFormData] = useState({
     nombre: '',
     cantidad: 0,
-    cantidadMinima: 5,
     precio: 0,
-    proveedor: '',
-    categoria: 'otros' as const,
-    fechaVencimiento: '',
-    notas: ''
+    stockMinimo: 5,
+    categoria: '',
+    proveedor: ''
   });
 
-  // Cargar datos iniciales
+  const [stockData, setStockData] = useState({
+    cantidad: 0,
+    operacion: 'suma' as 'suma' | 'resta',
+    motivo: ''
+  });
+
   useEffect(() => {
-    const inventarioData = localStorage.getItem('inventario');
-    if (inventarioData) {
-      setProductos(JSON.parse(inventarioData));
-    } else {
-      // Datos iniciales de ejemplo
-      const datosIniciales: Producto[] = [
+    // Inicializar con datos de ejemplo si no existen
+    const inventarioData = JSON.parse(localStorage.getItem('inventario') || '[]');
+    if (inventarioData.length === 0) {
+      const inventarioInicial = [
         {
           id: 'p1',
-          nombre: 'Shampoo Hidratante L\'Oreal',
+          nombre: 'Shampoo hidratante',
           cantidad: 10,
-          cantidadMinima: 3,
           precio: 250.00,
-          proveedor: 'Distribuidora Belleza',
-          categoria: 'shampoo'
+          stockMinimo: 5,
+          categoria: 'Cuidado capilar',
+          proveedor: 'Beauty Supply Co.'
         },
         {
           id: 'p2',
-          nombre: 'Tinte Rubio Cenizo',
-          cantidad: 5,
-          cantidadMinima: 2,
+          nombre: 'Tinte rubio',
+          cantidad: 3,
           precio: 180.00,
-          proveedor: 'Cosméticos Pro',
-          categoria: 'tinte'
+          stockMinimo: 5,
+          categoria: 'Coloración',
+          proveedor: 'Color Pro'
         },
         {
           id: 'p3',
-          nombre: 'Mascarilla Reparadora',
-          cantidad: 2,
-          cantidadMinima: 5,
-          precio: 320.00,
-          proveedor: 'Beauty Supply',
-          categoria: 'tratamiento'
+          nombre: 'Esmalte de uñas rojo',
+          cantidad: 8,
+          precio: 75.00,
+          stockMinimo: 3,
+          categoria: 'Manicure',
+          proveedor: 'Nail Beauty'
         }
       ];
-      setProductos(datosIniciales);
-      localStorage.setItem('inventario', JSON.stringify(datosIniciales));
+      setInventario(inventarioInicial);
+      localStorage.setItem('inventario', JSON.stringify(inventarioInicial));
+    } else {
+      setInventario(inventarioData);
     }
   }, []);
 
-  // Detectar modo de vista según pantalla
-  useEffect(() => {
-    const handleResize = () => {
-      setViewMode(window.innerWidth < 768 ? 'cards' : 'table');
-    };
+  // Calcular estadísticas
+  const totalProductos = inventario.length;
+  const productosStockBajo = inventario.filter(p => p.cantidad <= p.stockMinimo).length;
+  const valorTotalInventario = inventario.reduce((sum, p) => sum + (p.cantidad * p.precio), 0);
+  const categorias = [...new Set(inventario.map(p => p.categoria))].length;
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // Generar ID único
+  const generateId = () => `prod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-  // Filtrar productos
-  const filteredProducts = productos.filter(producto => {
-    const searchMatch = !searchTerm || 
-      producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      producto.proveedor.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const categoryMatch = categoryFilter === 'all' || producto.categoria === categoryFilter;
-    
-    const stockMatch = !lowStockFilter || producto.cantidad <= producto.cantidadMinima;
-
-    return searchMatch && categoryMatch && stockMatch;
-  });
-
-  const generateId = () => `producto_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
+  // Limpiar formularios
   const resetForm = () => {
     setFormData({
       nombre: '',
       cantidad: 0,
-      cantidadMinima: 5,
       precio: 0,
-      proveedor: '',
-      categoria: 'otros',
-      fechaVencimiento: '',
-      notas: ''
+      stockMinimo: 5,
+      categoria: '',
+      proveedor: ''
     });
-    setEditingProduct(null);
+    setEditingProducto(null);
   };
 
-  const openNewProductModal = () => {
+  const resetStockForm = () => {
+    setStockData({
+      cantidad: 0,
+      operacion: 'suma',
+      motivo: ''
+    });
+  };
+
+  // Abrir modal para nuevo producto
+  const openNewProductoModal = () => {
     resetForm();
+    setModalType('create');
     setIsModalOpen(true);
   };
 
-  const openEditProductModal = (producto: Producto) => {
+  // Abrir modal para editar producto (solo datos, no stock)
+  const openEditProductoModal = (producto: Producto) => {
     setFormData({
       nombre: producto.nombre,
       cantidad: producto.cantidad,
-      cantidadMinima: producto.cantidadMinima,
       precio: producto.precio,
-      proveedor: producto.proveedor,
+      stockMinimo: producto.stockMinimo,
       categoria: producto.categoria,
-      fechaVencimiento: producto.fechaVencimiento || '',
-      notas: producto.notas || ''
+      proveedor: producto.proveedor || ''
     });
-    setEditingProduct(producto);
+    setEditingProducto(producto);
+    setModalType('edit');
     setIsModalOpen(true);
   };
 
+  // Abrir modal para editar stock
+  const openStockModal = (producto: Producto) => {
+    resetStockForm();
+    setEditingProducto(producto);
+    setModalType('stock');
+    setIsModalOpen(true);
+  };
+
+  // Cerrar modal
   const closeModal = () => {
     setIsModalOpen(false);
     resetForm();
+    resetStockForm();
+    setModalType('create');
   };
 
-  const isFormValid = () => formData.nombre.trim() && formData.cantidad >= 0 && formData.precio >= 0;
+  // Manejar cambios en formularios
+  const handleInputChange = (field: string, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
-  const saveProduct = () => {
+  const handleStockChange = (field: string, value: string | number) => {
+    setStockData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Validar formulario
+  const isFormValid = () => {
+    return formData.nombre.trim() !== '' && 
+           formData.precio > 0 &&
+           formData.categoria.trim() !== '';
+  };
+
+  // Validar formulario de stock
+  const isStockFormValid = () => {
+    return stockData.cantidad > 0 && stockData.motivo.trim() !== '';
+  };
+
+  // Guardar producto
+  const saveProducto = () => {
     if (!isFormValid()) {
       alert('Por favor completa todos los campos obligatorios');
       return;
     }
 
-    let updatedProducts;
+    let updatedInventario;
 
-    if (editingProduct) {
-      const updatedProduct = { 
-        ...editingProduct, 
-        ...formData,
-        fechaVencimiento: formData.fechaVencimiento || undefined
-      };
-      updatedProducts = productos.map(p => p.id === editingProduct.id ? updatedProduct : p);
+    if (editingProducto && modalType === 'edit') {
+      // Actualizar producto existente (sin modificar stock desde aquí)
+      updatedInventario = inventario.map(producto =>
+        producto.id === editingProducto.id
+          ? { 
+              ...producto, 
+              nombre: formData.nombre.trim(),
+              precio: formData.precio,
+              stockMinimo: formData.stockMinimo,
+              categoria: formData.categoria.trim(),
+              proveedor: formData.proveedor.trim()
+            }
+          : producto
+      );
     } else {
-      const newProduct: Producto = {
+      // Crear nuevo producto
+      const newProducto: Producto = {
         id: generateId(),
-        ...formData,
-        fechaVencimiento: formData.fechaVencimiento || undefined
+        nombre: formData.nombre.trim(),
+        cantidad: formData.cantidad,
+        precio: formData.precio,
+        stockMinimo: formData.stockMinimo,
+        categoria: formData.categoria.trim(),
+        proveedor: formData.proveedor.trim(),
+        fechaUltimaCompra: new Date().toISOString().split('T')[0]
       };
-      updatedProducts = [...productos, newProduct];
+      updatedInventario = [...inventario, newProducto];
     }
 
-    setProductos(updatedProducts);
-    localStorage.setItem('inventario', JSON.stringify(updatedProducts));
+    setInventario(updatedInventario);
+    localStorage.setItem('inventario', JSON.stringify(updatedInventario));
     closeModal();
-
-    const message = editingProduct ? 'Producto actualizado exitosamente!' : 'Producto agregado exitosamente!';
-    alert(message);
-  };
-
-  const deleteProduct = (id: string) => {
-    if (window.confirm('¿Estás seguro de que deseas eliminar este producto?')) {
-      const updatedProducts = productos.filter(p => p.id !== id);
-      setProductos(updatedProducts);
-      localStorage.setItem('inventario', JSON.stringify(updatedProducts));
-    }
-  };
-
-  const updateStock = (id: string, newQuantity: number) => {
-    if (newQuantity < 0) return;
     
-    const updatedProducts = productos.map(p => 
-      p.id === id ? { ...p, cantidad: newQuantity } : p
-    );
-    setProductos(updatedProducts);
-    localStorage.setItem('inventario', JSON.stringify(updatedProducts));
+    alert((modalType === 'edit' ? 'Producto actualizado' : 'Producto agregado') + ' exitosamente!');
   };
 
-  const getCategoryColor = (categoria: string) => {
-    switch (categoria) {
-      case 'shampoo': return 'text-blue-600 bg-blue-100';
-      case 'tinte': return 'text-purple-600 bg-purple-100';
-      case 'tratamiento': return 'text-green-600 bg-green-100';
-      case 'herramientas': return 'text-orange-600 bg-orange-100';
-      default: return 'text-gray-600 bg-gray-100';
+  // Actualizar stock
+  const updateStock = () => {
+    if (!editingProducto || !isStockFormValid()) {
+      alert('Por favor completa todos los campos');
+      return;
     }
+
+    const nuevaCantidad = stockData.operacion === 'suma' 
+      ? editingProducto.cantidad + stockData.cantidad
+      : Math.max(0, editingProducto.cantidad - stockData.cantidad);
+
+    const updatedInventario = inventario.map(producto =>
+      producto.id === editingProducto.id
+        ? { 
+            ...producto, 
+            cantidad: nuevaCantidad,
+            fechaUltimaCompra: stockData.operacion === 'suma' ? new Date().toISOString().split('T')[0] : producto.fechaUltimaCompra
+          }
+        : producto
+    );
+
+    // Registrar movimiento de stock (opcional para futuras funcionalidades)
+    const movimiento = {
+      id: generateId(),
+      productoId: editingProducto.id,
+      productoNombre: editingProducto.nombre,
+      cantidad: stockData.cantidad,
+      operacion: stockData.operacion,
+      motivo: stockData.motivo,
+      cantidadAnterior: editingProducto.cantidad,
+      cantidadNueva: nuevaCantidad,
+      fecha: new Date().toISOString()
+    };
+
+    const movimientos = JSON.parse(localStorage.getItem('movimientosStock') || '[]');
+    movimientos.push(movimiento);
+    localStorage.setItem('movimientosStock', JSON.stringify(movimientos));
+
+    setInventario(updatedInventario);
+    localStorage.setItem('inventario', JSON.stringify(updatedInventario));
+    closeModal();
+    
+    alert(`Stock ${stockData.operacion === 'suma' ? 'aumentado' : 'reducido'} exitosamente`);
   };
 
-  const isLowStock = (producto: Producto) => producto.cantidad <= producto.cantidadMinima;
-  const lowStockCount = productos.filter(isLowStock).length;
-  const totalValue = productos.reduce((sum, p) => sum + (p.cantidad * p.precio), 0);
+  // Eliminar producto
+  const deleteProducto = (id: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.')) return;
+    
+    const updatedInventario = inventario.filter(producto => producto.id !== id);
+    setInventario(updatedInventario);
+    localStorage.setItem('inventario', JSON.stringify(updatedInventario));
+    
+    alert('Producto eliminado exitosamente');
+  };
+
+  // Obtener color según el stock
+  const getStockColor = (producto: Producto) => {
+    if (producto.cantidad === 0) return 'text-red-600 bg-red-50';
+    if (producto.cantidad <= producto.stockMinimo) return 'text-orange-600 bg-orange-50';
+    return 'text-green-600 bg-green-50';
+  };
 
   return (
     <div className="w-full max-w-none">
       {/* Header */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Inventario</h1>
-          <button
-            onClick={openNewProductModal}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2 justify-center w-full sm:w-auto"
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            Inventario
+          </h1>
+          <button 
+            onClick={openNewProductoModal}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2 justify-center"
           >
             <Plus size={20} />
             <span>Agregar Producto</span>
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Estadísticas */}
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow border">
-            <p className="text-sm text-gray-600">Total Productos</p>
-            <p className="text-2xl font-bold text-gray-900">{productos.length}</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Productos</p>
+                <p className="text-2xl font-bold text-gray-900">{totalProductos}</p>
+              </div>
+              <Package size={24} className="text-blue-600" />
+            </div>
           </div>
+
           <div className="bg-white p-4 rounded-lg shadow border">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className={`h-5 w-5 ${lowStockCount > 0 ? 'text-red-600' : 'text-gray-400'}`} />
+            <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Stock Bajo</p>
-                <p className={`text-2xl font-bold ${lowStockCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {lowStockCount}
+                <p className="text-2xl font-bold text-orange-600">{productosStockBajo}</p>
+              </div>
+              <TrendingDown size={24} className="text-orange-600" />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg shadow border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Valor Total</p>
+                <p className="text-2xl font-bold text-green-600">
+                  ${valorTotalInventario.toLocaleString()}
                 </p>
               </div>
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow border">
-            <p className="text-sm text-gray-600">Valor Total</p>
-            <p className="text-2xl font-bold text-blue-600">${totalValue.toFixed(2)}</p>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow border">
-            <p className="text-sm text-gray-600">Productos Activos</p>
-            <p className="text-2xl font-bold text-green-600">
-              {productos.filter(p => p.cantidad > 0).length}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow border p-4 mb-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Buscar productos..."
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+              <span className="text-2xl">💰</span>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2">
-            <select
-              className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              <option value="all">Todas las categorías</option>
-              <option value="shampoo">Shampoo</option>
-              <option value="tinte">Tinte</option>
-              <option value="tratamiento">Tratamiento</option>
-              <option value="herramientas">Herramientas</option>
-              <option value="otros">Otros</option>
-            </select>
-
-            <label className="flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer hover:bg-gray-50">
-              <input
-                type="checkbox"
-                checked={lowStockFilter}
-                onChange={(e) => setLowStockFilter(e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <span className="text-sm text-gray-700">Solo stock bajo</span>
-            </label>
+          <div className="bg-white p-4 rounded-lg shadow border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Categorías</p>
+                <p className="text-2xl font-bold text-purple-600">{categorias}</p>
+              </div>
+              <span className="text-2xl">📦</span>
+            </div>
           </div>
         </div>
+
+        {/* Alertas de stock bajo */}
+        {productosStockBajo > 0 && (
+          <div className="mt-4 bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle size={20} className="text-orange-600" />
+              <h3 className="text-sm font-semibold text-orange-800">
+                Productos con stock bajo
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {inventario
+                .filter(p => p.cantidad <= p.stockMinimo)
+                .map(producto => (
+                  <span
+                    key={producto.id}
+                    className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full"
+                  >
+                    {producto.nombre} ({producto.cantidad} unidades)
+                  </span>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Content */}
-      {viewMode === 'table' ? (
-        /* Vista de tabla - Desktop y tablet */
+      {/* Lista de productos */}
+      {inventario.length > 0 ? (
         <div className="bg-white rounded-lg shadow border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -315,7 +383,7 @@ export default function InventarioPage() {
                     Precio
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Proveedor
+                    Valor Total
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Acciones
@@ -323,58 +391,64 @@ export default function InventarioPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredProducts.map(producto => (
-                  <tr key={producto.id} className={`hover:bg-gray-50 ${isLowStock(producto) ? 'bg-red-50' : ''}`}>
+                {inventario.map(producto => (
+                  <tr key={producto.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Package className="h-5 w-5 text-gray-400 mr-3" />
-                        <div>
-                          <div className="font-medium text-gray-900">{producto.nombre}</div>
-                          {isLowStock(producto) && (
-                            <div className="flex items-center text-red-600 text-sm">
-                              <AlertTriangle size={14} className="mr-1" />
-                              Stock bajo
-                            </div>
-                          )}
-                        </div>
+                      <div>
+                        <div className="font-medium text-gray-900">{producto.nombre}</div>
+                        {producto.proveedor && (
+                          <div className="text-sm text-gray-500">Proveedor: {producto.proveedor}</div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(producto.categoria)}`}>
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                         {producto.categoria}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          value={producto.cantidad}
-                          onChange={(e) => updateStock(producto.id, parseInt(e.target.value) || 0)}
-                          className={`w-16 text-center border rounded px-2 py-1 text-sm ${
-                            isLowStock(producto) ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                          }`}
-                        />
-                        <span className="text-sm text-gray-500">/ {producto.cantidadMinima}</span>
+                      <div>
+                        <span className={`px-2 py-1 rounded-full text-sm font-medium ${getStockColor(producto)}`}>
+                          {producto.cantidad} unidades
+                        </span>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Mínimo: {producto.stockMinimo}
+                        </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      ${producto.precio.toFixed(2)}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <span className="text-lg font-semibold text-gray-900">
+                          ${producto.precio.toLocaleString()}
+                        </span>
+                        <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                          Protegido
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {producto.proveedor}
+                    <td className="px-6 py-4 whitespace-nowrap text-lg font-semibold text-green-600">
+                      ${(producto.cantidad * producto.precio).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex gap-2">
                         <button
-                          onClick={() => openEditProductModal(producto)}
-                          className="text-blue-600 hover:text-blue-900 p-1"
+                          onClick={() => openStockModal(producto)}
+                          className="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded"
+                          title="Editar stock"
+                        >
+                          <Package size={16} />
+                        </button>
+                        <button
+                          onClick={() => openEditProductoModal(producto)}
+                          className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
+                          title="Editar producto"
                         >
                           <Edit size={16} />
                         </button>
                         <button
-                          onClick={() => deleteProduct(producto.id)}
-                          className="text-red-600 hover:text-red-900 p-1"
+                          onClick={() => deleteProducto(producto.id)}
+                          className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
+                          title="Eliminar producto"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -387,133 +461,39 @@ export default function InventarioPage() {
           </div>
         </div>
       ) : (
-        /* Vista de tarjetas - Móvil */
-        <div className="grid gap-4">
-          {filteredProducts.map(producto => (
-            <div key={producto.id} className={`bg-white p-4 rounded-lg shadow border ${isLowStock(producto) ? 'border-red-200 bg-red-50' : ''}`}>
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center">
-                  <Package className="h-8 w-8 text-gray-400 mr-3" />
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{producto.nombre}</h3>
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(producto.categoria)}`}>
-                      {producto.categoria}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openEditProductModal(producto)}
-                    className="text-blue-600 hover:text-blue-900 p-1"
-                  >
-                    <Edit size={18} />
-                  </button>
-                  <button
-                    onClick={() => deleteProduct(producto.id)}
-                    className="text-red-600 hover:text-red-900 p-1"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-              
-              {isLowStock(producto) && (
-                <div className="flex items-center text-red-600 text-sm mb-3 p-2 bg-red-100 rounded">
-                  <AlertTriangle size={16} className="mr-2" />
-                  Stock bajo - Reabastecer pronto
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Stock actual:</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      value={producto.cantidad}
-                      onChange={(e) => updateStock(producto.id, parseInt(e.target.value) || 0)}
-                      className={`w-16 text-center border rounded px-2 py-1 text-sm ${
-                        isLowStock(producto) ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                      }`}
-                    />
-                    <span className="text-sm text-gray-500">/ {producto.cantidadMinima}</span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Precio:</span>
-                  <span className="text-sm font-bold text-gray-900">${producto.precio.toFixed(2)}</span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Proveedor:</span>
-                  <span className="text-sm text-gray-900">{producto.proveedor}</span>
-                </div>
-                
-                {producto.fechaVencimiento && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Vencimiento:</span>
-                    <span className="text-sm text-gray-900">
-                      {new Date(producto.fechaVencimiento).toLocaleDateString('es-ES')}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Empty State */}
-      {filteredProducts.length === 0 && (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
             <Package size={48} className="mx-auto" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {searchTerm || categoryFilter !== 'all' || lowStockFilter 
-              ? 'No se encontraron productos' 
-              : 'No hay productos en inventario'
-            }
-          </h3>
-          <p className="text-gray-600 mb-4">
-            {searchTerm || categoryFilter !== 'all' || lowStockFilter
-              ? 'Intenta ajustar los filtros de búsqueda'
-              : 'Comienza agregando tu primer producto al inventario'
-            }
-          </p>
-          {(!searchTerm && categoryFilter === 'all' && !lowStockFilter) && (
-            <button
-              onClick={openNewProductModal}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
-            >
-              Agregar Primer Producto
-            </button>
-          )}
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No hay productos en el inventario</h3>
+          <p className="text-gray-600 mb-4">Comienza agregando tu primer producto.</p>
+          <button 
+            onClick={openNewProductoModal}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
+          >
+            Agregar Primer Producto
+          </button>
         </div>
       )}
 
-      {/* Modal */}
-      {isModalOpen && (
+      {/* Modal para crear/editar producto */}
+      {isModalOpen && (modalType === 'create' || modalType === 'edit') && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">
-                  {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {modalType === 'edit' ? 'Editar Producto' : 'Nuevo Producto'}
                 </h2>
                 <button
                   onClick={closeModal}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 p-1"
                 >
-                  <X size={24} />
+                  <X size={20} />
                 </button>
               </div>
 
               <div className="space-y-4">
-                {/* Nombre */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nombre del Producto *
@@ -521,80 +501,76 @@ export default function InventarioPage() {
                   <input
                     type="text"
                     value={formData.nombre}
-                    onChange={e => setFormData({ ...formData, nombre: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Ej: Shampoo Hidratante L'Oreal"
-                    required
+                    onChange={(e) => handleInputChange('nombre', e.target.value)}
+                    placeholder="Ej: Shampoo, Tinte, Esmalte..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
-                {/* Categoría */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Categoría
+                    Categoría *
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={formData.categoria}
-                    onChange={e => setFormData({ ...formData, categoria: e.target.value as any })}
-                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="shampoo">Shampoo</option>
-                    <option value="tinte">Tinte</option>
-                    <option value="tratamiento">Tratamiento</option>
-                    <option value="herramientas">Herramientas</option>
-                    <option value="otros">Otros</option>
-                  </select>
+                    onChange={(e) => handleInputChange('categoria', e.target.value)}
+                    placeholder="Ej: Cuidado capilar, Coloración, Manicure..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Cantidad */}
+                {modalType === 'create' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Cantidad *
+                      Cantidad Initial
                     </label>
                     <input
                       type="number"
-                      min="0"
                       value={formData.cantidad}
-                      onChange={e => setFormData({ ...formData, cantidad: parseInt(e.target.value) || 0 })}
-                      className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
+                      onChange={(e) => handleInputChange('cantidad', Number(e.target.value))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      min="0"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Para productos existentes, usa "Editar Stock" después
+                    </p>
                   </div>
+                )}
 
-                  {/* Cantidad Mínima */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Stock Mínimo
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={formData.cantidadMinima}
-                      onChange={e => setFormData({ ...formData, cantidadMinima: parseInt(e.target.value) || 1 })}
-                      className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                {/* Precio */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Precio Unitario *
                   </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.precio}
-                    onChange={e => setFormData({ ...formData, precio: parseFloat(e.target.value) || 0 })}
-                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0.00"
-                    required
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      value={formData.precio}
+                      onChange={(e) => handleInputChange('precio', Number(e.target.value))}
+                      className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
                 </div>
 
-                {/* Proveedor */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Stock Mínimo
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.stockMinimo}
+                    onChange={(e) => handleInputChange('stockMinimo', Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    min="0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Se mostrará alerta cuando el stock esté por debajo de este número
+                  </p>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Proveedor
@@ -602,57 +578,189 @@ export default function InventarioPage() {
                   <input
                     type="text"
                     value={formData.proveedor}
-                    onChange={e => setFormData({ ...formData, proveedor: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nombre del proveedor"
-                  />
-                </div>
-
-                {/* Fecha de Vencimiento */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Fecha de Vencimiento
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.fechaVencimiento}
-                    onChange={e => setFormData({ ...formData, fechaVencimiento: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                {/* Notas */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Notas
-                  </label>
-                  <textarea
-                    value={formData.notas}
-                    onChange={e => setFormData({ ...formData, notas: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    rows={3}
-                    placeholder="Notas adicionales sobre el producto..."
+                    onChange={(e) => handleInputChange('proveedor', e.target.value)}
+                    placeholder="Nombre del proveedor (opcional)"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+              <div className="flex flex-col sm:flex-row gap-3 mt-6">
                 <button
                   onClick={closeModal}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-200"
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
                 >
                   Cancelar
                 </button>
                 <button
-                  onClick={saveProduct}
+                  onClick={saveProducto}
                   disabled={!isFormValid()}
-                  className={`px-4 py-2 rounded-lg transition-colors duration-200 ${
+                  className={`flex-1 px-4 py-2 rounded-lg transition-colors duration-200 ${
                     isFormValid()
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
-                  {editingProduct ? 'Actualizar' : 'Guardar'}
+                  {modalType === 'edit' ? 'Actualizar' : 'Agregar'} Producto
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar stock */}
+      {isModalOpen && modalType === 'stock' && editingProducto && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Editar Stock
+                </h2>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-gray-600 p-1"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Información del producto */}
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <h3 className="font-medium text-gray-900">{editingProducto.nombre}</h3>
+                  <p className="text-sm text-gray-600">Stock actual: {editingProducto.cantidad} unidades</p>
+                  <p className="text-sm text-gray-600">Stock mínimo: {editingProducto.stockMinimo} unidades</p>
+                </div>
+
+                {/* Tipo de operación */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de Movimiento
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleStockChange('operacion', 'suma')}
+                      className={`p-3 rounded-lg text-center transition-colors ${
+                        stockData.operacion === 'suma'
+                          ? 'bg-green-100 text-green-800 border-2 border-green-300'
+                          : 'bg-gray-100 text-gray-700 border-2 border-gray-200 hover:bg-gray-200'
+                      }`}
+                    >
+                      <div className="text-lg">➕</div>
+                      <div className="text-sm">Entrada</div>
+                    </button>
+                    <button
+                      onClick={() => handleStockChange('operacion', 'resta')}
+                      className={`p-3 rounded-lg text-center transition-colors ${
+                        stockData.operacion === 'resta'
+                          ? 'bg-red-100 text-red-800 border-2 border-red-300'
+                          : 'bg-gray-100 text-gray-700 border-2 border-gray-200 hover:bg-gray-200'
+                      }`}
+                    >
+                      <div className="text-lg">➖</div>
+                      <div className="text-sm">Salida</div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Cantidad */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cantidad *
+                  </label>
+                  <input
+                    type="number"
+                    value={stockData.cantidad}
+                    onChange={(e) => handleStockChange('cantidad', Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    min="1"
+                    max={stockData.operacion === 'resta' ? editingProducto.cantidad : undefined}
+                  />
+                  {stockData.operacion === 'resta' && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Máximo disponible: {editingProducto.cantidad} unidades
+                    </p>
+                  )}
+                </div>
+
+                {/* Motivo */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Motivo *
+                  </label>
+                  <select
+                    value={stockData.motivo}
+                    onChange={(e) => handleStockChange('motivo', e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Seleccionar motivo</option>
+                    {stockData.operacion === 'suma' ? (
+                      <>
+                        <option value="Compra">Compra</option>
+                        <option value="Devolución">Devolución</option>
+                        <option value="Ajuste inventario">Ajuste de inventario</option>
+                        <option value="Otro">Otro</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Venta">Venta</option>
+                        <option value="Uso interno">Uso interno</option>
+                        <option value="Pérdida">Pérdida</option>
+                        <option value="Vencimiento">Vencimiento</option>
+                        <option value="Ajuste inventario">Ajuste de inventario</option>
+                        <option value="Otro">Otro</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {/* Previsualización del resultado */}
+                {stockData.cantidad > 0 && (
+                  <div className={`p-3 rounded-lg ${
+                    stockData.operacion === 'suma' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <p className="text-sm font-medium text-gray-900">Resultado del movimiento:</p>
+                    <p className="text-lg font-bold">
+                      {editingProducto.cantidad} 
+                      <span className={stockData.operacion === 'suma' ? 'text-green-600' : 'text-red-600'}>
+                        {' '}{stockData.operacion === 'suma' ? '+' : '-'}{stockData.cantidad}
+                      </span>
+                      {' '}= {stockData.operacion === 'suma' 
+                        ? editingProducto.cantidad + stockData.cantidad 
+                        : Math.max(0, editingProducto.cantidad - stockData.cantidad)} unidades
+                    </p>
+                    
+                    {/* Alerta si queda por debajo del mínimo */}
+                    {stockData.operacion === 'resta' && 
+                     (editingProducto.cantidad - stockData.cantidad) < editingProducto.stockMinimo && (
+                      <div className="mt-2 flex items-center gap-2 text-orange-600">
+                        <AlertTriangle size={16} />
+                        <span className="text-xs">El stock quedará por debajo del mínimo</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                <button
+                  onClick={closeModal}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={updateStock}
+                  disabled={!isStockFormValid()}
+                  className={`flex-1 px-4 py-2 rounded-lg transition-colors duration-200 ${
+                    isStockFormValid()
+                      ? `${stockData.operacion === 'suma' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white`
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  {stockData.operacion === 'suma' ? 'Agregar' : 'Reducir'} Stock
                 </button>
               </div>
             </div>

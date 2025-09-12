@@ -7,22 +7,70 @@ interface WhatsAppMessage {
   fecha: string;
   hora: string;
   notas?: string;
-  type: 'confirmacion' | 'recordatorio' | 'cambio';
+  type: 'confirmacion' | 'recordatorio' | 'cambio' | 'cancelacion';
+  salonInfo?: {
+    nombre: string;
+    telefono: string;
+    direccion: string;
+  };
+}
+
+interface TwilioConfig {
+  accountSid: string;
+  authToken: string;
+  fromWhatsApp: string;
+}
+
+interface WhatsAppBusinessConfig {
+  accessToken: string;
+  phoneNumberId: string;
+  version: string;
 }
 
 class WhatsAppService {
-  private twilioConfig = {
-    accountSid: process.env.REACT_APP_TWILIO_ACCOUNT_SID || '',
-    authToken: process.env.REACT_APP_TWILIO_AUTH_TOKEN || '',
-    whatsappNumber: process.env.REACT_APP_TWILIO_WHATSAPP_NUMBER || '+14155238886'
+  private twilioConfig: TwilioConfig;
+  private whatsappBusinessConfig: WhatsAppBusinessConfig;
+  private salonInfo = {
+    nombre: 'Beauty Salon Total Control',
+    telefono: '+52 55 1234-5678',
+    direccion: 'Calle Principal 123, Col. Centro'
   };
 
-  private businessConfig = {
-    accessToken: process.env.REACT_APP_WHATSAPP_BUSINESS_TOKEN || '',
-    phoneNumberId: process.env.REACT_APP_WHATSAPP_PHONE_NUMBER_ID || ''
-  };
+  constructor() {
+    // Configuración temporal - se pueden cambiar más tarde
+    this.twilioConfig = {
+      accountSid: '',
+      authToken: '',
+      fromWhatsApp: ''
+    };
 
-  // Plantillas de mensajes de WhatsApp
+    this.whatsappBusinessConfig = {
+      accessToken: '',
+      phoneNumberId: '',
+      version: 'v18.0'
+    };
+  }
+
+  // Formatear número de teléfono para WhatsApp
+  private formatPhoneNumber(phone: string): string {
+    // Remover espacios, guiones y paréntesis
+    let cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+    
+    // Si no empieza con +, asumir que es México (+52)
+    if (!cleanPhone.startsWith('+')) {
+      if (cleanPhone.startsWith('52')) {
+        cleanPhone = '+' + cleanPhone;
+      } else if (cleanPhone.length === 10) {
+        cleanPhone = '+52' + cleanPhone;
+      } else {
+        cleanPhone = '+52' + cleanPhone;
+      }
+    }
+    
+    return cleanPhone;
+  }
+
+  // Obtener plantillas de mensaje
   private getMessageTemplate(type: WhatsAppMessage['type'], data: WhatsAppMessage): string {
     const formatDate = (fecha: string) => {
       return new Date(fecha).toLocaleDateString('es-ES', {
@@ -40,145 +88,123 @@ class WhatsAppService {
       });
     };
 
-    const salonInfo = {
-      nombre: 'Tu Salón de Belleza',
-      telefono: '+52 55 1234 5678',
-      direccion: 'Calle Principal #123, Ciudad'
-    };
+    const salonName = data.salonInfo?.nombre || this.salonInfo.nombre;
+    const salonPhone = data.salonInfo?.telefono || this.salonInfo.telefono;
 
     switch (type) {
       case 'confirmacion':
-        return `✅ *Cita Confirmada* ✅
+        return `
+✅ *Cita Confirmada*
 
-¡Hola ${data.clienteName}!
+Hola ${data.clienteName} 👋
 
 Tu cita ha sido confirmada exitosamente:
 
-📅 *Fecha:* ${formatDate(data.fecha)}
-🕐 *Hora:* ${formatTime(data.hora)}
-✂️ *Servicio:* ${data.servicioNombre}
-${data.notas ? `📝 *Notas:* ${data.notas}` : ''}
+📅 *Detalles de tu cita:*
+• Servicio: ${data.servicioNombre}
+• Fecha: ${formatDate(data.fecha)}
+• Hora: ${formatTime(data.hora)}
+${data.notas ? `• Notas: ${data.notas}` : ''}
 
-📍 *Ubicación:* ${salonInfo.direccion}
-📞 *Teléfono:* ${salonInfo.telefono}
+📍 *Ubicación:* ${this.salonInfo.direccion}
 
-Por favor llega 10 minutos antes de tu cita.
+⏰ *Por favor llega 10 minutos antes*
 
 Si necesitas cancelar o reprogramar, contáctanos con al menos 24 horas de anticipación.
 
-¡Te esperamos! 💄✨`;
+📞 ${salonPhone}
+
+¡Te esperamos! ✨
+*${salonName}*
+        `.trim();
 
       case 'recordatorio':
-        return `⏰ *Recordatorio de Cita* ⏰
+        return `
+⏰ *Recordatorio de Cita*
 
-¡Hola ${data.clienteName}!
+Hola ${data.clienteName} 👋
 
-Este es un recordatorio de que tienes una cita mañana:
+Te recordamos que tienes una cita programada para *mañana*:
 
-📅 *Fecha:* ${formatDate(data.fecha)}
-🕐 *Hora:* ${formatTime(data.hora)}
-✂️ *Servicio:* ${data.servicioNombre}
-${data.notas ? `📝 *Notas:* ${data.notas}` : ''}
+📅 *Tu cita:*
+• Servicio: ${data.servicioNombre}
+• Fecha: ${formatDate(data.fecha)}
+• Hora: ${formatTime(data.hora)}
+${data.notas ? `• Notas: ${data.notas}` : ''}
+
+📍 *Ubicación:* ${this.salonInfo.direccion}
 
 💡 *Recomendaciones:*
 • Llega 10 minutos antes
 • Trae una foto de referencia si deseas un look específico
 • Si necesitas cancelar, hazlo con 24h de anticipación
 
-📍 *Ubicación:* ${salonInfo.direccion}
-📞 *Teléfono:* ${salonInfo.telefono}
+📞 Para cualquier consulta: ${salonPhone}
 
-¡Te esperamos mañana! 💄✨`;
+¡Te esperamos! ✨
+*${salonName}*
+        `.trim();
 
       case 'cambio':
-        return `📝 *Cambio en tu Cita* 📝
+        return `
+📝 *Cambio en tu Cita*
 
-¡Hola ${data.clienteName}!
+Hola ${data.clienteName} 👋
 
 Hemos actualizado los detalles de tu cita:
 
-📅 *Nueva Fecha:* ${formatDate(data.fecha)}
-🕐 *Nueva Hora:* ${formatTime(data.hora)}
-✂️ *Servicio:* ${data.servicioNombre}
-${data.notas ? `📝 *Notas:* ${data.notas}` : ''}
+📅 *Nueva información:*
+• Servicio: ${data.servicioNombre}
+• Fecha: ${formatDate(data.fecha)}
+• Hora: ${formatTime(data.hora)}
+${data.notas ? `• Notas: ${data.notas}` : ''}
 
-📍 *Ubicación:* ${salonInfo.direccion}
-📞 *Teléfono:* ${salonInfo.telefono}
+📍 *Ubicación:* ${this.salonInfo.direccion}
 
 Si tienes alguna pregunta sobre este cambio, no dudes en contactarnos.
 
-¡Gracias por tu comprensión! 💄✨`;
+📞 ${salonPhone}
+
+Gracias por tu comprensión 🙏
+*${salonName}*
+        `.trim();
+
+      case 'cancelacion':
+        return `
+❌ *Cita Cancelada*
+
+Hola ${data.clienteName} 👋
+
+Tu cita ha sido cancelada:
+
+📅 *Cita cancelada:*
+• Servicio: ${data.servicioNombre}
+• Fecha: ${formatDate(data.fecha)}
+• Hora: ${formatTime(data.hora)}
+
+Si deseas reagendar, no dudes en contactarnos.
+
+📞 ${salonPhone}
+
+¡Esperamos verte pronto! ✨
+*${salonName}*
+        `.trim();
 
       default:
-        throw new Error(`Unknown message template type: ${type}`);
+        throw new Error(`Unknown message type: ${type}`);
     }
   }
 
-  // Enviar mensaje usando Twilio API
-  private async sendWithTwilio(to: string, message: string): Promise<boolean> {
+  // Enviar usando WhatsApp Web (para desarrollo/demostración)
+  private sendWithWhatsAppWeb(phone: string, message: string): boolean {
     try {
-      if (!this.twilioConfig.accountSid || !this.twilioConfig.authToken) {
-        throw new Error('Twilio credentials not configured');
-      }
-
-      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${this.twilioConfig.accountSid}/Messages.json`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${btoa(`${this.twilioConfig.accountSid}:${this.twilioConfig.authToken}`)}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          From: `whatsapp:${this.twilioConfig.whatsappNumber}`,
-          To: `whatsapp:${to}`,
-          Body: message
-        }),
-      });
-
-      return response.ok;
-    } catch (error) {
-      console.error('Error sending WhatsApp message with Twilio:', error);
-      return false;
-    }
-  }
-
-  // Enviar mensaje usando WhatsApp Business API
-  private async sendWithBusinessAPI(to: string, message: string): Promise<boolean> {
-    try {
-      if (!this.businessConfig.accessToken || !this.businessConfig.phoneNumberId) {
-        throw new Error('WhatsApp Business API credentials not configured');
-      }
-
-      const response = await fetch(`https://graph.facebook.com/v18.0/${this.businessConfig.phoneNumberId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.businessConfig.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: to.replace('+', ''),
-          type: 'text',
-          text: {
-            body: message
-          }
-        }),
-      });
-
-      return response.ok;
-    } catch (error) {
-      console.error('Error sending WhatsApp message with Business API:', error);
-      return false;
-    }
-  }
-
-  // Método para abrir WhatsApp Web (fallback)
-  private openWhatsAppWeb(to: string, message: string): boolean {
-    try {
+      const formattedPhone = this.formatPhoneNumber(phone).replace('+', '');
       const encodedMessage = encodeURIComponent(message);
-      const phoneNumber = to.replace(/\D/g, '');
-      const url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+      const whatsappURL = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
       
-      window.open(url, '_blank');
+      // Abrir en nueva pestaña
+      window.open(whatsappURL, '_blank');
+      
       return true;
     } catch (error) {
       console.error('Error opening WhatsApp Web:', error);
@@ -186,76 +212,105 @@ Si tienes alguna pregunta sobre este cambio, no dudes en contactarnos.
     }
   }
 
-  // Método principal para enviar mensajes de WhatsApp
-  async sendMessage(messageData: WhatsAppMessage): Promise<boolean> {
+  // Método principal para enviar mensajes
+  async sendMessage(messageData: WhatsAppMessage): Promise<{ success: boolean; method: string }> {
     try {
       const message = this.getMessageTemplate(messageData.type, messageData);
 
-      // Intentar con WhatsApp Business API primero (más profesional)
-      if (this.businessConfig.accessToken && this.businessConfig.phoneNumberId) {
-        const success = await this.sendWithBusinessAPI(messageData.to, message);
-        if (success) return true;
-      }
-
-      // Fallback a Twilio
-      if (this.twilioConfig.accountSid && this.twilioConfig.authToken) {
-        const success = await this.sendWithTwilio(messageData.to, message);
-        if (success) return true;
-      }
-
-      // Fallback final: abrir WhatsApp Web
-      console.warn('No WhatsApp API configured, opening WhatsApp Web');
-      return this.openWhatsAppWeb(messageData.to, message);
+      // Por ahora solo usar WhatsApp Web para desarrollo
+      const webSuccess = this.sendWithWhatsAppWeb(messageData.to, message);
+      return { 
+        success: webSuccess, 
+        method: webSuccess ? 'WhatsApp Web' : 'Failed' 
+      };
 
     } catch (error) {
       console.error('Error sending WhatsApp message:', error);
-      return false;
+      return { success: false, method: 'Error' };
     }
   }
 
-  // Programar recordatorios automáticos
-  scheduleReminder(messageData: WhatsAppMessage, sendDate: Date): void {
+  // Programar mensaje automático
+  scheduleMessage(messageData: WhatsAppMessage, sendDate: Date): void {
     const now = new Date();
     const delay = sendDate.getTime() - now.getTime();
 
-    if (delay > 0) {
+    if (delay > 0 && delay < 24 * 60 * 60 * 1000) { // Solo programar si es en las próximas 24 horas
       setTimeout(async () => {
         await this.sendMessage(messageData);
       }, delay);
     }
   }
 
+  // Validar número de teléfono
+  validatePhoneNumber(phone: string): { isValid: boolean; formatted: string; error?: string } {
+    try {
+      if (!phone || phone.trim() === '') {
+        return { isValid: false, formatted: '', error: 'Número requerido' };
+      }
+
+      const formatted = this.formatPhoneNumber(phone);
+      
+      // Validaciones básicas
+      if (formatted.length < 10) {
+        return { isValid: false, formatted: '', error: 'Número muy corto' };
+      }
+      
+      if (formatted.length > 15) {
+        return { isValid: false, formatted: '', error: 'Número muy largo' };
+      }
+
+      if (!/^\+\d+$/.test(formatted)) {
+        return { isValid: false, formatted: '', error: 'Formato inválido' };
+      }
+
+      return { isValid: true, formatted };
+    } catch (error) {
+      return { isValid: false, formatted: '', error: 'Error de validación' };
+    }
+  }
+
   // Verificar configuración
-  isConfigured(): { twilio: boolean; business: boolean; webOnly: boolean } {
-    const twilioConfigured = !!(this.twilioConfig.accountSid && this.twilioConfig.authToken);
-    const businessConfigured = !!(this.businessConfig.accessToken && this.businessConfig.phoneNumberId);
-    
+  getConfigurationStatus(): {
+    twilio: boolean;
+    whatsappBusiness: boolean;
+    whatsappWeb: boolean;
+  } {
     return {
-      twilio: twilioConfigured,
-      business: businessConfigured,
-      webOnly: !twilioConfigured && !businessConfigured
+      twilio: !!(this.twilioConfig.accountSid && this.twilioConfig.authToken),
+      whatsappBusiness: !!(this.whatsappBusinessConfig.accessToken && this.whatsappBusinessConfig.phoneNumberId),
+      whatsappWeb: true // Siempre disponible
     };
   }
 
-  // Validar número de teléfono para WhatsApp
-  isValidWhatsAppNumber(phone: string): boolean {
-    // Remover espacios y caracteres especiales
-    const cleanPhone = phone.replace(/\D/g, '');
-    
-    // Verificar que tenga al menos 10 dígitos (formato internacional)
-    return cleanPhone.length >= 10;
+  // Obtener plantilla de mensaje para preview
+  getMessagePreview(type: WhatsAppMessage['type'], data: Partial<WhatsAppMessage>): string {
+    const mockData: WhatsAppMessage = {
+      to: '+521234567890',
+      clienteName: data.clienteName || 'Cliente Ejemplo',
+      servicioNombre: data.servicioNombre || 'Corte de cabello',
+      fecha: data.fecha || new Date().toISOString().split('T')[0],
+      hora: data.hora || '10:00',
+      notas: data.notas || 'Sin notas especiales',
+      type: type
+    };
+
+    return this.getMessageTemplate(type, mockData);
   }
 
-  // Formatear número para WhatsApp
-  formatPhoneNumber(phone: string): string {
-    const cleanPhone = phone.replace(/\D/g, '');
-    
-    // Si no empieza con código de país, asumir México (+52)
-    if (!cleanPhone.startsWith('52') && cleanPhone.length === 10) {
-      return `+52${cleanPhone}`;
-    }
-    
-    return `+${cleanPhone}`;
+  // Enviar mensaje de prueba
+  async sendTestMessage(to: string): Promise<{ success: boolean; method: string }> {
+    const testMessage: WhatsAppMessage = {
+      to,
+      clienteName: 'Cliente de Prueba',
+      servicioNombre: 'Mensaje de Prueba',
+      fecha: new Date().toISOString().split('T')[0],
+      hora: '10:00',
+      type: 'confirmacion',
+      notas: 'Este es un mensaje de prueba del sistema'
+    };
+
+    return await this.sendMessage(testMessage);
   }
 }
 

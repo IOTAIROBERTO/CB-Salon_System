@@ -33,15 +33,15 @@ class GoogleCalendarService {
   private scopes = 'https://www.googleapis.com/auth/calendar.events';
 
   constructor() {
-    // Estas credenciales deben configurarse en tu proyecto de Google Cloud Console
-    this.clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
-    this.apiKey = process.env.REACT_APP_GOOGLE_API_KEY || '';
+    // Configuración temporal - puedes cambiar estas credenciales más tarde
+    this.clientId = '';
+    this.apiKey = '';
   }
 
   async initialize(): Promise<boolean> {
     try {
       if (!this.clientId || !this.apiKey) {
-        console.error('Google Calendar credentials not configured');
+        console.log('Google Calendar credentials not configured - service disabled');
         return false;
       }
 
@@ -123,7 +123,8 @@ class GoogleCalendarService {
   async createEvent(event: CalendarEvent): Promise<string | null> {
     try {
       if (!this.isSignedIn) {
-        throw new Error('Not signed in to Google Calendar');
+        console.log('Not signed in to Google Calendar');
+        return null;
       }
 
       const response = await this.gapi.client.calendar.events.insert({
@@ -141,7 +142,8 @@ class GoogleCalendarService {
   async updateEvent(eventId: string, event: CalendarEvent): Promise<boolean> {
     try {
       if (!this.isSignedIn) {
-        throw new Error('Not signed in to Google Calendar');
+        console.log('Not signed in to Google Calendar');
+        return false;
       }
 
       await this.gapi.client.calendar.events.update({
@@ -160,7 +162,8 @@ class GoogleCalendarService {
   async deleteEvent(eventId: string): Promise<boolean> {
     try {
       if (!this.isSignedIn) {
-        throw new Error('Not signed in to Google Calendar');
+        console.log('Not signed in to Google Calendar');
+        return false;
       }
 
       await this.gapi.client.calendar.events.delete({
@@ -178,14 +181,14 @@ class GoogleCalendarService {
   // Convertir cita a evento de Google Calendar
   citaToCalendarEvent(cita: any, cliente: any, servicio: any): CalendarEvent {
     const startDateTime = new Date(`${cita.fecha}T${cita.hora}`);
-    const endDateTime = new Date(startDateTime.getTime() + (servicio.duracion || 60) * 60 * 1000);
+    const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // Asume 1 hora de duración
 
     return {
       summary: `${servicio.nombre} - ${cliente.nombre}`,
       description: `
 Cliente: ${cliente.nombre}
 Servicio: ${servicio.nombre}
-Precio: $${servicio.precioActualizado}
+Precio: $${servicio.precioSugerido}
 Estado: ${cita.estado}
 ${cita.notas ? `Notas: ${cita.notas}` : ''}
       `.trim(),
