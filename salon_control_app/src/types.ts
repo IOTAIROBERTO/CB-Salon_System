@@ -33,6 +33,14 @@ export interface Cita {
   anticipoConfirmado?: boolean; // Nuevo campo para confirmar anticipo
   precioFinal?: number;
   metodoPago?: string;
+  serviciosAdicionales?: Array<{
+    servicioId: string;
+    nombre: string;
+    precio: number;
+  }>; // Servicios adicionales
+  descuentoAplicado?: number; // Porcentaje de descuento aplicado
+  subtotalOriginal?: number; // Subtotal antes del descuento
+  montoDescuento?: number; // Monto del descuento aplicado
   saldoPendiente?: number;
   fechaCompletada?: string;
 }

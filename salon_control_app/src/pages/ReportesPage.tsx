@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react';
 import {
   Calendar,
-  TrendingUp,
   DollarSign,
-  Users,
-  BarChart3,
-  Download,
-  Filter,
-  CheckCircle,
   Clock,
+  Download,
+  ShoppingCart,
+  Eye,
+  CheckCircle,
   XCircle,
-  ShoppingCart
+  User,
+  Scissors
 } from 'lucide-react';
 
 interface Cita {
@@ -23,9 +22,17 @@ interface Cita {
   precioFinal?: number;
   montoAnticipo?: number;
   saldoPendiente?: number;
-  metodoPagoFinal?: string;
-  metodoPagoAnticipo?: string;
+  metodoPago?: string;
+  serviciosAdicionales?: Array<{
+    servicioId: string;
+    nombre: string;
+    precio: number;
+  }>;
+  descuentoAplicado?: number;
+  subtotalOriginal?: number;
+  montoDescuento?: number;
   fechaCompletada?: string;
+  notas?: string;
 }
 
 interface Venta {
@@ -72,8 +79,8 @@ export default function ReportesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [catalogoServicios, setCatalogoServicios] = useState<ServicioCatalogo[]>([]);
   const [reportPeriod, setReportPeriod] = useState<'week' | 'month' | 'year'>('month');
-  const [showDetails, setShowDetails] = useState(false);
-  const [filtroEstado, setFiltroEstado] = useState<'all' | 'completada' | 'confirmada' | 'cancelada'>('all');
+  const [filtroHistorial, setFiltroHistorial] = useState<'todas' | 'completadas' | 'canceladas'>('todas');
+  const [citaSeleccionada, setCitaSeleccionada] = useState<Cita | null>(null);
 
   useEffect(() => {
     const citasData = JSON.parse(localStorage.getItem('citas') || '[]');
@@ -92,6 +99,14 @@ export default function ReportesPage() {
 
   const getServicioCatalogo = (id: string) =>
     catalogoServicios.find(s => s.id === id)?.nombre || 'Servicio no encontrado';
+
+  // Filtrar citas para historial
+  const citasHistorial = citas.filter(cita => {
+    const esCompletadaOCancelada = ['completada', 'cancelada'].includes(cita.estado);
+    if (filtroHistorial === 'completadas') return cita.estado === 'completada';
+    if (filtroHistorial === 'canceladas') return cita.estado === 'cancelada';
+    return esCompletadaOCancelada; // 'todas'
+  }).sort((a, b) => new Date(b.fechaCompletada || b.fecha).getTime() - new Date(a.fechaCompletada || a.fecha).getTime());
 
   // Datos de reportes
   const getReportData = (): ReportData[] => {
@@ -205,7 +220,6 @@ export default function ReportesPage() {
   };
 
   const reportData = getReportData();
-  const maxIngresos = Math.max(...reportData.map(d => d.ingresosTotales), 1);
 
   // Estadísticas generales
   const citasCompletadas = citas.filter(c => c.estado === 'completada');
@@ -213,13 +227,9 @@ export default function ReportesPage() {
   const totalIngresosVentas = ventas.reduce((sum, v) => sum + v.total, 0);
   const totalIngresos = totalIngresosCitas + totalIngresosVentas;
 
-  const totalAnticipos = citas.reduce((sum, c) => sum + (c.montoAnticipo || 0), 0);
   const saldosPendientes = citas
     .filter(c => c.estado !== 'cancelada')
     .reduce((sum, c) => sum + (c.saldoPendiente || 0), 0);
-
-  const promedioServicio =
-    citasCompletadas.length > 0 ? totalIngresosCitas / citasCompletadas.length : 0;
 
   const exportToCSV = () => {
     const csvContent = [
@@ -262,7 +272,7 @@ export default function ReportesPage() {
       </div>
 
       {/* Estadísticas principales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg shadow border">
           <div className="flex items-center justify-between">
             <div>
@@ -299,28 +309,6 @@ export default function ReportesPage() {
         <div className="bg-white p-4 rounded-lg shadow border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Promedio Servicio</p>
-              <p className="text-2xl font-bold text-orange-600">${promedioServicio.toFixed(0)}</p>
-              <p className="text-xs text-gray-500">Por servicio completado</p>
-            </div>
-            <TrendingUp size={24} className="text-orange-600" />
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Anticipos</p>
-              <p className="text-2xl font-bold text-blue-600">${totalAnticipos.toLocaleString()}</p>
-              <p className="text-xs text-gray-500">Anticipos recibidos</p>
-            </div>
-            <Users size={24} className="text-blue-600" />
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="flex items-center justify-between">
-            <div>
               <p className="text-sm text-gray-600">Saldos Pendientes</p>
               <p className="text-2xl font-bold text-orange-600">${saldosPendientes.toLocaleString()}</p>
               <p className="text-xs text-gray-500">Por cobrar</p>
@@ -329,6 +317,194 @@ export default function ReportesPage() {
           </div>
         </div>
       </div>
+
+      {/* Historial de Citas */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900">Historial de Citas</h2>
+          <div className="flex gap-2">
+            <select
+              value={filtroHistorial}
+              onChange={(e) => setFiltroHistorial(e.target.value as any)}
+              className="border rounded px-3 py-2 text-sm"
+            >
+              <option value="todas">Todas</option>
+              <option value="completadas">Completadas</option>
+              <option value="canceladas">Canceladas</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {citasHistorial.length > 0 ? (
+            citasHistorial.map((cita) => (
+              <div key={cita.id} className={`border rounded-lg p-4 ${
+                cita.estado === 'completada' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+              }`}>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                        cita.estado === 'completada' 
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {cita.estado === 'completada' ? <CheckCircle size={12} /> : <XCircle size={12} />}
+                        {cita.estado === 'completada' ? 'Completada' : 'Cancelada'}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <User size={14} className="text-gray-400" />
+                        <span>{getCliente(cita.clienteId)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Scissors size={14} className="text-gray-400" />
+                        <span>{getServicioCatalogo(cita.servicioId)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar size={14} className="text-gray-400" />
+                        <span>{new Date(cita.fecha).toLocaleDateString('es-ES')}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DollarSign size={14} className="text-gray-400" />
+                        <span>{cita.estado === 'completada' ? `$${cita.precioFinal || 0}` : 'N/A'}</span>
+                      </div>
+                    </div>
+
+                    {cita.estado === 'completada' && (
+                      <div className="mt-2 text-xs text-gray-600">
+                        <span>Anticipo: ${cita.montoAnticipo || 0}</span>
+                        {cita.metodoPago && <span> • Pago: {cita.metodoPago}</span>}
+                        {cita.fechaCompletada && (
+                          <span> • Completada: {new Date(cita.fechaCompletada).toLocaleDateString('es-ES')}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => setCitaSeleccionada(cita)}
+                    className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded"
+                  >
+                    <Eye size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-center text-gray-500 py-8">
+              No hay citas en el historial
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Modal de detalle de cita */}
+      {citaSeleccionada && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-semibold">Detalle de Cita</h2>
+              <button onClick={() => setCitaSeleccionada(null)}>
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className={`p-4 rounded-lg ${
+                citaSeleccionada.estado === 'completada' ? 'bg-green-50' : 'bg-red-50'
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  {citaSeleccionada.estado === 'completada' ? (
+                    <CheckCircle size={20} className="text-green-600" />
+                  ) : (
+                    <XCircle size={20} className="text-red-600" />
+                  )}
+                  <span className="font-medium text-lg">
+                    Cita {citaSeleccionada.estado === 'completada' ? 'Completada' : 'Cancelada'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                  <p className="text-gray-900">{getCliente(citaSeleccionada.clienteId)}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Servicio</label>
+                  <p className="text-gray-900">{getServicioCatalogo(citaSeleccionada.servicioId)}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                  <p className="text-gray-900">{new Date(citaSeleccionada.fecha).toLocaleDateString('es-ES')}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hora</label>
+                  <p className="text-gray-900">{citaSeleccionada.hora}</p>
+                </div>
+              </div>
+
+              {citaSeleccionada.estado === 'completada' && (
+                <div className="border-t pt-4">
+                  <h3 className="font-medium text-gray-900 mb-3">Información de Transacción</h3>
+                  
+                  {citaSeleccionada.serviciosAdicionales && citaSeleccionada.serviciosAdicionales.length > 0 && (
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Servicios Adicionales</label>
+                      <ul className="text-sm text-gray-600">
+                        {citaSeleccionada.serviciosAdicionales.map((s, i) => (
+                          <li key={i}>• {s.nombre} - ${s.precio}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Anticipo Recibido</label>
+                      <p className="text-gray-900">${citaSeleccionada.montoAnticipo || 0}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Total Pagado</label>
+                      <p className="text-gray-900 font-semibold">${citaSeleccionada.precioFinal || 0}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Método de Pago</label>
+                      <p className="text-gray-900 capitalize">{citaSeleccionada.metodoPago || 'No especificado'}</p>
+                    </div>
+                  </div>
+
+                  {citaSeleccionada.descuentoAplicado && citaSeleccionada.descuentoAplicado > 0 && (
+                    <div className="mt-3 p-3 bg-orange-50 rounded">
+                      <p className="text-sm">
+                        <span className="font-medium">Descuento aplicado:</span> {citaSeleccionada.descuentoAplicado}% 
+                        (-${citaSeleccionada.montoDescuento || 0})
+                      </p>
+                    </div>
+                  )}
+
+                  {citaSeleccionada.fechaCompletada && (
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Completado</label>
+                      <p className="text-gray-900">{new Date(citaSeleccionada.fechaCompletada).toLocaleString('es-ES')}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {citaSeleccionada.notas && (
+                <div className="border-t pt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                  <p className="text-gray-900">{citaSeleccionada.notas}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

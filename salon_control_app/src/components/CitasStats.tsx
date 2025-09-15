@@ -25,11 +25,13 @@ export default function CitasStats({ citas, servicios }: CitasStatsProps) {
     }, 0);
 
   // Anticipos pendientes = Total de anticipos sugeridos - anticipos ya pagados/confirmados
+  // Considerar también los anticipos modificados en el proceso de cobro
   const anticiposPendientes = citas
     .filter(c => c.estado !== "cancelada")
     .reduce((sum, c) => {
       const servicio = servicios.find(s => s.id === c.servicioId);
       const anticipoSugerido = servicio?.anticipoSugerido || 0;
+      // Usar el anticipo confirmado/pagado (que puede haber sido modificado en el cobro)
       const anticipoPagado = (c.anticipoConfirmado && c.montoAnticipo) ? c.montoAnticipo : 0;
       return sum + Math.max(0, anticipoSugerido - anticipoPagado);
     }, 0);

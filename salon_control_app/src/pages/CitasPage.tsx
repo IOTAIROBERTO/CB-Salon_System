@@ -14,7 +14,7 @@ export default function CitasPage() {
     clientes,
     servicios,
     saveCita,
-    completarCita, // ✅ ahora está bien implementado
+    completarCita,
     deleteCita,
     updateAnticipo,
     changeEstadoCita,
@@ -116,7 +116,7 @@ export default function CitasPage() {
           cita={modalState.data}
           servicios={servicios}
           onClose={closeModal}
-          onCompletar={completarCita} // ✅ Aquí se pasa correctamente
+          onCompletar={completarCita}
         />
       )}
 

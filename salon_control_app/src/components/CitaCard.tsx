@@ -39,6 +39,16 @@ export default function CitaCard({
   onOpenEdit,
   onOpenReagendar,
 }: CitaCardProps) {
+  // Validación temprana: verificar que cita existe y tiene las propiedades mínimas
+  if (!cita || typeof cita !== 'object' || !cita.id) {
+    console.error('CitaCard: cita is invalid', cita);
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-600">Error: Datos de cita inválidos</p>
+      </div>
+    );
+  }
+
   const [anticipoInput, setAnticipoInput] = useState(cita.montoAnticipo?.toString() || "");
   const [isEditingAnticipo, setIsEditingAnticipo] = useState(false);
 
@@ -46,36 +56,88 @@ export default function CitaCard({
   const clienteData = clientes.find((c) => c.id === cita.clienteId);
   const servicio = servicios.find((s) => s.id === cita.servicioId);
 
-  const formatDate = (dateString: string) => {
-    // Crear fecha local sin conversión de zona horaria
-    const [year, month, day] = dateString.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    
-    return date.toLocaleDateString("es-ES", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+  // Funciones completamente seguras para formatear fechas y horas
+  const formatDate = (dateString) => {
+    try {
+      if (!dateString || typeof dateString !== 'string' || dateString.trim() === '') {
+        return "Fecha no disponible";
+      }
+      
+      if (!dateString.includes('-')) {
+        return "Formato de fecha inválido";
+      }
+      
+      const parts = String(dateString).split('-');
+      if (!parts || parts.length !== 3) {
+        return "Formato de fecha inválido";
+      }
+      
+      const [year, month, day] = parts;
+      if (!year || !month || !day) {
+        return "Fecha incompleta";
+      }
+      
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      if (isNaN(date.getTime())) {
+        return "Fecha inválida";
+      }
+      
+      return date.toLocaleDateString("es-ES", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch (error) {
+      console.error('Error in formatDate:', error);
+      return "Error en fecha";
+    }
   };
 
-  const formatTime = (timeString: string) =>
-    new Date(`2000-01-01T${timeString}`).toLocaleTimeString("es-ES", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const formatTime = (timeString) => {
+    try {
+      if (!timeString || typeof timeString !== 'string' || timeString.trim() === '') {
+        return "Hora no disponible";
+      }
+      
+      const timeDate = new Date(`2000-01-01T${timeString}`);
+      if (isNaN(timeDate.getTime())) {
+        return "Hora inválida";
+      }
+      
+      return timeDate.toLocaleTimeString("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      console.error('Error in formatTime:', error);
+      return "Error en hora";
+    }
+  };
 
   // Verificar si es cumpleaños del cliente
   const esCumpleanos = () => {
-    if (!clienteData?.fechaNacimiento) return false;
-    
-    const fechaCita = new Date(cita.fecha);
-    const fechaNacimiento = new Date(clienteData.fechaNacimiento);
-    
-    return (
-      fechaCita.getMonth() === fechaNacimiento.getMonth() &&
-      fechaCita.getDate() === fechaNacimiento.getDate()
-    );
+    try {
+      if (!clienteData?.fechaNacimiento || !cita?.fecha) return false;
+      
+      const fechaCitaStr = String(cita.fecha || '');
+      const fechaNacimientoStr = String(clienteData.fechaNacimiento || '');
+      
+      if (!fechaCitaStr.includes('-') || !fechaNacimientoStr.includes('-')) return false;
+      
+      const citaParts = fechaCitaStr.split('-');
+      const nacimientoParts = fechaNacimientoStr.split('-');
+      
+      if (citaParts.length < 3 || nacimientoParts.length < 3) return false;
+      
+      const [, mesCita, diaCita] = citaParts;
+      const [, mesNacimiento, diaNacimiento] = nacimientoParts;
+      
+      return mesCita === mesNacimiento && diaCita === diaNacimiento;
+    } catch (error) {
+      console.error('Error in esCumpleanos:', error);
+      return false;
+    }
   };
 
   const getEstadoColor = (estado: Cita["estado"]) => {
@@ -115,12 +177,14 @@ export default function CitaCard({
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Información principal */}
         <div className="flex-1 space-y-3">
-          {/* Estado de la cita */}
-          <div className="flex items-center gap-2 mb-2">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoColor(cita.estado)}`}>
-              {cita.estado.charAt(0).toUpperCase() + cita.estado.slice(1)}
-            </span>
-          </div>
+          {/* Estado de la cita - Solo mostrar si NO está completada */}
+          {cita.estado !== "completada" && (
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoColor(cita.estado)}`}>
+                {cita.estado.charAt(0).toUpperCase() + cita.estado.slice(1)}
+              </span>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <div className="flex items-center gap-2">
@@ -129,14 +193,16 @@ export default function CitaCard({
             </div>
             <div className="flex items-center gap-2">
               <Scissors size={16} className="text-gray-400" />
-              <span className="text-gray-700">{servicio?.nombre}</span>
+              <span className="text-gray-700">{servicio?.nombre || "Servicio no encontrado"}</span>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <div className="flex items-center gap-2">
               <Calendar size={16} className="text-gray-400" />
-              <span className="text-gray-600 text-sm">{formatDate(cita.fecha)}</span>
+              <span className="text-gray-600 text-sm">
+                {formatDate(cita.fecha)}
+              </span>
               {esCumpleanos() && (
                 <div className="flex items-center gap-1 bg-pink-100 text-pink-700 px-2 py-1 rounded-full text-xs">
                   🎂 <span>¡Cumpleaños!</span>
@@ -145,84 +211,147 @@ export default function CitaCard({
             </div>
             <div className="flex items-center gap-2">
               <Clock size={16} className="text-gray-400" />
-              <span className="text-gray-600 text-sm">{formatTime(cita.hora)}</span>
+              <span className="text-gray-600 text-sm">
+                {formatTime(cita.hora)}
+              </span>
             </div>
           </div>
 
-          {/* Información de precios */}
-          <div className="bg-gray-50 p-3 rounded-lg text-sm space-y-2">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-              <p>
-                <span className="text-gray-600">Precio sugerido: </span>
-                <strong className="text-green-600">${servicio?.precioSugerido || 0}</strong>
-              </p>
-              <p>
-                <span className="text-gray-600">Anticipo sugerido: </span>
-                <strong className="text-orange-600">${servicio?.anticipoSugerido || 0}</strong>
-              </p>
-            </div>
-            
-            {/* Campo de anticipo editable */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-600">Anticipo: </span>
-                {isEditingAnticipo ? (
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center">
-                      <span className="text-blue-600 mr-1">$</span>
-                      <input
-                        type="number"
-                        value={anticipoInput}
-                        onChange={(e) => setAnticipoInput(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        className="w-20 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        autoFocus
-                      />
-                    </div>
-                    <button
-                      onClick={handleConfirmAnticipo}
-                      className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 flex items-center gap-1"
-                    >
-                      <Check size={12} />
-                      OK
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsEditingAnticipo(false);
-                        setAnticipoInput(cita.montoAnticipo?.toString() || "");
-                      }}
-                      className="px-2 py-1 bg-gray-400 text-white text-xs rounded hover:bg-gray-500"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <strong 
-                      className="text-blue-600 cursor-pointer hover:underline"
-                      onClick={() => setIsEditingAnticipo(true)}
-                    >
-                      ${cita.montoAnticipo || 0}
-                    </strong>
-                    {!cita.anticipoConfirmado && cita.estado === "pendiente" && (
-                      <span className="text-orange-500 text-xs">(Sin confirmar)</span>
-                    )}
-                    {cita.anticipoConfirmado && (
-                      <span className="text-green-500 text-xs">✓ Confirmado</span>
-                    )}
-                  </div>
-                )}
+          {/* Información de precios - Completamente diferente para completadas */}
+          {cita.estado === "completada" ? (
+            <div className="bg-green-50 p-4 rounded-lg text-sm space-y-3 border border-green-200">
+              <div className="font-medium text-green-800 mb-2 flex items-center gap-2">
+                <CheckCircle size={16} />
+                Transacción completada
               </div>
               
-              {/* Saldo pendiente calculado */}
-              <div className="flex items-center gap-2">
-                <span className="text-gray-600">Saldo pendiente: </span>
-                <strong className="text-red-600">
-                  ${Math.max(0, (servicio?.precioSugerido || 0) - (cita.montoAnticipo || 0))}
-                </strong>
+              {/* Servicio principal */}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">{servicio?.nombre || "Servicio"}:</span>
+                <span className="font-semibold">${servicio?.precioSugerido || 0}</span>
+              </div>
+              
+              {/* Servicios adicionales */}
+              {cita.serviciosAdicionales && cita.serviciosAdicionales.length > 0 && (
+                <div className="space-y-1">
+                  <span className="font-medium text-gray-700">Servicios adicionales:</span>
+                  {cita.serviciosAdicionales.map((s, index) => (
+                    <div key={index} className="flex justify-between items-center ml-4">
+                      <span className="text-gray-600">• {s.nombre}:</span>
+                      <span className="font-semibold">${s.precio}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Mostrar descuento si se aplicó */}
+              {(cita.descuentoAplicado && cita.descuentoAplicado > 0) && (
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700">Subtotal:</span>
+                    <span className="font-semibold">${cita.subtotalOriginal || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-orange-600">
+                    <span>Descuento ({cita.descuentoAplicado}%):</span>
+                    <span>-${cita.montoDescuento || 0}</span>
+                  </div>
+                </div>
+              )}
+              
+              <div className="border-t border-green-200 pt-3 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700">Anticipo recibido:</span>
+                  <span className="text-blue-600 font-semibold">${cita.montoAnticipo || 0}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700 font-medium">Total pagado:</span>
+                  <span className="text-green-700 font-bold text-lg">${cita.precioFinal || 0}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Método de pago:</span>
+                  <span className="capitalize font-medium">{cita.metodoPago || "No especificado"}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Completada el:</span>
+                  <span className="font-medium">{cita.fechaCompletada ? new Date(cita.fechaCompletada).toLocaleDateString("es-ES") : "N/A"}</span>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-gray-50 p-3 rounded-lg text-sm space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <p>
+                  <span className="text-gray-600">Precio sugerido: </span>
+                  <strong className="text-green-600">${servicio?.precioSugerido || 0}</strong>
+                </p>
+                <p>
+                  <span className="text-gray-600">Anticipo sugerido: </span>
+                  <strong className="text-orange-600">${servicio?.anticipoSugerido || 0}</strong>
+                </p>
+              </div>
+              
+              {/* Campo de anticipo editable */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">Anticipo: </span>
+                  {isEditingAnticipo ? (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center">
+                        <span className="text-blue-600 mr-1">$</span>
+                        <input
+                          type="number"
+                          value={anticipoInput}
+                          onChange={(e) => setAnticipoInput(e.target.value)}
+                          onKeyPress={handleKeyPress}
+                          className="w-20 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          autoFocus
+                        />
+                      </div>
+                      <button
+                        onClick={handleConfirmAnticipo}
+                        className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 flex items-center gap-1"
+                      >
+                        <Check size={12} />
+                        OK
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditingAnticipo(false);
+                          setAnticipoInput(cita.montoAnticipo?.toString() || "");
+                        }}
+                        className="px-2 py-1 bg-gray-400 text-white text-xs rounded hover:bg-gray-500"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <strong 
+                        className="text-blue-600 cursor-pointer hover:underline"
+                        onClick={() => setIsEditingAnticipo(true)}
+                      >
+                        ${cita.montoAnticipo || 0}
+                      </strong>
+                      {!cita.anticipoConfirmado && cita.estado === "pendiente" && (
+                        <span className="text-orange-500 text-xs">(Sin confirmar)</span>
+                      )}
+                      {cita.anticipoConfirmado && (
+                        <span className="text-green-500 text-xs">✓ Confirmado</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Saldo pendiente calculado */}
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">Saldo pendiente: </span>
+                  <strong className="text-red-600">
+                    ${Math.max(0, (servicio?.precioSugerido || 0) - (cita.montoAnticipo || 0))}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Notas */}
           {cita.notas && (
@@ -233,73 +362,88 @@ export default function CitaCard({
           )}
         </div>
 
-        {/* Acciones */}
-        <div className="flex flex-col gap-2">
-          {cita.estado === "pendiente" && (
-            <>
+        {/* Acciones - Solo para citas NO completadas */}
+        {cita.estado !== "completada" ? (
+          <div className="flex flex-col gap-2">
+            {cita.estado === "pendiente" && (
+              <>
+                <button
+                  onClick={() => onEstadoChange(cita.id, "cancelada")}
+                  className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                >
+                  <XCircle size={14} className="inline mr-1" /> Cancelar
+                </button>
+                <button
+                  onClick={onOpenReagendar}
+                  className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                >
+                  <RefreshCw size={14} className="inline mr-1" /> Reagendar
+                </button>
+                <button
+                  onClick={() => onEstadoChange(cita.id, "confirmada")}
+                  className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
+                >
+                  <CheckCircle size={14} className="inline mr-1" /> Confirmar
+                </button>
+              </>
+            )}
+
+            {canShowIniciarButton && (
               <button
-                onClick={() => onEstadoChange(cita.id, "cancelada")}
-                className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                onClick={() => onEstadoChange(cita.id, "iniciada")}
+                className="px-3 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
               >
-                <XCircle size={14} className="inline mr-1" /> Cancelar
+                <Play size={16} className="inline mr-1" /> Iniciar
+              </button>
+            )}
+
+            {cita.estado === "iniciada" && (
+              <button
+                onClick={onOpenCobro}
+                className="px-3 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                <CheckCircle size={16} className="inline mr-1" /> Terminar
+              </button>
+            )}
+
+            {/* Editar / Eliminar */}
+            <div className="flex gap-2 pt-2 border-t">
+              <button
+                onClick={onOpenEdit}
+                className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
+              >
+                <Edit size={16} />
               </button>
               <button
-                onClick={onOpenReagendar}
-                className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                onClick={() => onDelete(cita.id)}
+                className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
+                disabled={cita.estado === "iniciada"}
               >
-                <RefreshCw size={14} className="inline mr-1" /> Reagendar
+                <Trash2 size={16} />
               </button>
-              <button
-                onClick={() => onEstadoChange(cita.id, "confirmada")}
-                className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
-              >
-                <CheckCircle size={14} className="inline mr-1" /> Confirmar
-              </button>
-            </>
-          )}
-
-          {canShowIniciarButton && (
-            <button
-              onClick={() => onEstadoChange(cita.id, "iniciada")}
-              className="px-3 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
-            >
-              <Play size={16} className="inline mr-1" /> Iniciar
-            </button>
-          )}
-
-          {cita.estado === "iniciada" && (
-            <button
-              onClick={onOpenCobro}
-              className="px-3 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-            >
-              <CheckCircle size={16} className="inline mr-1" /> Terminar
-            </button>
-          )}
-
-          {cita.estado === "completada" && cita.saldoPendiente && cita.saldoPendiente > 0 && (
-            <div className="bg-orange-50 border border-orange-200 rounded p-2 text-xs text-orange-700 flex items-center gap-1">
-              <AlertTriangle size={12} /> Saldo pendiente: ${cita.saldoPendiente}
             </div>
-          )}
-
-          {/* Editar / Eliminar */}
-          <div className="flex gap-2 pt-2 border-t">
-            <button
-              onClick={onOpenEdit}
-              className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
-              disabled={cita.estado === "completada"}
-            >
-              <Edit size={16} />
-            </button>
+          </div>
+        ) : (
+          /* Para citas completadas, mostrar botón de eliminar */
+          <div className="flex flex-col items-center justify-center p-4 min-w-[120px]">
+            <div className="bg-green-100 p-3 rounded-full mb-3">
+              <CheckCircle size={24} className="text-green-600" />
+            </div>
+            <span className="text-green-700 font-medium text-sm text-center mb-3">Completada</span>
+            {cita.fechaCompletada && (
+              <span className="text-gray-500 text-xs text-center mb-3">
+                {new Date(cita.fechaCompletada).toLocaleDateString("es-ES")}
+              </span>
+            )}
             <button
               onClick={() => onDelete(cita.id)}
-              className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
-              disabled={cita.estado === "iniciada"}
+              className="px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 flex items-center gap-1"
             >
-              <Trash2 size={16} />
+              <CheckCircle size={12} />
+              Eliminar
             </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
