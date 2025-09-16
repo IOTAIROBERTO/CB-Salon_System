@@ -2,11 +2,11 @@
 import { useState, useMemo } from "react";
 import { Plus } from "lucide-react";
 import useCitas from "../hooks/useCitas";
-import CitasStats from "../components/CitasStats";
-import CitaCard from "../components/CitaCard";
-import CitaModal from "../components/CitaModal";
-import CobroModal from "../components/CobroModal";
-import ReagendarModal from "../components/ReagendarModal";
+import CitasStats from "../components/citas/CitasStats";
+import CitaCard from "../components/citas/CitaCard";
+import CitaModal from "../components/citas/CitaModal";
+import CobroModal from "../components/citas/CobroModal";
+import ReagendarModal from "../components/citas/ReagendarModal";
 
 export default function CitasPage() {
   const {

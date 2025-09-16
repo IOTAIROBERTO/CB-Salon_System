@@ -1,7 +1,7 @@
 // src/components/CitaModal.tsx
 import { X } from "lucide-react";
 import { useState } from "react";
-import { Cliente, Servicio, Cita } from "../types";
+import { Cliente, Servicio, Cita } from "../../types/citas";
 
 interface CitaModalProps {
   clientes: Cliente[];

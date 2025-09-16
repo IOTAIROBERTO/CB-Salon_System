@@ -1,6 +1,6 @@
 // src/hooks/useCitas.ts
 import { useState, useEffect } from "react";
-import { Cita, Cliente, Servicio } from "../types";
+import { Cita, Cliente, Servicio } from "../types/citas";
 
 export default function useCitas() {
   const [citas, setCitas] = useState<Cita[]>([]);

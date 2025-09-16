@@ -14,7 +14,7 @@ import {
   Check,
 } from "lucide-react";
 import { useState } from "react";
-import { Cita, Cliente, Servicio } from "../types";
+import { Cita, Cliente, Servicio } from "../../types/citas";
 
 interface CitaCardProps {
   cita: Cita;
