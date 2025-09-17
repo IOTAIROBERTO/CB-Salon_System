@@ -1,4 +1,4 @@
-// src/hooks/useCitas.ts
+// src/hooks/useCitas.ts - Versión actualizada
 import { useState, useEffect } from "react";
 import { Cita, Cliente, Servicio } from "../types/citas";
 
@@ -66,7 +66,7 @@ export default function useCitas() {
     localStorage.setItem("citas", JSON.stringify(updatedCitas));
   };
 
-  // ✅ FUNCIÓN ACTUALIZADA: completarCita con servicios adicionales y servicio modificado
+  // ✅ FUNCIÓN ACTUALIZADA: completarCita con nuevo sistema de redondeo y propina
   const completarCita = (citaId: string, precioFinal: number, metodoPago: string, notas: string, datosCompletos?: any) => {
     const updatedCitas = citas.map((c) => {
       if (c.id === citaId) {
@@ -80,11 +80,17 @@ export default function useCitas() {
           notas: notas || c.notas,
           // Actualizar anticipo si fue modificado en el CobroModal
           montoAnticipo: datosCompletos?.anticipoRecibido || c.montoAnticipo,
-          anticipoConfirmado: true, // Marcar como confirmado al completar
+          anticipoConfirmado: true,
           serviciosAdicionales: datosCompletos?.serviciosAdicionales || [],
+          
+          // ✅ NUEVOS CAMPOS DEL SISTEMA ACTUALIZADO
           descuentoAplicado: datosCompletos?.descuento || 0,
           subtotalOriginal: datosCompletos?.subtotalServicios || precioFinal,
           montoDescuento: datosCompletos?.montoDescuento || 0,
+          subtotalConDescuento: datosCompletos?.subtotalConDescuento || precioFinal,
+          montoRedondeo: datosCompletos?.montoRedondeo || 0,
+          propina: datosCompletos?.propina || 0,
+          
           saldoPendiente: 0, // Las citas completadas no tienen saldo pendiente
           fechaCompletada: new Date().toISOString(),
         };
@@ -101,13 +107,12 @@ export default function useCitas() {
 
   const closeModal = () => setModalState({ type: "", data: null });
 
-  // 🔹 Return con la nueva función
   return {
     citas,
     clientes,
     servicios,
     saveCita,
-    completarCita, // ✅ Agregada la función que faltaba
+    completarCita,
     deleteCita,
     changeEstadoCita,
     updateAnticipo,

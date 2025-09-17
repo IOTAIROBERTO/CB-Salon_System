@@ -1,3 +1,4 @@
+// src/utils/clientesUtils.ts
 import { Cliente, ClienteFormData, ClientesStats } from '../types/clientes';
 
 export const validateClienteForm = (formData: ClienteFormData): string | null => {
@@ -26,19 +27,75 @@ export const generateClienteId = (): string => {
 };
 
 export const formatDate = (dateString: string): string => {
-  return new Date(dateString + 'T00:00:00').toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
+  try {
+    return new Date(dateString + 'T00:00:00').toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  } catch (error) {
+    return dateString;
+  }
 };
 
 export const formatDateBirthday = (dateString: string): string => {
-  const date = new Date(dateString + 'T00:00:00');
-  return date.toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: 'long'
-  });
+  try {
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'long'
+    });
+  } catch (error) {
+    return dateString;
+  }
+};
+
+// Nueva función para calcular la edad
+export const calcularEdad = (fechaNacimiento: string): number => {
+  try {
+    const today = new Date();
+    const birthDate = new Date(fechaNacimiento + 'T00:00:00');
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  } catch (error) {
+    return 0;
+  }
+};
+
+// Nueva función para formatear cumpleaños con edad
+export const formatBirthdayWithAge = (fechaNacimiento: string): string => {
+  try {
+    const date = new Date(fechaNacimiento + 'T00:00:00');
+    const edad = calcularEdad(fechaNacimiento);
+    
+    const fechaFormateada = date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'long'
+    });
+    
+    return `${fechaFormateada} (${edad} años)`;
+  } catch (error) {
+    return fechaNacimiento;
+  }
+};
+
+// Función mejorada para verificar si es cumpleaños hoy
+export const esCumpleanosHoy = (fechaNacimiento: string): boolean => {
+  try {
+    const today = new Date();
+    const birthDate = new Date(fechaNacimiento + 'T00:00:00');
+    
+    return today.getMonth() === birthDate.getMonth() && 
+           today.getDate() === birthDate.getDate();
+  } catch (error) {
+    return false;
+  }
 };
 
 export const calculateStats = (clientes: Cliente[]): ClientesStats => {
@@ -60,12 +117,20 @@ export const calculateStats = (clientes: Cliente[]): ClientesStats => {
 export const getCumpleanerosMes = (clientes: Cliente[]): Cliente[] => {
   const mesActual = new Date().getMonth() + 1;
   return clientes.filter(cliente => {
-    const fechaCumple = new Date(cliente.cumple + 'T00:00:00');
-    return fechaCumple.getMonth() + 1 === mesActual && cliente.activo;
+    try {
+      const fechaCumple = new Date(cliente.cumple + 'T00:00:00');
+      return fechaCumple.getMonth() + 1 === mesActual && cliente.activo;
+    } catch (error) {
+      return false;
+    }
   }).sort((a, b) => {
-    const fechaA = new Date(a.cumple + 'T00:00:00').getDate();
-    const fechaB = new Date(b.cumple + 'T00:00:00').getDate();
-    return fechaA - fechaB;
+    try {
+      const fechaA = new Date(a.cumple + 'T00:00:00').getDate();
+      const fechaB = new Date(b.cumple + 'T00:00:00').getDate();
+      return fechaA - fechaB;
+    } catch (error) {
+      return 0;
+    }
   });
 };
 

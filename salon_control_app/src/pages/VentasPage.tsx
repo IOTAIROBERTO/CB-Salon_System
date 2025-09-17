@@ -1,3 +1,4 @@
+// src/pages/VentasPage.tsx
 import { useVentas } from '../hooks/useVentas';
 import { useVentaModal } from '../hooks/useVentaModal';
 import { useVentasSearch } from '../hooks/useVentasSearch';
@@ -25,8 +26,33 @@ export default function VentasPage() {
     <div className="w-full max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Gestion de Ventas</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Gestión de Ventas</h1>
+          <p className="text-gray-600 mt-1">
+            Registro y seguimiento de ventas de productos
+          </p>
+        </div>
         <AddVentaButton onAdd={openModal} />
+      </div>
+
+      {/* Estadísticas rápidas */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white p-4 rounded-lg shadow border">
+          <div className="text-sm text-gray-600">Total de Ventas</div>
+          <div className="text-2xl font-bold text-green-600">{ventas.length}</div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow border">
+          <div className="text-sm text-gray-600">Ingresos Totales</div>
+          <div className="text-2xl font-bold text-green-600">
+            ${ventas.reduce((sum, v) => sum + v.total, 0).toLocaleString()}
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow border">
+          <div className="text-sm text-gray-600">Promedio por Venta</div>
+          <div className="text-2xl font-bold text-green-600">
+            ${ventas.length > 0 ? Math.round(ventas.reduce((sum, v) => sum + v.total, 0) / ventas.length).toLocaleString() : 0}
+          </div>
+        </div>
       </div>
 
       {/* Buscador */}
@@ -41,6 +67,7 @@ export default function VentasPage() {
       <VentasList
         ventas={filteredVentas}
         clientes={clientes}
+        inventario={inventario}
         onDelete={deleteVenta}
       />
 

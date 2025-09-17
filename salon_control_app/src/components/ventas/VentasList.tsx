@@ -1,14 +1,16 @@
+// src/components/ventas/VentasList.tsx
 import { ShoppingBag } from 'lucide-react';
-import { Venta, Cliente } from '../../types/ventas';
+import { Venta, Cliente, Item } from '../../types/ventas';
 import VentaCard from './VentaCard';
 
 interface VentasListProps {
   ventas: Venta[];
   clientes: Cliente[];
+  inventario: Item[];
   onDelete: (id: string) => boolean;
 }
 
-export default function VentasList({ ventas, clientes, onDelete }: VentasListProps) {
+export default function VentasList({ ventas, clientes, inventario, onDelete }: VentasListProps) {
   if (ventas.length === 0) {
     return (
       <div className="text-center py-12">
@@ -32,6 +34,7 @@ export default function VentasList({ ventas, clientes, onDelete }: VentasListPro
           key={venta.id}
           venta={venta}
           clientes={clientes}
+          inventario={inventario}
           onDelete={onDelete}
         />
       ))}

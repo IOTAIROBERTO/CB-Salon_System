@@ -1,4 +1,4 @@
-// src/components/CitaCard.tsx
+// src/components/citas/CitaCard.tsx - Actualizado para descuentos
 import {
   Calendar,
   Clock,
@@ -12,9 +12,13 @@ import {
   XCircle,
   AlertTriangle,
   Check,
+  TrendingDown,
+  Calculator,
+  Gift,
 } from "lucide-react";
 import { useState } from "react";
 import { Cita, Cliente, Servicio } from "../../types/citas";
+import { formatCurrency, getDescuentoDescription } from "../../utils/discountUtils";
 
 interface CitaCardProps {
   cita: Cita;
@@ -228,7 +232,7 @@ export default function CitaCard({
               {/* Servicio principal */}
               <div className="flex justify-between items-center">
                 <span className="text-gray-700">{servicio?.nombre || "Servicio"}:</span>
-                <span className="font-semibold">${servicio?.precioSugerido || 0}</span>
+                <span className="font-semibold">{formatCurrency(servicio?.precioSugerido || 0)}</span>
               </div>
               
               {/* Servicios adicionales */}
@@ -238,34 +242,65 @@ export default function CitaCard({
                   {cita.serviciosAdicionales.map((s, index) => (
                     <div key={index} className="flex justify-between items-center ml-4">
                       <span className="text-gray-600">• {s.nombre}:</span>
-                      <span className="font-semibold">${s.precio}</span>
+                      <span className="font-semibold">{formatCurrency(s.precio)}</span>
                     </div>
                   ))}
                 </div>
               )}
               
-              {/* Mostrar descuento si se aplicó */}
-              {(cita.descuentoAplicado && cita.descuentoAplicado > 0) && (
+              {/* ✅ MOSTRAR INFORMACIÓN DE DESCUENTO, REDONDEO Y PROPINA */}
+              {(cita.montoDescuento && cita.montoDescuento > 0) && (
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-700">Subtotal:</span>
-                    <span className="font-semibold">${cita.subtotalOriginal || 0}</span>
+                    <span className="text-gray-700">Subtotal servicios:</span>
+                    <span className="font-semibold">{formatCurrency(cita.subtotalOriginal || 0)}</span>
                   </div>
                   <div className="flex justify-between items-center text-orange-600">
-                    <span>Descuento ({cita.descuentoAplicado}%):</span>
-                    <span>-${cita.montoDescuento || 0}</span>
+                    <div className="flex items-center gap-1">
+                      <TrendingDown size={14} />
+                      <span>Descuento ({cita.descuentoAplicado?.toFixed(1)}%):</span>
+                    </div>
+                    <span>-{formatCurrency(cita.montoDescuento)}</span>
                   </div>
+                </div>
+              )}
+
+              {/* Subtotal después del descuento */}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">Subtotal:</span>
+                <span className="font-semibold">{formatCurrency(cita.subtotalConDescuento || cita.subtotalOriginal || cita.precioFinal || 0)}</span>
+              </div>
+
+              {/* Mostrar redondeo si existe */}
+              {(cita.montoRedondeo && cita.montoRedondeo > 0) && (
+                <div className="flex justify-between items-center text-green-600">
+                  <div className="flex items-center gap-1">
+                    <Calculator size={14} />
+                    <span>Redondeo a decena:</span>
+                  </div>
+                  <span>+{formatCurrency(cita.montoRedondeo)}</span>
+                </div>
+              )}
+
+              {/* Mostrar propina si existe */}
+              {(cita.propina && cita.propina > 0) && (
+                <div className="flex justify-between items-center text-purple-600">
+                  <div className="flex items-center gap-1">
+                    <Gift size={14} />
+                    <span>Propina:</span>
+                  </div>
+                  <span>+{formatCurrency(cita.propina)}</span>
                 </div>
               )}
               
               <div className="border-t border-green-200 pt-3 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700">Anticipo recibido:</span>
-                  <span className="text-blue-600 font-semibold">${cita.montoAnticipo || 0}</span>
+                  <span className="text-blue-600 font-semibold">{formatCurrency(cita.montoAnticipo || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700 font-medium">Total pagado:</span>
-                  <span className="text-green-700 font-bold text-lg">${cita.precioFinal || 0}</span>
+                  <span className="text-green-700 font-bold text-lg">{formatCurrency(cita.precioFinal || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-600">Método de pago:</span>
@@ -282,11 +317,11 @@ export default function CitaCard({
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <p>
                   <span className="text-gray-600">Precio sugerido: </span>
-                  <strong className="text-green-600">${servicio?.precioSugerido || 0}</strong>
+                  <strong className="text-green-600">{formatCurrency(servicio?.precioSugerido || 0)}</strong>
                 </p>
                 <p>
                   <span className="text-gray-600">Anticipo sugerido: </span>
-                  <strong className="text-orange-600">${servicio?.anticipoSugerido || 0}</strong>
+                  <strong className="text-orange-600">{formatCurrency(servicio?.anticipoSugerido || 0)}</strong>
                 </p>
               </div>
               
@@ -330,7 +365,7 @@ export default function CitaCard({
                         className="text-blue-600 cursor-pointer hover:underline"
                         onClick={() => setIsEditingAnticipo(true)}
                       >
-                        ${cita.montoAnticipo || 0}
+                        {formatCurrency(cita.montoAnticipo || 0)}
                       </strong>
                       {!cita.anticipoConfirmado && cita.estado === "pendiente" && (
                         <span className="text-orange-500 text-xs">(Sin confirmar)</span>
@@ -346,7 +381,7 @@ export default function CitaCard({
                 <div className="flex items-center gap-2">
                   <span className="text-gray-600">Saldo pendiente: </span>
                   <strong className="text-red-600">
-                    ${Math.max(0, (servicio?.precioSugerido || 0) - (cita.montoAnticipo || 0))}
+                    {formatCurrency(Math.max(0, (servicio?.precioSugerido || 0) - (cita.montoAnticipo || 0)))}
                   </strong>
                 </div>
               </div>
