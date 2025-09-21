@@ -30,10 +30,11 @@ interface WhatsAppBusinessConfig {
 class WhatsAppService {
   private twilioConfig: TwilioConfig;
   private whatsappBusinessConfig: WhatsAppBusinessConfig;
-  private salonInfo = {
-    nombre: 'Beauty Salon Total Control',
-    telefono: '+52 55 1234-5678',
-    direccion: 'Calle Principal 123, Col. Centro'
+  private salonInfo = { 
+    nombre: 'Cristina Borquez Beauty Salon',
+    telefono: '+52 1 662 341 9038',
+    direccion: 'Saturnino Campoy y República de Panamá 83170 Hermosillo, Mexico',
+    email: 'cristinaeborquez@gmail.com'
   };
 
   constructor() {

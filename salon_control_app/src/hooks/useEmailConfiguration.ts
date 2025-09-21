@@ -13,10 +13,10 @@ export const useEmailConfiguration = () => {
   const [salonInfo, setSalonInfo] = useState<SalonInfo>(() => {
     const saved = localStorage.getItem('salonInfo');
     return saved ? JSON.parse(saved) : {
-      nombre: 'Beauty Salon Total Control',
-      telefono: '+52 55 1234-5678',
-      direccion: 'Calle Principal 123, Col. Centro',
-      email: 'hola@beautysalon.com'
+      nombre: 'Cristina Borquez Beauty Salon',
+      telefono: '+52 1 662 341 9038',
+      direccion: 'Saturnino Campoy y República de Panamá 83170 Hermosillo, Mexico',
+      email: 'cristinaeborquez@gmail.com'
     };
   });
 

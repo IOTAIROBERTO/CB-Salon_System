@@ -17,9 +17,9 @@ class EmailMarketingService {
   // Configuración de proveedores de email
   private providers = {
     emailjs: {
-      serviceId: '',
-      templateId: '',
-      publicKey: '',
+      serviceId: '',     // ← REEMPLAZAR con tu Service ID
+      templateId: '',    // ← REEMPLAZAR con tu Template ID
+      publicKey: '',        // ← REEMPLAZAR con tu Public Key
       isConfigured: false
     },
     resend: {

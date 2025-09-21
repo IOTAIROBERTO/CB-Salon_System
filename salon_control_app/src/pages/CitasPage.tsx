@@ -1,12 +1,12 @@
-// src/pages/CitasPage.tsx
+// src/pages/CitasPage.tsx - ACTUALIZADO CON EMAIL
 import { useState, useMemo } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Mail } from "lucide-react";
 import useCitas from "../hooks/useCitas";
 import CitasStats from "../components/citas/CitasStats";
 import CitaCard from "../components/citas/CitaCard";
 import CitaModal from "../components/citas/CitaModal";
-import CobroModal from "../components/citas/CobroModal";
-import ReagendarModal from "../components/citas/ReagendarModal";
+import CobroModal from "../components/citas/CobroModal"; 
+import EmailIntegration from "../components/email/EmailIntegration";
 
 export default function CitasPage() {
   const {
@@ -24,6 +24,7 @@ export default function CitasPage() {
   } = useCitas();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [showEmailConfig, setShowEmailConfig] = useState(false);
 
   const filteredCitas = useMemo(() => {
     return citas.filter((cita) => {
@@ -42,15 +43,24 @@ export default function CitasPage() {
   return (
     <div className="w-full max-w-none">
       {/* Header */}
-      <div className="flex justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Gestión de Citas</h1>
-        <button
-          onClick={() => openModal("create")}
-          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2"
-        >
-          <Plus size={20} />
-          Nueva Cita
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowEmailConfig(true)}
+            className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          >
+            <Mail size={16} />
+            <span className="hidden sm:inline">Email</span>
+          </button>
+          <button
+            onClick={() => openModal("create")}
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2"
+          >
+            <Plus size={20} />
+            <span>Nueva Cita</span>
+          </button>
+        </div>
       </div>
 
       {/* Estadísticas */}
@@ -126,6 +136,11 @@ export default function CitasPage() {
           onClose={closeModal}
           onSave={saveCita}
         />
+      )}
+
+      {/* Modal de configuración de email */}
+      {showEmailConfig && (
+        <EmailIntegration onClose={() => setShowEmailConfig(false)} />
       )}
     </div>
   );

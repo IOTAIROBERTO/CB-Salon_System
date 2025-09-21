@@ -1,19 +1,18 @@
+// src/App.tsx - ACTUALIZADO CON RUTA DE EMAIL
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from "react-router-dom";
 import { useState } from "react";
-import { Menu, X, Mail } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import CitasPage from "./pages/CitasPage";
 import VentasPage from "./pages/VentasPage";
 import InventarioPage from "./pages/InventarioPage";
 import ClientesPage from "./pages/ClientesPage";
 import CatalogoPreciosPage from "./pages/CatalogoPreciosPage";
 import ReportesPage from "./pages/ReportesPage";
-import EmailCampaignsPage from "./pages/EmailCampaignsPage";
+import EmailConfigPage from "./pages/EmailConfigPage";
 import { useInitializeData } from "./hooks/useInitializeData";
-import { useEmailAutomation } from "./hooks/useEmailAutomation";
 
 export default function App() {
   useInitializeData();
-  useEmailAutomation(); // Hook para automatización de emails
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navLinks = [
@@ -22,7 +21,7 @@ export default function App() {
     { to: "/inventario", label: "Inventario" },
     { to: "/clientes", label: "Clientes" },
     { to: "/catalogo", label: "Catalogo de Servicios" },
-    { to: "/email", label: "Email Marketing", icon: Mail },
+    { to: "/email-config", label: "Configuración Email" },
     { to: "/reportes", label: "Reportes" }
   ];
 
@@ -52,10 +51,9 @@ export default function App() {
                   {navLinks.map((link) => (
                     <Link
                       key={link.to}
-                      className="hover:bg-purple-700 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 whitespace-nowrap flex items-center gap-2"
+                      className="hover:bg-purple-700 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 whitespace-nowrap"
                       to={link.to}
                     >
-                      {link.icon && <link.icon size={16} />}
                       {link.label}
                     </Link>
                   ))}
@@ -89,11 +87,10 @@ export default function App() {
               {navLinks.map((link) => (
                 <Link
                   key={link.to}
-                  className="block hover:bg-purple-800 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 flex items-center gap-2"
+                  className="block hover:bg-purple-800 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
                   to={link.to}
                   onClick={closeMobileMenu}
                 >
-                  {link.icon && <link.icon size={16} />}
                   {link.label}
                 </Link>
               ))}
@@ -112,7 +109,7 @@ export default function App() {
                 <Route path="/inventario" element={<InventarioPage />} />
                 <Route path="/clientes" element={<ClientesPage />} />
                 <Route path="/catalogo" element={<CatalogoPreciosPage />} />
-                <Route path="/email" element={<EmailCampaignsPage />} />
+                <Route path="/email-config" element={<EmailConfigPage />} />
                 <Route path="/reportes" element={<ReportesPage />} />
                 
                 {/* Redirecciones para compatibilidad con URLs antiguas */}
