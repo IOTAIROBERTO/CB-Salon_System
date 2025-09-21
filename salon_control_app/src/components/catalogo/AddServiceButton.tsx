@@ -1,3 +1,4 @@
+// src/components/catalogo/AddServiceButton.tsx
 import { Plus } from 'lucide-react';
 
 interface AddServiceButtonProps {

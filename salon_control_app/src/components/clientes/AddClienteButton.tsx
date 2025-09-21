@@ -1,3 +1,4 @@
+// src/components/clientes/AddClienteButton.tsx
 import { Plus } from 'lucide-react';
 
 interface AddClienteButtonProps {

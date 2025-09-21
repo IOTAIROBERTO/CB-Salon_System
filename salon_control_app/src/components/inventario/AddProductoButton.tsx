@@ -1,3 +1,4 @@
+// src/components/inventario/AddProductoButton.tsx
 import { Plus } from 'lucide-react';
 
 interface AddProductoButtonProps {

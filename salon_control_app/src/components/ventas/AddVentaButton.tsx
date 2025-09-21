@@ -1,3 +1,4 @@
+// src/components/ventas/AddVentaButton.tsx
 import { Plus } from 'lucide-react';
 
 interface AddVentaButtonProps {

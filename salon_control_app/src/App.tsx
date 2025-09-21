@@ -1,4 +1,3 @@
-// src/App.tsx - ACTUALIZADO CON RUTA DE EMAIL
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from "react-router-dom";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
@@ -8,11 +7,13 @@ import InventarioPage from "./pages/InventarioPage";
 import ClientesPage from "./pages/ClientesPage";
 import CatalogoPreciosPage from "./pages/CatalogoPreciosPage";
 import ReportesPage from "./pages/ReportesPage";
-import EmailConfigPage from "./pages/EmailConfigPage";
+import ConfiguracionPage from "./pages/ConfiguracionPage";
 import { useInitializeData } from "./hooks/useInitializeData";
+import { useConfiguracion } from "./hooks/useConfiguracion";
 
 export default function App() {
   useInitializeData();
+  const { configuracion } = useConfiguracion();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navLinks = [
@@ -21,8 +22,8 @@ export default function App() {
     { to: "/inventario", label: "Inventario" },
     { to: "/clientes", label: "Clientes" },
     { to: "/catalogo", label: "Catalogo de Servicios" },
-    { to: "/email-config", label: "Configuración Email" },
-    { to: "/reportes", label: "Reportes" }
+    { to: "/reportes", label: "Reportes" },
+    { to: "/configuracion", label: "Configuración" }
   ];
 
   const toggleMobileMenu = () => {
@@ -41,8 +42,17 @@ export default function App() {
           <div className="max-w-full px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               {/* Logo/Titulo */}
-              <div className="flex-shrink-0">
-                <h1 className="text-lg sm:text-xl font-bold">Beauty Salon Total Control</h1>
+              <div className="flex-shrink-0 flex items-center gap-3">
+                {configuracion.logo && (
+                  <img 
+                    src={configuracion.logo} 
+                    alt="Logo" 
+                    className="h-8 w-8 object-contain"
+                  />
+                )}
+                <h1 className="text-lg sm:text-xl font-bold">
+                  {configuracion.nombre}
+                </h1>
               </div>
 
               {/* Navegacion Desktop */}
@@ -109,8 +119,8 @@ export default function App() {
                 <Route path="/inventario" element={<InventarioPage />} />
                 <Route path="/clientes" element={<ClientesPage />} />
                 <Route path="/catalogo" element={<CatalogoPreciosPage />} />
-                <Route path="/email-config" element={<EmailConfigPage />} />
                 <Route path="/reportes" element={<ReportesPage />} />
+                <Route path="/configuracion" element={<ConfiguracionPage />} />
                 
                 {/* Redirecciones para compatibilidad con URLs antiguas */}
                 <Route path="/servicios" element={<Navigate to="/citas" replace />} />
@@ -151,7 +161,7 @@ export default function App() {
 
         {/* Indicador de pagina activa en movil */}
         <div className="md:hidden bg-purple-800 text-white text-center py-1 text-xs">
-          {navLinks.find(link => window.location.pathname === link.to)?.label || 'Beauty Salon Total Control'}
+          {navLinks.find(link => window.location.pathname === link.to)?.label || configuracion.nombre}
         </div>
       </div>
     </Router>
