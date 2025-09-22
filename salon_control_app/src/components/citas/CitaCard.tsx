@@ -1,3 +1,4 @@
+// src/components/citas/CitaCard.tsx - Actualizado para descuentos SIN botón de email
 import {
   Calendar,
   Clock,
@@ -9,6 +10,7 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
+  AlertTriangle,
   Check,
   TrendingDown,
   Calculator,
@@ -16,11 +18,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Cita, Cliente, Servicio } from "../../types/citas";
-
-// Función local para formatear moneda
-const formatearMoneda = (amount: number): string => {
-  return `$${amount.toLocaleString()}`;
-};
+import { formatCurrency, getDescuentoDescription } from "../../utils/discountUtils";
 
 interface CitaCardProps {
   cita: Cita;
@@ -45,7 +43,7 @@ export default function CitaCard({
   onOpenEdit,
   onOpenReagendar,
 }: CitaCardProps) {
-  // Validación temprana
+  // Validación temprana: verificar que cita existe y tiene las propiedades mínimas
   if (!cita || typeof cita !== 'object' || !cita.id) {
     console.error('CitaCard: cita is invalid', cita);
     return (
@@ -62,11 +60,15 @@ export default function CitaCard({
   const clienteData = clientes.find((c) => c.id === cita.clienteId);
   const servicio = servicios.find((s) => s.id === cita.servicioId);
 
-  // Funciones para formatear fechas y horas
-  const formatDate = (dateString: any) => {
+  // Funciones completamente seguras para formatear fechas y horas
+  const formatDate = (dateString) => {
     try {
       if (!dateString || typeof dateString !== 'string' || dateString.trim() === '') {
         return "Fecha no disponible";
+      }
+      
+      if (!dateString.includes('-')) {
+        return "Formato de fecha inválido";
       }
       
       const parts = String(dateString).split('-');
@@ -75,6 +77,10 @@ export default function CitaCard({
       }
       
       const [year, month, day] = parts;
+      if (!year || !month || !day) {
+        return "Fecha incompleta";
+      }
+      
       const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
       if (isNaN(date.getTime())) {
         return "Fecha inválida";
@@ -87,13 +93,14 @@ export default function CitaCard({
         day: "numeric",
       });
     } catch (error) {
+      console.error('Error in formatDate:', error);
       return "Error en fecha";
     }
   };
 
-  const formatTime = (timeString: any) => {
+  const formatTime = (timeString) => {
     try {
-      if (!timeString || typeof timeString !== 'string') {
+      if (!timeString || typeof timeString !== 'string' || timeString.trim() === '') {
         return "Hora no disponible";
       }
       
@@ -107,6 +114,7 @@ export default function CitaCard({
         minute: "2-digit",
       });
     } catch (error) {
+      console.error('Error in formatTime:', error);
       return "Error en hora";
     }
   };
@@ -224,7 +232,7 @@ export default function CitaCard({
               {/* Servicio principal */}
               <div className="flex justify-between items-center">
                 <span className="text-gray-700">{servicio?.nombre || "Servicio"}:</span>
-                <span className="font-semibold">{formatearMoneda(servicio?.precioSugerido || 0)}</span>
+                <span className="font-semibold">{formatCurrency(servicio?.precioSugerido || 0)}</span>
               </div>
               
               {/* Servicios adicionales */}
@@ -234,25 +242,25 @@ export default function CitaCard({
                   {cita.serviciosAdicionales.map((s, index) => (
                     <div key={index} className="flex justify-between items-center ml-4">
                       <span className="text-gray-600">• {s.nombre}:</span>
-                      <span className="font-semibold">{formatearMoneda(s.precio)}</span>
+                      <span className="font-semibold">{formatCurrency(s.precio)}</span>
                     </div>
                   ))}
                 </div>
               )}
               
-              {/* MOSTRAR INFORMACIÓN DE DESCUENTO, REDONDEO Y PROPINA */}
+              {/* ✅ MOSTRAR INFORMACIÓN DE DESCUENTO, REDONDEO Y PROPINA */}
               {(cita.montoDescuento && cita.montoDescuento > 0) && (
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-700">Subtotal servicios:</span>
-                    <span className="font-semibold">{formatearMoneda(cita.subtotalOriginal || 0)}</span>
+                    <span className="font-semibold">{formatCurrency(cita.subtotalOriginal || 0)}</span>
                   </div>
                   <div className="flex justify-between items-center text-orange-600">
                     <div className="flex items-center gap-1">
                       <TrendingDown size={14} />
                       <span>Descuento ({cita.descuentoAplicado?.toFixed(1)}%):</span>
                     </div>
-                    <span>-{formatearMoneda(cita.montoDescuento)}</span>
+                    <span>-{formatCurrency(cita.montoDescuento)}</span>
                   </div>
                 </div>
               )}
@@ -260,7 +268,7 @@ export default function CitaCard({
               {/* Subtotal después del descuento */}
               <div className="flex justify-between items-center">
                 <span className="text-gray-700">Subtotal:</span>
-                <span className="font-semibold">{formatearMoneda(cita.subtotalConDescuento || cita.subtotalOriginal || cita.precioFinal || 0)}</span>
+                <span className="font-semibold">{formatCurrency(cita.subtotalConDescuento || cita.subtotalOriginal || cita.precioFinal || 0)}</span>
               </div>
 
               {/* Mostrar redondeo si existe */}
@@ -270,7 +278,7 @@ export default function CitaCard({
                     <Calculator size={14} />
                     <span>Redondeo a decena:</span>
                   </div>
-                  <span>+{formatearMoneda(cita.montoRedondeo)}</span>
+                  <span>+{formatCurrency(cita.montoRedondeo)}</span>
                 </div>
               )}
 
@@ -281,18 +289,18 @@ export default function CitaCard({
                     <Gift size={14} />
                     <span>Propina:</span>
                   </div>
-                  <span>+{formatearMoneda(cita.propina)}</span>
+                  <span>+{formatCurrency(cita.propina)}</span>
                 </div>
               )}
               
               <div className="border-t border-green-200 pt-3 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700">Anticipo recibido:</span>
-                  <span className="text-blue-600 font-semibold">{formatearMoneda(cita.montoAnticipo || 0)}</span>
+                  <span className="text-blue-600 font-semibold">{formatCurrency(cita.montoAnticipo || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700 font-medium">Total pagado:</span>
-                  <span className="text-green-700 font-bold text-lg">{formatearMoneda(cita.precioFinal || 0)}</span>
+                  <span className="text-green-700 font-bold text-lg">{formatCurrency(cita.precioFinal || 0)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-600">Método de pago:</span>
@@ -309,11 +317,11 @@ export default function CitaCard({
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <p>
                   <span className="text-gray-600">Precio sugerido: </span>
-                  <strong className="text-green-600">{formatearMoneda(servicio?.precioSugerido || 0)}</strong>
+                  <strong className="text-green-600">{formatCurrency(servicio?.precioSugerido || 0)}</strong>
                 </p>
                 <p>
                   <span className="text-gray-600">Anticipo sugerido: </span>
-                  <strong className="text-orange-600">{formatearMoneda(servicio?.anticipoSugerido || 0)}</strong>
+                  <strong className="text-orange-600">{formatCurrency(servicio?.anticipoSugerido || 0)}</strong>
                 </p>
               </div>
               
@@ -357,7 +365,7 @@ export default function CitaCard({
                         className="text-blue-600 cursor-pointer hover:underline"
                         onClick={() => setIsEditingAnticipo(true)}
                       >
-                        {formatearMoneda(cita.montoAnticipo || 0)}
+                        {formatCurrency(cita.montoAnticipo || 0)}
                       </strong>
                       {!cita.anticipoConfirmado && cita.estado === "pendiente" && (
                         <span className="text-orange-500 text-xs">(Sin confirmar)</span>
@@ -373,7 +381,7 @@ export default function CitaCard({
                 <div className="flex items-center gap-2">
                   <span className="text-gray-600">Saldo pendiente: </span>
                   <strong className="text-red-600">
-                    {formatearMoneda(Math.max(0, (servicio?.precioSugerido || 0) - (cita.montoAnticipo || 0)))}
+                    {formatCurrency(Math.max(0, (servicio?.precioSugerido || 0) - (cita.montoAnticipo || 0)))}
                   </strong>
                 </div>
               </div>
@@ -389,7 +397,7 @@ export default function CitaCard({
           )}
         </div>
 
-        {/* Acciones - Solo para citas NO completadas - SIN BOTÓN DE EMAIL */}
+        {/* Acciones - Solo para citas NO completadas */}
         {cita.estado !== "completada" ? (
           <div className="flex flex-col gap-2">
             {cita.estado === "pendiente" && (
@@ -438,6 +446,7 @@ export default function CitaCard({
               <button
                 onClick={onOpenEdit}
                 className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
+                title="Editar cita"
               >
                 <Edit size={16} />
               </button>
@@ -445,9 +454,12 @@ export default function CitaCard({
                 onClick={() => onDelete(cita.id)}
                 className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
                 disabled={cita.estado === "iniciada"}
+                title="Eliminar cita"
               >
                 <Trash2 size={16} />
               </button>
+              {/* NOTA: El botón de Email ha sido removido intencionalmente */}
+              {/* NO agregar ningún botón de email aquí */}
             </div>
           </div>
         ) : (

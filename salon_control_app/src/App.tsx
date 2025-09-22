@@ -8,12 +8,11 @@ import ClientesPage from "./pages/ClientesPage";
 import CatalogoPreciosPage from "./pages/CatalogoPreciosPage";
 import ReportesPage from "./pages/ReportesPage";
 import ConfiguracionPage from "./pages/ConfiguracionPage";
+import LogoEmpresa from "./components/common/LogoEmpresa";
 import { useInitializeData } from "./hooks/useInitializeData";
-import { useConfiguracion } from "./hooks/useConfiguracion";
 
 export default function App() {
   useInitializeData();
-  const { configuracion } = useConfiguracion();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navLinks = [
@@ -40,19 +39,16 @@ export default function App() {
         {/* Barra de navegacion */}
         <nav className="bg-purple-600 text-white shadow-lg relative z-50">
           <div className="max-w-full px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              {/* Logo/Titulo */}
-              <div className="flex-shrink-0 flex items-center gap-3">
-                {configuracion.logo && (
-                  <img 
-                    src={configuracion.logo} 
-                    alt="Logo" 
-                    className="h-8 w-8 object-contain"
-                  />
-                )}
-                <h1 className="text-lg sm:text-xl font-bold">
-                  {configuracion.nombre}
-                </h1>
+            <div className="flex justify-between items-center h-20 sm:h-24"> {/* h-20 en móvil, h-24 en desktop */}
+              {/* Logo/Titulo - El texto se oculta automáticamente cuando hay logo configurado */}
+              <div className="flex-shrink-0">
+                {/* Logo grande en desktop, más pequeño en móvil */}
+                <div className="hidden sm:block">
+                  <LogoEmpresa size="nav" showText={true} hideTextWhenLogo={true} />
+                </div>
+                <div className="block sm:hidden">
+                  <LogoEmpresa size="xl" showText={true} hideTextWhenLogo={true} />
+                </div>
               </div>
 
               {/* Navegacion Desktop */}
@@ -74,13 +70,13 @@ export default function App() {
               <div className="md:hidden">
                 <button
                   onClick={toggleMobileMenu}
-                  className="inline-flex items-center justify-center p-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors duration-200"
+                  className="inline-flex items-center justify-center p-3 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors duration-200"
                 >
                   <span className="sr-only">Abrir menu principal</span>
                   {isMobileMenuOpen ? (
-                    <X className="block h-6 w-6" />
+                    <X className="block h-8 w-8" />
                   ) : (
-                    <Menu className="block h-6 w-6" />
+                    <Menu className="block h-8 w-8" />
                   )}
                 </button>
               </div>
@@ -161,7 +157,7 @@ export default function App() {
 
         {/* Indicador de pagina activa en movil */}
         <div className="md:hidden bg-purple-800 text-white text-center py-1 text-xs">
-          {navLinks.find(link => window.location.pathname === link.to)?.label || configuracion.nombre}
+          {navLinks.find(link => window.location.pathname === link.to)?.label || 'Beauty Salon Total Control'}
         </div>
       </div>
     </Router>
