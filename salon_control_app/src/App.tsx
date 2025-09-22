@@ -7,8 +7,8 @@ import InventarioPage from "./pages/InventarioPage";
 import ClientesPage from "./pages/ClientesPage";
 import CatalogoPreciosPage from "./pages/CatalogoPreciosPage";
 import ReportesPage from "./pages/ReportesPage";
+import EmailCampaignsPage from "./pages/EmailCampaignsPage";
 import ConfiguracionPage from "./pages/ConfiguracionPage";
-import LogoEmpresa from "./components/common/LogoEmpresa";
 import { useInitializeData } from "./hooks/useInitializeData";
 
 export default function App() {
@@ -21,6 +21,7 @@ export default function App() {
     { to: "/inventario", label: "Inventario" },
     { to: "/clientes", label: "Clientes" },
     { to: "/catalogo", label: "Catalogo de Servicios" },
+    { to: "/campanas", label: "Campañas" },
     { to: "/reportes", label: "Reportes" },
     { to: "/configuracion", label: "Configuración" }
   ];
@@ -39,16 +40,10 @@ export default function App() {
         {/* Barra de navegacion */}
         <nav className="bg-purple-600 text-white shadow-lg relative z-50">
           <div className="max-w-full px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-20 sm:h-24"> {/* h-20 en móvil, h-24 en desktop */}
-              {/* Logo/Titulo - El texto se oculta automáticamente cuando hay logo configurado */}
+            <div className="flex justify-between items-center h-16">
+              {/* Logo/Titulo */}
               <div className="flex-shrink-0">
-                {/* Logo grande en desktop, más pequeño en móvil */}
-                <div className="hidden sm:block">
-                  <LogoEmpresa size="nav" showText={true} hideTextWhenLogo={true} />
-                </div>
-                <div className="block sm:hidden">
-                  <LogoEmpresa size="xl" showText={true} hideTextWhenLogo={true} />
-                </div>
+                <h1 className="text-lg sm:text-xl font-bold">Beauty Salon Total Control</h1>
               </div>
 
               {/* Navegacion Desktop */}
@@ -70,13 +65,13 @@ export default function App() {
               <div className="md:hidden">
                 <button
                   onClick={toggleMobileMenu}
-                  className="inline-flex items-center justify-center p-3 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors duration-200"
+                  className="inline-flex items-center justify-center p-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors duration-200"
                 >
                   <span className="sr-only">Abrir menu principal</span>
                   {isMobileMenuOpen ? (
-                    <X className="block h-8 w-8" />
+                    <X className="block h-6 w-6" />
                   ) : (
-                    <Menu className="block h-8 w-8" />
+                    <Menu className="block h-6 w-6" />
                   )}
                 </button>
               </div>
@@ -115,6 +110,7 @@ export default function App() {
                 <Route path="/inventario" element={<InventarioPage />} />
                 <Route path="/clientes" element={<ClientesPage />} />
                 <Route path="/catalogo" element={<CatalogoPreciosPage />} />
+                <Route path="/campanas" element={<EmailCampaignsPage />} />
                 <Route path="/reportes" element={<ReportesPage />} />
                 <Route path="/configuracion" element={<ConfiguracionPage />} />
                 
