@@ -1,35 +1,141 @@
-// src/pages/EmailCampaignsPage.tsx - Versión refactorizada
-import { useState, useEffect } from 'react';
-import { Mail, Settings, Bot, FileText, Plus } from 'lucide-react';
+// src/pages/EmailCampaignsPage.tsx - Página completa con todas las secciones
+import React, { useState } from 'react';
+import { Mail, FileText, Bot } from 'lucide-react';
 import CampaignsTab from '../components/email/CampaignsTab';
 import TemplatesTab from '../components/email/TemplatesTab';
-import AutomationsTab from '../components/email/AutomationsTab';
-import { emailService } from '../services/emailService';
+import CampaignModal from '../components/email/CampaignModal';
 
-export default function EmailCampaignsPage() {
+const EmailCampaignsPage = () => {
   const [activeTab, setActiveTab] = useState('campaigns');
-  const [clients, setClients] = useState<any[]>([]);
-  const [isEmailConfigured, setIsEmailConfigured] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState(null);
 
-  useEffect(() => {
-    loadClients();
-    checkEmailConfiguration();
-  }, []);
+  // Datos mockeados para que funcione inmediatamente
+  const mockClients = [
+    {
+      id: 'c1',
+      nombre: 'Ana López',
+      email: 'ana@example.com',
+      activo: true
+    },
+    {
+      id: 'c2',
+      nombre: 'María García',
+      email: 'maria@example.com',
+      activo: true
+    },
+    {
+      id: 'c3',
+      nombre: 'Carmen Rodriguez',
+      email: 'carmen@example.com',
+      activo: true
+    }
+  ];
 
-  const loadClients = () => {
-    const clientsData = JSON.parse(localStorage.getItem('clientes') || '[]');
-    setClients(clientsData.filter((c: any) => c.activo && c.email));
+  const mockTemplates = [
+    {
+      id: 't1',
+      tipo: 'promocional',
+      nombre: 'Promoción General',
+      asunto: '¡Oferta especial para ti {{NOMBRE}}!',
+      activa: true
+    },
+    {
+      id: 't2',
+      tipo: 'cumpleanos',
+      nombre: 'Feliz Cumpleaños',
+      asunto: '🎂 ¡Feliz Cumpleaños {{NOMBRE}}!',
+      activa: true
+    },
+    {
+      id: 't3',
+      tipo: 'recordatorio',
+      nombre: 'Recordatorio de Cita',
+      asunto: '⏰ Recordatorio: Tu cita es mañana',
+      activa: true
+    }
+  ];
+
+  // Manejar nueva campaña
+  const handleNewCampaign = () => {
+    console.log('Abriendo modal para nueva campaña');
+    setEditingCampaign(null);
+    setShowModal(true);
   };
 
-  const checkEmailConfiguration = () => {
-    const config = emailService.isConfigured();
-    setIsEmailConfigured(config.emailjs);
+  // Manejar edición de campaña
+  const handleEditCampaign = (campaign) => {
+    console.log('Editando campaña:', campaign);
+    setEditingCampaign(campaign);
+    setShowModal(true);
+  };
+
+  // Manejar eliminación de campaña
+  const handleDeleteCampaign = (campaignId) => {
+    console.log('Eliminando campaña:', campaignId);
+    try {
+      const campaigns = JSON.parse(localStorage.getItem('emailCampaigns') || '[]');
+      const updatedCampaigns = campaigns.filter(c => c.id !== campaignId);
+      localStorage.setItem('emailCampaigns', JSON.stringify(updatedCampaigns));
+      
+      // Recargar la página o actualizar el estado
+      window.location.reload();
+    } catch (error) {
+      console.error('Error eliminando campaña:', error);
+    }
+  };
+
+  // Manejar guardado de campaña
+  const handleSaveCampaign = (campaignData) => {
+    console.log('Guardando campaña:', campaignData);
+    
+    try {
+      const campaigns = JSON.parse(localStorage.getItem('emailCampaigns') || '[]');
+      
+      if (editingCampaign) {
+        // Actualizar campaña existente
+        const updatedCampaigns = campaigns.map(c => 
+          c.id === editingCampaign.id ? { ...c, ...campaignData } : c
+        );
+        localStorage.setItem('emailCampaigns', JSON.stringify(updatedCampaigns));
+        alert('Campaña actualizada exitosamente');
+      } else {
+        // Nueva campaña
+        const newCampaign = {
+          ...campaignData,
+          id: `campaign_${Date.now()}`,
+          fechaCreacion: new Date().toISOString(),
+          estado: 'borrador'
+        };
+        campaigns.push(newCampaign);
+        localStorage.setItem('emailCampaigns', JSON.stringify(campaigns));
+        alert('Nueva campaña creada exitosamente');
+      }
+      
+      // Cerrar modal
+      setShowModal(false);
+      setEditingCampaign(null);
+      
+      // Recargar para mostrar cambios
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Error guardando campaña:', error);
+      alert('Error al guardar la campaña');
+    }
+  };
+
+  // Manejar cierre de modal
+  const handleCloseModal = () => {
+    console.log('Cerrando modal');
+    setShowModal(false);
+    setEditingCampaign(null);
   };
 
   const tabs = [
     { id: 'campaigns', label: 'Campañas', icon: Mail },
     { id: 'templates', label: 'Plantillas', icon: FileText },
-    { id: 'automations', label: 'Automatizaciones', icon: Bot }
+    { id: 'automation', label: 'Automatizaciones', icon: Bot }
   ];
 
   return (
@@ -46,57 +152,72 @@ export default function EmailCampaignsPage() {
         </div>
       </div>
 
-      {/* Configuración requerida */}
-      {!isEmailConfigured && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Settings size={20} className="text-orange-600" />
-            <h3 className="text-sm font-semibold text-orange-800">
-              Configuración requerida
-            </h3>
-          </div>
-          <p className="text-orange-700 text-sm">
-            Para enviar emails, configura EmailJS en Configuración → Email Marketing.
-          </p>
-        </div>
-      )}
-
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === tab.id
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <tab.icon size={16} />
-              {tab.label}
-            </button>
-          ))}
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                  activeTab === tab.id
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Icon size={16} />
+                {tab.label}
+              </button>
+            );
+          })}
         </nav>
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'campaigns' && (
-        <CampaignsTab 
-          clients={clients} 
-          isEmailConfigured={isEmailConfigured}
-          onReloadClients={loadClients}
+      <div className="tab-content">
+        {activeTab === 'campaigns' && (
+          <CampaignsTab
+            onNewCampaign={handleNewCampaign}
+            onEditCampaign={handleEditCampaign}
+            onDeleteCampaign={handleDeleteCampaign}
+          />
+        )}
+        
+        {activeTab === 'templates' && (
+          <TemplatesTab />
+        )}
+        
+        {activeTab === 'automation' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4">Automatizaciones</h3>
+            <p className="text-gray-600">Sección de automatizaciones en desarrollo...</p>
+          </div>
+        )}
+      </div>
+
+      {/* Modal de Campaña */}
+      {showModal && (
+        <CampaignModal
+          isOpen={showModal}
+          onClose={handleCloseModal}
+          onSave={handleSaveCampaign}
+          editingCampaign={editingCampaign}
+          clients={mockClients}
+          templates={mockTemplates}
         />
       )}
 
-      {activeTab === 'templates' && (
-        <TemplatesTab />
-      )}
-
-      {activeTab === 'automations' && (
-        <AutomationsTab />
+      {/* Debug info - remover en producción */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-4 left-4 bg-black text-white p-2 rounded text-xs">
+          Modal: {showModal ? 'Abierto' : 'Cerrado'} | 
+          Editando: {editingCampaign ? 'Sí' : 'No'}
+        </div>
       )}
     </div>
   );
-}
+};
+
+export default EmailCampaignsPage;

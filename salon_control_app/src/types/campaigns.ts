@@ -1,11 +1,11 @@
-// src/types/campaigns.ts
+// src/types/campaigns.ts - Versión actualizada
 
 export interface Campaign {
   id: string;
   nombre: string;
   tipo: 'recordatorio' | 'confirmacion' | 'promocional' | 'cumpleanos' | 'seguimiento';
   estado: 'borrador' | 'activa' | 'pausada' | 'completada';
-  plantilla: string;
+  plantillaId: string; // Cambié de plantilla a plantillaId para ser más claro
   asunto: string;
   fechaCreacion: string;
   fechaEnvio?: string;
@@ -24,7 +24,7 @@ export interface CampaignFormData {
   nombre: string;
   tipo: Campaign['tipo'];
   asunto: string;
-  plantilla: string;
+  plantilla: string; // Este se mapea a plantillaId en Campaign
   envioAutomatico: boolean;
   diasAntes: number;
   horaEnvio: string;
@@ -57,4 +57,16 @@ export interface AutomationRule {
     tipoServicio?: string[];
     clienteNuevo?: boolean;
   };
+}
+
+// Tipo para las plantillas de email
+export interface EmailTemplate {
+  id: string;
+  nombre: string;
+  tipo: Campaign['tipo'];
+  asunto: string;
+  contenido: string;
+  variables?: string[];
+  fechaCreacion: string;
+  activa: boolean;
 }
