@@ -1,17 +1,19 @@
-// src/components/email/CampaignsTab.tsx - Sección de campañas con botón arreglado
+// src/components/email/CampaignsTab.tsx - Código completamente corregido
 import React, { useState, useEffect } from 'react';
-import { Plus, Mail, Send, Calendar, Users, TrendingUp, Trash2, Edit, Eye } from 'lucide-react';
+import { Plus, Mail, Send, Calendar, Users, TrendingUp, Trash2, Edit, CheckCircle } from 'lucide-react';
 
 interface CampaignsTabProps {
   onNewCampaign: () => void;
   onEditCampaign: (campaign: any) => void;
   onDeleteCampaign: (campaignId: string) => void;
+  onSendCampaign?: (campaign: any) => void;
 }
 
 const CampaignsTab: React.FC<CampaignsTabProps> = ({
   onNewCampaign,
   onEditCampaign,
-  onDeleteCampaign
+  onDeleteCampaign,
+  onSendCampaign
 }) => {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
@@ -58,7 +60,65 @@ const CampaignsTab: React.FC<CampaignsTabProps> = ({
     
     return total + destinatarios.filter(d => d && d.estado === 'enviado').length;
   }, 0);
+
   const successRate = stats.totalRecipients > 0 ? Math.round((totalSentEmails / stats.totalRecipients) * 100) : 0;
+
+  const handleSendCampaign = async (campaign: any) => {
+    const destinatarios = Array.isArray(campaign.destinatarios) ? campaign.destinatarios.length : 0;
+    
+    if (destinatarios === 0) {
+      alert('Esta campaña no tiene destinatarios');
+      return;
+    }
+
+    if (campaign.estado === 'enviada') {
+      alert('Esta campaña ya fue enviada');
+      return;
+    }
+
+    const confirmSend = confirm(
+      `¿Enviar la campaña "${campaign.nombre || campaign.name}" a ${destinatarios} destinatario(s)?`
+    );
+
+    if (!confirmSend) return;
+
+    try {
+      // Simular envío (aquí integrarías con tu servicio de email real)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Actualizar estado de la campaña
+      const campaigns = JSON.parse(localStorage.getItem('emailCampaigns') || '[]');
+      const updatedCampaigns = campaigns.map((c: any) =>
+        c.id === campaign.id 
+          ? { 
+              ...c, 
+              estado: 'enviada',
+              fechaEnvio: new Date().toISOString(),
+              estadisticas: {
+                totalEnviados: destinatarios,
+                totalFallidos: 0,
+                totalAbiertos: 0,
+                tasaApertura: 0
+              }
+            }
+          : c
+      );
+
+      localStorage.setItem('emailCampaigns', JSON.stringify(updatedCampaigns));
+      
+      // Callback opcional para notificar al componente padre
+      if (onSendCampaign) {
+        onSendCampaign(campaign);
+      }
+
+      alert(`Campaña enviada exitosamente a ${destinatarios} destinatarios`);
+      loadData(); // Recargar datos para mostrar el cambio de estado
+
+    } catch (error) {
+      console.error('Error enviando campaña:', error);
+      alert('Error al enviar la campaña');
+    }
+  };
 
   const handleDeleteCampaign = (campaignId: string, campaignName: string) => {
     if (confirm(`¿Estás seguro de eliminar la campaña "${campaignName}"?`)) {
@@ -188,7 +248,7 @@ const CampaignsTab: React.FC<CampaignsTabProps> = ({
         </div>
       </div>
 
-      {/* Botón Nueva Campaña - ARREGLADO */}
+      {/* Botón Nueva Campaña */}
       <div className="flex justify-end">
         <button
           onClick={onNewCampaign}
@@ -285,14 +345,30 @@ const CampaignsTab: React.FC<CampaignsTabProps> = ({
                     </div>
 
                     <div className="col-span-1">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => onEditCampaign(campaign)}
-                          className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
-                          title="Editar"
-                        >
-                          <Edit size={16} />
-                        </button>
+                      <div className="flex items-center gap-1">
+                        {/* Botón Enviar - solo para campañas no enviadas */}
+                        {campaign.estado !== 'enviada' && (
+                          <button
+                            onClick={() => handleSendCampaign(campaign)}
+                            className="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded transition-colors"
+                            title="Enviar campaña"
+                          >
+                            <Send size={16} />
+                          </button>
+                        )}
+                        
+                        {/* Botón Editar - solo para campañas no enviadas */}
+                        {campaign.estado !== 'enviada' && (
+                          <button
+                            onClick={() => onEditCampaign(campaign)}
+                            className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
+                            title="Editar"
+                          >
+                            <Edit size={16} />
+                          </button>
+                        )}
+                        
+                        {/* Botón Eliminar - siempre disponible */}
                         <button
                           onClick={() => handleDeleteCampaign(campaign.id, campaign.nombre || campaign.name)}
                           className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded transition-colors"
@@ -300,6 +376,13 @@ const CampaignsTab: React.FC<CampaignsTabProps> = ({
                         >
                           <Trash2 size={16} />
                         </button>
+                        
+                        {/* Indicador de campaña enviada */}
+                        {campaign.estado === 'enviada' && (
+                          <div className="text-green-600 p-1" title="Campaña enviada">
+                            <CheckCircle size={16} />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -1,4 +1,17 @@
-// src/pages/EmailCampaignsPage.tsx - Página completa con todas las secciones
+  // Manejar eliminación de campaña
+  const handleDeleteCampaign = (campaignId) => {
+    console.log('Eliminando campaña:', campaignId);
+    try {
+      const campaigns = JSON.parse(localStorage.getItem('emailCampaigns') || '[]');
+      const updatedCampaigns = campaigns.filter(c => c.id !== campaignId);
+      localStorage.setItem('emailCampaigns', JSON.stringify(updatedCampaigns));
+      
+      // Recargar la página o actualizar el estado
+      window.location.reload();
+    } catch (error) {
+      console.error('Error eliminando campaña:', error);
+    }
+  };// src/pages/EmailCampaignsPage.tsx - Página completa con todas las secciones
 import React, { useState } from 'react';
 import { Mail, FileText, Bot } from 'lucide-react';
 import CampaignsTab from '../components/email/CampaignsTab';
@@ -70,19 +83,10 @@ const EmailCampaignsPage = () => {
     setShowModal(true);
   };
 
-  // Manejar eliminación de campaña
-  const handleDeleteCampaign = (campaignId) => {
-    console.log('Eliminando campaña:', campaignId);
-    try {
-      const campaigns = JSON.parse(localStorage.getItem('emailCampaigns') || '[]');
-      const updatedCampaigns = campaigns.filter(c => c.id !== campaignId);
-      localStorage.setItem('emailCampaigns', JSON.stringify(updatedCampaigns));
-      
-      // Recargar la página o actualizar el estado
-      window.location.reload();
-    } catch (error) {
-      console.error('Error eliminando campaña:', error);
-    }
+  // Manejar envío de campaña
+  const handleSendCampaign = (campaign) => {
+    console.log('Enviando campaña desde página principal:', campaign);
+    // Aquí podrías agregar lógica adicional si es necesaria
   };
 
   // Manejar guardado de campaña
@@ -182,6 +186,7 @@ const EmailCampaignsPage = () => {
             onNewCampaign={handleNewCampaign}
             onEditCampaign={handleEditCampaign}
             onDeleteCampaign={handleDeleteCampaign}
+            onSendCampaign={handleSendCampaign}
           />
         )}
         
