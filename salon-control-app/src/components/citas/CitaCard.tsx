@@ -1,0 +1,489 @@
+// src/components/citas/CitaCard.tsx - Actualizado para descuentos SIN botón de email
+import {
+  Calendar,
+  Clock,
+  User,
+  Scissors,
+  Edit,
+  Trash2,
+  Play,
+  RefreshCw,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Check,
+  TrendingDown,
+  Calculator,
+  Gift,
+} from "lucide-react";
+import { useState } from "react";
+import { Cita, Cliente, Servicio } from "../../types/citas";
+import { formatCurrency, getDescuentoDescription } from "../../utils/discountUtils";
+
+interface CitaCardProps {
+  cita: Cita;
+  clientes: Cliente[];
+  servicios: Servicio[];
+  onDelete: (id: string) => void;
+  onEstadoChange: (id: string, newEstado: Cita["estado"]) => void;
+  onUpdateAnticipo: (id: string, anticipoConfirmado: boolean, monto?: number) => void;
+  onOpenCobro: () => void;
+  onOpenEdit: () => void;
+  onOpenReagendar: () => void;
+}
+
+export default function CitaCard({
+  cita,
+  clientes,
+  servicios,
+  onDelete,
+  onEstadoChange,
+  onUpdateAnticipo,
+  onOpenCobro,
+  onOpenEdit,
+  onOpenReagendar,
+}: CitaCardProps) {
+  // Validación temprana: verificar que cita existe y tiene las propiedades mínimas
+  if (!cita || typeof cita !== 'object' || !cita.id) {
+    console.error('CitaCard: cita is invalid', cita);
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-600">Error: Datos de cita inválidos</p>
+      </div>
+    );
+  }
+
+  const [anticipoInput, setAnticipoInput] = useState(cita.montoAnticipo?.toString() || "");
+  const [isEditingAnticipo, setIsEditingAnticipo] = useState(false);
+
+  const cliente = clientes.find((c) => c.id === cita.clienteId)?.nombre || "Cliente no encontrado";
+  const clienteData = clientes.find((c) => c.id === cita.clienteId);
+  const servicio = servicios.find((s) => s.id === cita.servicioId);
+
+  // Funciones completamente seguras para formatear fechas y horas
+  const formatDate = (dateString) => {
+    try {
+      if (!dateString || typeof dateString !== 'string' || dateString.trim() === '') {
+        return "Fecha no disponible";
+      }
+      
+      if (!dateString.includes('-')) {
+        return "Formato de fecha inválido";
+      }
+      
+      const parts = String(dateString).split('-');
+      if (!parts || parts.length !== 3) {
+        return "Formato de fecha inválido";
+      }
+      
+      const [year, month, day] = parts;
+      if (!year || !month || !day) {
+        return "Fecha incompleta";
+      }
+      
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      if (isNaN(date.getTime())) {
+        return "Fecha inválida";
+      }
+      
+      return date.toLocaleDateString("es-ES", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch (error) {
+      console.error('Error in formatDate:', error);
+      return "Error en fecha";
+    }
+  };
+
+  const formatTime = (timeString) => {
+    try {
+      if (!timeString || typeof timeString !== 'string' || timeString.trim() === '') {
+        return "Hora no disponible";
+      }
+      
+      const timeDate = new Date(`2000-01-01T${timeString}`);
+      if (isNaN(timeDate.getTime())) {
+        return "Hora inválida";
+      }
+      
+      return timeDate.toLocaleTimeString("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      console.error('Error in formatTime:', error);
+      return "Error en hora";
+    }
+  };
+
+  // Verificar si es cumpleaños del cliente
+  const esCumpleanos = () => {
+    try {
+      if (!clienteData?.fechaNacimiento || !cita?.fecha) return false;
+      
+      const fechaCitaStr = String(cita.fecha || '');
+      const fechaNacimientoStr = String(clienteData.fechaNacimiento || '');
+      
+      if (!fechaCitaStr.includes('-') || !fechaNacimientoStr.includes('-')) return false;
+      
+      const citaParts = fechaCitaStr.split('-');
+      const nacimientoParts = fechaNacimientoStr.split('-');
+      
+      if (citaParts.length < 3 || nacimientoParts.length < 3) return false;
+      
+      const [, mesCita, diaCita] = citaParts;
+      const [, mesNacimiento, diaNacimiento] = nacimientoParts;
+      
+      return mesCita === mesNacimiento && diaCita === diaNacimiento;
+    } catch (error) {
+      console.error('Error in esCumpleanos:', error);
+      return false;
+    }
+  };
+
+  const getEstadoColor = (estado: Cita["estado"]) => {
+    switch (estado) {
+      case "pendiente":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "confirmada":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "iniciada":
+        return "bg-purple-100 text-purple-800 border-purple-200";
+      case "completada":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "cancelada":
+        return "bg-red-100 text-red-800 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const handleConfirmAnticipo = () => {
+    const monto = parseFloat(anticipoInput) || 0;
+    onUpdateAnticipo(cita.id, true, monto);
+    setIsEditingAnticipo(false);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleConfirmAnticipo();
+    }
+  };
+
+  const canShowIniciarButton = cita.estado === "confirmada" || 
+    (cita.estado === "pendiente" && cita.anticipoConfirmado);
+
+  return (
+    <div className="bg-white rounded-lg shadow border p-4">
+      <div className="flex flex-col lg:flex-row gap-4">
+        {/* Información principal */}
+        <div className="flex-1 space-y-3">
+          {/* Estado de la cita - Solo mostrar si NO está completada */}
+          {cita.estado !== "completada" && (
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoColor(cita.estado)}`}>
+                {cita.estado.charAt(0).toUpperCase() + cita.estado.slice(1)}
+              </span>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="flex items-center gap-2">
+              <User size={16} className="text-gray-400" />
+              <span className="font-semibold text-gray-900">{cliente}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Scissors size={16} className="text-gray-400" />
+              <span className="text-gray-700">{servicio?.nombre || "Servicio no encontrado"}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Calendar size={16} className="text-gray-400" />
+              <span className="text-gray-600 text-sm">
+                {formatDate(cita.fecha)}
+              </span>
+              {esCumpleanos() && (
+                <div className="flex items-center gap-1 bg-pink-100 text-pink-700 px-2 py-1 rounded-full text-xs">
+                  🎂 <span>¡Cumpleaños!</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-gray-400" />
+              <span className="text-gray-600 text-sm">
+                {formatTime(cita.hora)}
+              </span>
+            </div>
+          </div>
+
+          {/* Información de precios - Completamente diferente para completadas */}
+          {cita.estado === "completada" ? (
+            <div className="bg-green-50 p-4 rounded-lg text-sm space-y-3 border border-green-200">
+              <div className="font-medium text-green-800 mb-2 flex items-center gap-2">
+                <CheckCircle size={16} />
+                Transacción completada
+              </div>
+              
+              {/* Servicio principal */}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">{servicio?.nombre || "Servicio"}:</span>
+                <span className="font-semibold">{formatCurrency(servicio?.precioSugerido || 0)}</span>
+              </div>
+              
+              {/* Servicios adicionales */}
+              {cita.serviciosAdicionales && cita.serviciosAdicionales.length > 0 && (
+                <div className="space-y-1">
+                  <span className="font-medium text-gray-700">Servicios adicionales:</span>
+                  {cita.serviciosAdicionales.map((s, index) => (
+                    <div key={index} className="flex justify-between items-center ml-4">
+                      <span className="text-gray-600">• {s.nombre}:</span>
+                      <span className="font-semibold">{formatCurrency(s.precio)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* ✅ MOSTRAR INFORMACIÓN DE DESCUENTO, REDONDEO Y PROPINA */}
+              {(cita.montoDescuento && cita.montoDescuento > 0) && (
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700">Subtotal servicios:</span>
+                    <span className="font-semibold">{formatCurrency(cita.subtotalOriginal || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-orange-600">
+                    <div className="flex items-center gap-1">
+                      <TrendingDown size={14} />
+                      <span>Descuento ({cita.descuentoAplicado?.toFixed(1)}%):</span>
+                    </div>
+                    <span>-{formatCurrency(cita.montoDescuento)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Subtotal después del descuento */}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">Subtotal:</span>
+                <span className="font-semibold">{formatCurrency(cita.subtotalConDescuento || cita.subtotalOriginal || cita.precioFinal || 0)}</span>
+              </div>
+
+              {/* Mostrar redondeo si existe */}
+              {(cita.montoRedondeo && cita.montoRedondeo > 0) && (
+                <div className="flex justify-between items-center text-green-600">
+                  <div className="flex items-center gap-1">
+                    <Calculator size={14} />
+                    <span>Redondeo a decena:</span>
+                  </div>
+                  <span>+{formatCurrency(cita.montoRedondeo)}</span>
+                </div>
+              )}
+
+              {/* Mostrar propina si existe */}
+              {(cita.propina && cita.propina > 0) && (
+                <div className="flex justify-between items-center text-purple-600">
+                  <div className="flex items-center gap-1">
+                    <Gift size={14} />
+                    <span>Propina:</span>
+                  </div>
+                  <span>+{formatCurrency(cita.propina)}</span>
+                </div>
+              )}
+              
+              <div className="border-t border-green-200 pt-3 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700">Anticipo recibido:</span>
+                  <span className="text-blue-600 font-semibold">{formatCurrency(cita.montoAnticipo || 0)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700 font-medium">Total pagado:</span>
+                  <span className="text-green-700 font-bold text-lg">{formatCurrency(cita.precioFinal || 0)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Método de pago:</span>
+                  <span className="capitalize font-medium">{cita.metodoPago || "No especificado"}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Completada el:</span>
+                  <span className="font-medium">{cita.fechaCompletada ? new Date(cita.fechaCompletada).toLocaleDateString("es-ES") : "N/A"}</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-50 p-3 rounded-lg text-sm space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <p>
+                  <span className="text-gray-600">Precio sugerido: </span>
+                  <strong className="text-green-600">{formatCurrency(servicio?.precioSugerido || 0)}</strong>
+                </p>
+                <p>
+                  <span className="text-gray-600">Anticipo sugerido: </span>
+                  <strong className="text-orange-600">{formatCurrency(servicio?.anticipoSugerido || 0)}</strong>
+                </p>
+              </div>
+              
+              {/* Campo de anticipo editable */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">Anticipo: </span>
+                  {isEditingAnticipo ? (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center">
+                        <span className="text-blue-600 mr-1">$</span>
+                        <input
+                          type="number"
+                          value={anticipoInput}
+                          onChange={(e) => setAnticipoInput(e.target.value)}
+                          onKeyPress={handleKeyPress}
+                          className="w-20 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          autoFocus
+                        />
+                      </div>
+                      <button
+                        onClick={handleConfirmAnticipo}
+                        className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 flex items-center gap-1"
+                      >
+                        <Check size={12} />
+                        OK
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditingAnticipo(false);
+                          setAnticipoInput(cita.montoAnticipo?.toString() || "");
+                        }}
+                        className="px-2 py-1 bg-gray-400 text-white text-xs rounded hover:bg-gray-500"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <strong 
+                        className="text-blue-600 cursor-pointer hover:underline"
+                        onClick={() => setIsEditingAnticipo(true)}
+                      >
+                        {formatCurrency(cita.montoAnticipo || 0)}
+                      </strong>
+                      {!cita.anticipoConfirmado && cita.estado === "pendiente" && (
+                        <span className="text-orange-500 text-xs">(Sin confirmar)</span>
+                      )}
+                      {cita.anticipoConfirmado && (
+                        <span className="text-green-500 text-xs">✓ Confirmado</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Saldo pendiente calculado */}
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">Saldo pendiente: </span>
+                  <strong className="text-red-600">
+                    {formatCurrency(Math.max(0, (servicio?.precioSugerido || 0) - (cita.montoAnticipo || 0)))}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Notas */}
+          {cita.notas && (
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">Notas: </span>
+              {cita.notas}
+            </div>
+          )}
+        </div>
+
+        {/* Acciones - Solo para citas NO completadas */}
+        {cita.estado !== "completada" ? (
+          <div className="flex flex-col gap-2">
+            {cita.estado === "pendiente" && (
+              <>
+                <button
+                  onClick={() => onEstadoChange(cita.id, "cancelada")}
+                  className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                >
+                  <XCircle size={14} className="inline mr-1" /> Cancelar
+                </button>
+                <button
+                  onClick={onOpenReagendar}
+                  className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                >
+                  <RefreshCw size={14} className="inline mr-1" /> Reagendar
+                </button>
+                <button
+                  onClick={() => onEstadoChange(cita.id, "confirmada")}
+                  className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
+                >
+                  <CheckCircle size={14} className="inline mr-1" /> Confirmar
+                </button>
+              </>
+            )}
+
+            {canShowIniciarButton && (
+              <button
+                onClick={() => onEstadoChange(cita.id, "iniciada")}
+                className="px-3 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
+              >
+                <Play size={16} className="inline mr-1" /> Iniciar
+              </button>
+            )}
+
+            {cita.estado === "iniciada" && (
+              <button
+                onClick={onOpenCobro}
+                className="px-3 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                <CheckCircle size={16} className="inline mr-1" /> Terminar
+              </button>
+            )}
+
+            {/* Editar / Eliminar - SIN BOTÓN DE EMAIL */}
+            <div className="flex gap-2 pt-2 border-t">
+              <button
+                onClick={onOpenEdit}
+                className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
+                title="Editar cita"
+              >
+                <Edit size={16} />
+              </button>
+              <button
+                onClick={() => onDelete(cita.id)}
+                className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
+                disabled={cita.estado === "iniciada"}
+                title="Eliminar cita"
+              >
+                <Trash2 size={16} />
+              </button>
+              {/* NOTA: El botón de Email ha sido removido intencionalmente */}
+              {/* NO agregar ningún botón de email aquí */}
+            </div>
+          </div>
+        ) : (
+          /* Para citas completadas, mostrar botón de eliminar */
+          <div className="flex flex-col items-center justify-center p-4 min-w-[120px]">
+            <div className="bg-green-100 p-3 rounded-full mb-3">
+              <CheckCircle size={24} className="text-green-600" />
+            </div>
+            <span className="text-green-700 font-medium text-sm text-center mb-3">Completada</span>
+            {cita.fechaCompletada && (
+              <span className="text-gray-500 text-xs text-center mb-3">
+                {new Date(cita.fechaCompletada).toLocaleDateString("es-ES")}
+              </span>
+            )}
+            <button
+              onClick={() => onDelete(cita.id)}
+              className="px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 flex items-center gap-1"
+            >
+              <CheckCircle size={12} />
+              Eliminar
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
