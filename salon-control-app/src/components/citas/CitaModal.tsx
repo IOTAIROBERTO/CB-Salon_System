@@ -1,4 +1,4 @@
-// src/components/citas/CitaModal.tsx
+// src/components/citas/CitaModal.tsx - Actualizado con selector de hora mejorado
 import { X, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Cliente, Servicio, Cita } from "../../types/citas";
@@ -6,6 +6,7 @@ import {
   obtenerFechaMinima, 
   validarFechaHora 
 } from "../../utils/dateValidation";
+import TimeSelector from "./TimeSelector";
 
 interface CitaModalProps {
   clientes: Cliente[];
@@ -62,6 +63,20 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
     onClose();
   };
 
+  // Calcular hora mínima si es hoy
+  const getMinTime = () => {
+    if (!formData.fecha) return undefined;
+    
+    const today = new Date().toISOString().split('T')[0];
+    if (formData.fecha === today) {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+    return undefined;
+  };
+
   const isValid = formData.clienteId && 
                   formData.servicioId && 
                   formData.fecha && 
@@ -70,41 +85,61 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">{citaEdit ? "Editar Cita" : "Nueva Cita"}</h2>
-          <button onClick={onClose}>
-            <X size={20} />
-          </button>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-lg">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {citaEdit ? "Editar Cita" : "Nueva Cita"}
+            </h2>
+            <button 
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-4">
-          <select
-            value={formData.clienteId}
-            onChange={(e) => setFormData({ ...formData, clienteId: e.target.value })}
-            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          >
-            <option value="">Seleccionar cliente</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </select>
+        <div className="p-6 space-y-4">
+          {/* Selector de cliente */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Cliente *
+            </label>
+            <select
+              value={formData.clienteId}
+              onChange={(e) => setFormData({ ...formData, clienteId: e.target.value })}
+              className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="">Seleccionar cliente</option>
+              {clientes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            value={formData.servicioId}
-            onChange={(e) => setFormData({ ...formData, servicioId: e.target.value })}
-            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          >
-            <option value="">Seleccionar servicio</option>
-            {servicios.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nombre} - ${s.precioSugerido}
-              </option>
-            ))}
-          </select>
+          {/* Selector de servicio */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Servicio *
+            </label>
+            <select
+              value={formData.servicioId}
+              onChange={(e) => setFormData({ ...formData, servicioId: e.target.value })}
+              className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="">Seleccionar servicio</option>
+              {servicios.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre} - ${s.precioSugerido}
+                </option>
+              ))}
+            </select>
+          </div>
 
+          {/* Selector de fecha */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Fecha de la cita *
@@ -114,10 +149,10 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
               value={formData.fecha}
               onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
               min={obtenerFechaMinima()}
-              className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 ${
+              className={`w-full border-2 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ${
                 errorFechaHora && formData.fecha 
                   ? 'border-red-500 focus:ring-red-500' 
-                  : 'focus:ring-purple-500'
+                  : 'border-gray-300 focus:ring-purple-500 focus:border-transparent'
               }`}
             />
             {formData.fecha && (
@@ -127,33 +162,17 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Hora de la cita *
-            </label>
-            <input
-              type="time"
-              value={formData.hora}
-              onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
-              className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 ${
-                errorFechaHora && formData.hora 
-                  ? 'border-red-500 focus:ring-red-500' 
-                  : 'focus:ring-purple-500'
-              }`}
-            />
-            {formData.fecha && formData.hora && (
-              <p className="text-xs text-gray-500 mt-1">
-                {new Date(formData.fecha).toDateString() === new Date().toDateString()
-                  ? 'Para hoy, la hora debe ser futura'
-                  : 'Hora de inicio del servicio'
-                }
-              </p>
-            )}
-          </div>
+          {/* NUEVO: Selector visual de hora */}
+          <TimeSelector
+            value={formData.hora}
+            onChange={(time) => setFormData({ ...formData, hora: time })}
+            minTime={getMinTime()}
+            label="Hora de la cita *"
+          />
 
           {/* Mensaje de error de validación */}
           {errorFechaHora && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3 flex items-start gap-2">
               <AlertTriangle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-red-800">Error de validación</p>
@@ -171,7 +190,7 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
               <select
                 value={formData.estado}
                 onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="pendiente">Pendiente</option>
                 <option value="confirmada">Confirmada</option>
@@ -182,6 +201,7 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
             </div>
           )}
 
+          {/* Notas adicionales */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Notas adicionales
@@ -190,30 +210,33 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
               value={formData.notas}
               onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
               placeholder="Notas adicionales..."
-              className="w-full border rounded px-3 py-2 h-20 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 h-20 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
             />
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-6">
-          <button 
-            onClick={onClose} 
-            className="px-4 py-2 border rounded hover:bg-gray-50"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!isValid}
-            className={`px-4 py-2 rounded ${
-              isValid 
-                ? "bg-purple-600 text-white hover:bg-purple-700" 
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
-            title={!isValid && errorFechaHora ? errorFechaHora : ''}
-          >
-            {citaEdit ? "Actualizar" : "Guardar"}
-          </button>
+        {/* Botones de acción */}
+        <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 rounded-b-lg">
+          <div className="flex flex-col sm:flex-row justify-end gap-2">
+            <button 
+              onClick={onClose} 
+              className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!isValid}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                isValid 
+                  ? "bg-purple-600 text-white hover:bg-purple-700 shadow-md hover:shadow-lg" 
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              }`}
+              title={!isValid && errorFechaHora ? errorFechaHora : ''}
+            >
+              {citaEdit ? "Actualizar" : "Guardar"} Cita
+            </button>
+          </div>
         </div>
       </div>
     </div>
