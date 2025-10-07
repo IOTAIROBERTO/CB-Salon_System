@@ -1,4 +1,4 @@
-// src/components/citas/CitaCard.tsx - Actualizado para descuentos SIN botón de email
+// src/components/citas/CitaCard.tsx - Actualizado con indicador de cumpleaños corregido
 import {
   Calendar,
   Clock,
@@ -15,10 +15,11 @@ import {
   TrendingDown,
   Calculator,
   Gift,
+  Cake,
 } from "lucide-react";
 import { useState } from "react";
 import { Cita, Cliente, Servicio } from "../../types/citas";
-import { formatCurrency, getDescuentoDescription } from "../../utils/discountUtils";
+import { formatCurrency } from "../../utils/discountUtils";
 
 interface CitaCardProps {
   cita: Cita;
@@ -119,25 +120,27 @@ export default function CitaCard({
     }
   };
 
-  // Verificar si es cumpleaños del cliente
+  // FUNCIÓN CORREGIDA: Verificar si es cumpleaños del cliente
   const esCumpleanos = () => {
     try {
-      if (!clienteData?.fechaNacimiento || !cita?.fecha) return false;
+      // CORRECCIÓN: usar 'cumple' en lugar de 'fechaNacimiento'
+      if (!clienteData?.cumple || !cita?.fecha) return false;
       
       const fechaCitaStr = String(cita.fecha || '');
-      const fechaNacimientoStr = String(clienteData.fechaNacimiento || '');
+      const cumpleStr = String(clienteData.cumple || '');
       
-      if (!fechaCitaStr.includes('-') || !fechaNacimientoStr.includes('-')) return false;
+      if (!fechaCitaStr.includes('-') || !cumpleStr.includes('-')) return false;
       
       const citaParts = fechaCitaStr.split('-');
-      const nacimientoParts = fechaNacimientoStr.split('-');
+      const cumpleParts = cumpleStr.split('-');
       
-      if (citaParts.length < 3 || nacimientoParts.length < 3) return false;
+      if (citaParts.length < 3 || cumpleParts.length < 3) return false;
       
       const [, mesCita, diaCita] = citaParts;
-      const [, mesNacimiento, diaNacimiento] = nacimientoParts;
+      const [, mesCumple, diaCumple] = cumpleParts;
       
-      return mesCita === mesNacimiento && diaCita === diaNacimiento;
+      // Comparar mes y día
+      return mesCita === mesCumple && diaCita === diaCumple;
     } catch (error) {
       console.error('Error in esCumpleanos:', error);
       return false;
@@ -176,8 +179,12 @@ export default function CitaCard({
   const canShowIniciarButton = cita.estado === "confirmada" || 
     (cita.estado === "pendiente" && cita.anticipoConfirmado);
 
+  const isCumpleanos = esCumpleanos();
+
   return (
-    <div className="bg-white rounded-lg shadow border p-4">
+    <div className={`rounded-lg shadow border p-4 ${
+      isCumpleanos ? 'bg-gradient-to-r from-pink-50 to-purple-50 border-pink-300' : 'bg-white'
+    }`}>
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Información principal */}
         <div className="flex-1 space-y-3">
@@ -194,6 +201,13 @@ export default function CitaCard({
             <div className="flex items-center gap-2">
               <User size={16} className="text-gray-400" />
               <span className="font-semibold text-gray-900">{cliente}</span>
+              {/* INDICADOR DE CUMPLEAÑOS MEJORADO */}
+              {isCumpleanos && (
+                <div className="flex items-center gap-1 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md animate-pulse">
+                  <Cake size={14} />
+                  <span>¡Cumpleaños!</span>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Scissors size={16} className="text-gray-400" />
@@ -207,11 +221,6 @@ export default function CitaCard({
               <span className="text-gray-600 text-sm">
                 {formatDate(cita.fecha)}
               </span>
-              {esCumpleanos() && (
-                <div className="flex items-center gap-1 bg-pink-100 text-pink-700 px-2 py-1 rounded-full text-xs">
-                  🎂 <span>¡Cumpleaños!</span>
-                </div>
-              )}
             </div>
             <div className="flex items-center gap-2">
               <Clock size={16} className="text-gray-400" />
@@ -220,6 +229,18 @@ export default function CitaCard({
               </span>
             </div>
           </div>
+
+          {/* Mensaje especial de cumpleaños */}
+          {isCumpleanos && (
+            <div className="bg-gradient-to-r from-pink-100 to-purple-100 border border-pink-300 rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <Gift size={16} className="text-pink-600" />
+                <p className="text-sm font-medium text-pink-800">
+                  🎉 ¡Es el cumpleaños del cliente! Considera ofrecer un descuento o detalle especial.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Información de precios - Completamente diferente para completadas */}
           {cita.estado === "completada" ? (
@@ -248,7 +269,7 @@ export default function CitaCard({
                 </div>
               )}
               
-              {/* ✅ MOSTRAR INFORMACIÓN DE DESCUENTO, REDONDEO Y PROPINA */}
+              {/* Mostrar información de descuento, redondeo y propina */}
               {(cita.montoDescuento && cita.montoDescuento > 0) && (
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
@@ -441,7 +462,7 @@ export default function CitaCard({
               </button>
             )}
 
-            {/* Editar / Eliminar - SIN BOTÓN DE EMAIL */}
+            {/* Editar / Eliminar */}
             <div className="flex gap-2 pt-2 border-t">
               <button
                 onClick={onOpenEdit}
@@ -458,8 +479,6 @@ export default function CitaCard({
               >
                 <Trash2 size={16} />
               </button>
-              {/* NOTA: El botón de Email ha sido removido intencionalmente */}
-              {/* NO agregar ningún botón de email aquí */}
             </div>
           </div>
         ) : (
