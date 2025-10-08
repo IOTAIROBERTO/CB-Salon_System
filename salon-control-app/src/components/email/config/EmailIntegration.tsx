@@ -1,13 +1,17 @@
-// src/components/email/EmailIntegration.tsx - CON DEBUGGING MEJORADO
-import { useEffect, useState } from "react";
-import { Mail, Settings, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react";
+// src/components/email/config/EmailIntegration.tsx
+// CONSOLIDADO: EmailConfig + EmailIntegration + EmailSetup
+import { useState, useEffect } from 'react';
+import { 
+  Mail, Settings, AlertTriangle, CheckCircle, 
+  RefreshCw, Eye, EyeOff, Save, TestTube, ExternalLink 
+} from 'lucide-react';
 
 interface EmailIntegrationProps {
   onClose?: () => void;
 }
 
 interface EmailConfig {
-  provider: 'emailjs' | 'resend' | 'none';
+  provider: 'emailjs' | 'resend' | 'whatsapp' | 'none';
   emailjs?: {
     serviceId: string;
     templateId: string;
@@ -25,9 +29,14 @@ export default function EmailIntegration({ onClose }: EmailIntegrationProps) {
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [testEmailValue, setTestEmailValue] = useState('');
+  const [showSecrets, setShowSecrets] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
   useEffect(() => {
-    // Load existing configuration
+    loadConfiguration();
+  }, []);
+
+  const loadConfiguration = () => {
     const savedConfig = localStorage.getItem('emailConfig');
     if (savedConfig) {
       try {
@@ -35,10 +44,10 @@ export default function EmailIntegration({ onClose }: EmailIntegrationProps) {
         setConfig(parsedConfig);
         checkConfiguration(parsedConfig);
       } catch (error) {
-        console.error('Error loading email config:', error);
+        console.error('Error loading config:', error);
       }
     }
-  }, []);
+  };
 
   const checkConfiguration = (configToCheck: EmailConfig) => {
     let configured = false;
@@ -63,38 +72,25 @@ export default function EmailIntegration({ onClose }: EmailIntegrationProps) {
 
   const saveConfiguration = async () => {
     try {
-      // Validar configuración antes de guardar
       if (config.provider === 'emailjs') {
         if (!config.emailjs?.serviceId || !config.emailjs?.templateId || !config.emailjs?.publicKey) {
           setTestResult('❌ Error: Todos los campos de EmailJS son obligatorios');
           return;
         }
         
-        // Inicializar EmailJS con la nueva configuración
         if (window.emailjs) {
           window.emailjs.init(config.emailjs.publicKey);
         } else {
-          // Cargar EmailJS si no está cargado
           await loadEmailJS();
           if (window.emailjs) {
             window.emailjs.init(config.emailjs.publicKey);
           }
         }
       }
-      
-      if (config.provider === 'resend') {
-        if (!config.resend?.apiKey || !config.resend?.from) {
-          setTestResult('❌ Error: Todos los campos de Resend son obligatorios');
-          return;
-        }
-      }
 
-      // Guardar configuración
       localStorage.setItem('emailConfig', JSON.stringify(config));
       checkConfiguration(config);
       setTestResult('✅ Configuración guardada exitosamente');
-      
-      console.log('Configuración guardada:', config);
     } catch (error) {
       console.error('Error guardando configuración:', error);
       setTestResult('❌ Error al guardar la configuración');
@@ -110,14 +106,8 @@ export default function EmailIntegration({ onClose }: EmailIntegrationProps) {
 
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
-      script.onload = () => {
-        console.log('EmailJS cargado exitosamente');
-        resolve();
-      };
-      script.onerror = () => {
-        console.error('Error cargando EmailJS');
-        reject(new Error('Error cargando EmailJS'));
-      };
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Error cargando EmailJS'));
       document.head.appendChild(script);
     });
   };
@@ -144,45 +134,18 @@ export default function EmailIntegration({ onClose }: EmailIntegrationProps) {
           throw new Error('EmailJS no pudo cargarse');
         }
 
-        // Asegurar que EmailJS esté inicializado
         window.emailjs.init(config.emailjs.publicKey);
 
-        // Preparar datos del template - VERSIÓN SIMPLIFICADA
         const templateParams = {
           to_email: testEmailValue,
           to_name: 'Cliente de Prueba',
           subject: 'Prueba de Configuración - Beauty Salon',
-          message: `Hola Cliente de Prueba,
-
-Este es un email de prueba para verificar que la configuración de EmailJS está funcionando correctamente.
-
-Tu configuración está lista para:
-- Confirmaciones automáticas de citas
-- Recordatorios antes de las citas  
-- Notificaciones de cambios
-
-Beauty Salon Total Control`,
+          message: `Este es un email de prueba para verificar la configuración.`,
           html_message: `<h2>Prueba de Configuración</h2>
 <p>Hola <strong>Cliente de Prueba</strong>,</p>
-<p>Este es un email de prueba para verificar que la configuración de EmailJS está funcionando correctamente.</p>
-<div style="background: #f0f0f0; padding: 15px; margin: 20px 0;">
-<h3>Tu configuración está lista para:</h3>
-<ul>
-<li>Confirmaciones automáticas de citas</li>
-<li>Recordatorios antes de las citas</li>
-<li>Notificaciones de cambios</li>
-</ul>
-</div>
+<p>Este es un email de prueba para verificar que la configuración está funcionando correctamente.</p>
 <p><strong>Beauty Salon Total Control</strong></p>`
         };
-
-        console.log('🔧 Datos enviados a EmailJS:', {
-          serviceId: config.emailjs.serviceId,
-          templateId: config.emailjs.templateId,
-          templateParams
-        });
-
-        console.log('📤 Enviando con EmailJS...');
 
         const result = await window.emailjs.send(
           config.emailjs.serviceId,
@@ -190,37 +153,23 @@ Beauty Salon Total Control`,
           templateParams
         );
 
-        console.log('📨 Respuesta de EmailJS:', result);
-
         if (result.status === 200) {
-          setTestResult('✅ Email de prueba enviado exitosamente! Revisa tu bandeja de entrada (y spam).');
+          setTestResult('✅ Email enviado! Revisa tu bandeja de entrada (y spam).');
         } else {
-          setTestResult(`❌ Error en el envío. Status: ${result.status}. Revisa la configuración del template.`);
+          setTestResult(`❌ Error. Status: ${result.status}`);
         }
       } else if (config.provider === 'resend') {
-        setTestResult('ℹ️ Prueba con Resend no implementada aún. Configuración guardada correctamente.');
-      } else {
-        setTestResult('❌ Proveedor no configurado');
+        setTestResult('ℹ️ Prueba con Resend no implementada. Configuración guardada.');
       }
-    } catch (error) {
-      console.error('💥 Error completo en prueba de email:', error);
+    } catch (error: any) {
+      console.error('Error:', error);
       
-      // Detectar tipos específicos de error
-      if (error.message && error.message.includes('422')) {
-        setTestResult(`❌ Error 422: El template de EmailJS no está configurado correctamente. 
-        
-Verifica que tu template tenga las variables: to_email, to_name, subject, message, html_message`);
-      } else if (error.message && error.message.includes('401')) {
-        setTestResult('❌ Error 401: Public Key inválido. Verifica tu Public Key en EmailJS.');
-      } else if (error.message && error.message.includes('404')) {
-        setTestResult('❌ Error 404: Service ID o Template ID no encontrado. Verifica tus credenciales.');
+      if (error.message?.includes('422')) {
+        setTestResult('❌ Error 422: Template mal configurado. Verifica las variables: to_email, to_name, subject, message, html_message');
+      } else if (error.message?.includes('401')) {
+        setTestResult('❌ Error 401: Public Key inválido.');
       } else {
-        setTestResult(`❌ Error al enviar email: ${error.message || 'Error desconocido'}
-        
-Posibles causas:
-- Template mal configurado
-- Service ID/Template ID/Public Key incorrectos
-- Cuenta EmailJS no verificada`);
+        setTestResult(`❌ Error: ${error.message || 'Error desconocido'}`);
       }
     } finally {
       setIsTesting(false);
@@ -231,6 +180,7 @@ Posibles causas:
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
+          {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <Mail size={24} className="text-blue-600" />
@@ -239,16 +189,13 @@ Posibles causas:
               </h2>
             </div>
             {onClose && (
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 p-1"
-              >
-                ×
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
               </button>
             )}
           </div>
 
-          {/* Estado actual */}
+          {/* Estado */}
           <div className={`mb-6 p-4 rounded-lg border ${
             isConfigured 
               ? 'bg-green-50 border-green-200' 
@@ -270,46 +217,63 @@ Posibles causas:
 
           {/* Selector de proveedor */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
               Proveedor de Email
             </label>
-            <select
-              value={config.provider}
-              onChange={(e) => setConfig({
-                ...config,
-                provider: e.target.value as EmailConfig['provider']
-              })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="none">Sin configurar</option>
-              <option value="emailjs">EmailJS (Gratuito)</option>
-              <option value="resend">Resend (Premium)</option>
-            </select>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => setConfig({ ...config, provider: 'emailjs' })}
+                className={`p-4 border-2 rounded-lg transition-all ${
+                  config.provider === 'emailjs'
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <Mail size={24} className="text-purple-600 mb-2" />
+                <h4 className="font-medium">EmailJS</h4>
+                <p className="text-sm text-gray-600">Gratuito</p>
+              </button>
+
+              <button
+                onClick={() => setConfig({ ...config, provider: 'resend' })}
+                className={`p-4 border-2 rounded-lg transition-all ${
+                  config.provider === 'resend'
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <Mail size={24} className="text-green-600 mb-2" />
+                <h4 className="font-medium">Resend</h4>
+                <p className="text-sm text-gray-600">Premium</p>
+              </button>
+            </div>
           </div>
 
-          {/* Configuración EmailJS */}
+          {/* EmailJS Config */}
           {config.provider === 'emailjs' && (
             <div className="mb-6 space-y-4">
-              <h3 className="text-lg font-medium text-gray-900">Configuración EmailJS</h3>
-              
-              {/* Instrucciones específicas para el template */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">📋 Configuración de Template Requerida:</h4>
-                <div className="text-sm text-blue-800 space-y-2">
-                  <p><strong>1. En EmailJS Dashboard → Templates → Create New Template</strong></p>
-                  <p><strong>2. Subject:</strong> <code>{"{{subject}}"}</code></p>
-                  <p><strong>3. Content:</strong> <code>{"{{{html_message}}}"}</code></p>
-                  <p><strong>4. En Settings → Add estas variables:</strong></p>
-                  <div className="bg-blue-100 p-2 rounded text-xs">
-                    <div>• to_email</div>
-                    <div>• to_name</div>
-                    <div>• subject</div>
-                    <div>• message</div>
-                    <div>• html_message</div>
-                  </div>
-                  <p><strong>5. Guarda el template y copia el Template ID</strong></p>
-                </div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Configuración EmailJS</h3>
+                <button
+                  onClick={() => setShowInstructions(!showInstructions)}
+                  className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
+                >
+                  <ExternalLink size={14} />
+                  {showInstructions ? 'Ocultar' : 'Ver'} instrucciones
+                </button>
               </div>
+
+              {showInstructions && (
+                <div className="bg-blue-50 p-4 rounded-lg text-sm">
+                  <h4 className="font-medium text-blue-900 mb-2">📋 Configuración requerida:</h4>
+                  <ol className="text-blue-800 space-y-1 list-decimal list-inside">
+                    <li>Crea cuenta en <a href="https://emailjs.com" target="_blank" className="underline">emailjs.com</a></li>
+                    <li>Template Subject: <code>{"{{subject}}"}</code></li>
+                    <li>Template Content: <code>{"{{{html_message}}}"}</code></li>
+                    <li>Variables: to_email, to_name, subject, message, html_message</li>
+                  </ol>
+                </div>
+              )}
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -327,7 +291,7 @@ Posibles causas:
                       publicKey: config.emailjs?.publicKey || ''
                     }
                   })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   placeholder="service_xxxxxxx"
                 />
               </div>
@@ -348,7 +312,7 @@ Posibles causas:
                       publicKey: config.emailjs?.publicKey || ''
                     }
                   })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   placeholder="template_xxxxxxx"
                 />
               </div>
@@ -357,26 +321,34 @@ Posibles causas:
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Public Key *
                 </label>
-                <input
-                  type="text"
-                  value={config.emailjs?.publicKey || ''}
-                  onChange={(e) => setConfig({
-                    ...config,
-                    emailjs: { 
-                      ...config.emailjs, 
-                      serviceId: config.emailjs?.serviceId || '',
-                      templateId: config.emailjs?.templateId || '',
-                      publicKey: e.target.value
-                    }
-                  })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="user_xxxxxxxxxxxxxxx"
-                />
+                <div className="relative">
+                  <input
+                    type={showSecrets ? "text" : "password"}
+                    value={config.emailjs?.publicKey || ''}
+                    onChange={(e) => setConfig({
+                      ...config,
+                      emailjs: { 
+                        ...config.emailjs, 
+                        serviceId: config.emailjs?.serviceId || '',
+                        templateId: config.emailjs?.templateId || '',
+                        publicKey: e.target.value
+                      }
+                    })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10"
+                    placeholder="user_xxxxxxxxxxxxxxx"
+                  />
+                  <button
+                    onClick={() => setShowSecrets(!showSecrets)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  >
+                    {showSecrets ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Test de email */}
+          {/* Test */}
           {config.provider !== 'none' && (
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
               <h4 className="font-medium text-gray-900 mb-3">Probar configuración</h4>
@@ -386,25 +358,25 @@ Posibles causas:
                   value={testEmailValue}
                   onChange={(e) => setTestEmailValue(e.target.value)}
                   placeholder="tu-email@ejemplo.com"
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
                 />
                 <button
                   onClick={testEmailFunction}
                   disabled={isTesting || !isConfigured}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                 >
                   {isTesting ? (
                     <RefreshCw size={16} className="animate-spin" />
                   ) : (
-                    <Mail size={16} />
+                    <TestTube size={16} />
                   )}
-                  {isTesting ? 'Enviando...' : 'Probar'}
+                  Probar
                 </button>
               </div>
               {testResult && (
-                <div className={`mt-2 p-3 rounded text-sm max-h-40 overflow-y-auto ${
-                  testResult.includes('Error') || testResult.includes('❌') 
-                    ? 'bg-red-50 text-red-700 border border-red-200' 
+                <div className={`mt-2 p-3 rounded text-sm ${
+                  testResult.includes('Error') || testResult.includes('❌')
+                    ? 'bg-red-50 text-red-700 border border-red-200'
                     : testResult.includes('✅')
                     ? 'bg-green-50 text-green-700 border border-green-200'
                     : 'bg-blue-50 text-blue-700 border border-blue-200'
@@ -415,7 +387,7 @@ Posibles causas:
             </div>
           )}
 
-          {/* Botones de acción */}
+          {/* Botones */}
           <div className="flex justify-end gap-3">
             {onClose && (
               <button
@@ -428,10 +400,10 @@ Posibles causas:
             <button
               onClick={saveConfiguration}
               disabled={config.provider === 'none'}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
             >
-              <Settings size={16} />
-              Guardar Configuración
+              <Save size={16} />
+              Guardar
             </button>
           </div>
         </div>
@@ -440,7 +412,6 @@ Posibles causas:
   );
 }
 
-// Declarar tipos para window
 declare global {
   interface Window {
     emailjs: any;
