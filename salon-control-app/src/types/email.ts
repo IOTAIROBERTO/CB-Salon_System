@@ -3,14 +3,15 @@ export interface EmailCampaign {
   id: string;
   nombre: string;
   tipo: CampaignType;
+  plantillaId: string;
   asunto: string;
   contenido: string;
   fechaCreacion: string;
   fechaEnvio?: string;
-  estado: 'borrador' | 'programada' | 'enviada' | 'cancelada';
+  estado: 'borrador' | 'programada' | 'enviada' | 'cancelada' | 'enviando';
   destinatarios: EmailRecipient[];
   configuracion: CampaignConfig;
-  estadisticas?: CampaignStats;
+  estadisticas: CampaignStats;
 }
 
 export interface EmailRecipient {
@@ -42,14 +43,16 @@ export interface CampaignStats {
   tasaClicks: number;
 }
 
-export type CampaignType = 
-  | 'cumpleanos' 
-  | 'san_valentin' 
-  | 'dia_madre' 
-  | 'navidad' 
+export type CampaignType =
+  | 'cumpleanos'
+  | 'san_valentin'
+  | 'dia_madre'
+  | 'navidad'
   | 'año_nuevo'
   | 'promocion_general'
+  | 'promocion'
   | 'recordatorio_cita'
+  | 'recordatorio'
   | 'reactivacion_cliente'
   | 'personalizado';
 
@@ -63,6 +66,7 @@ export interface EmailTemplate {
   variables: string[];
   esPersonalizable: boolean;
   fechaCreacion: string;
+  activa: boolean;
 }
 
 export interface EmailProvider {

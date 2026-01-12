@@ -23,12 +23,14 @@ export interface Venta {
   total: number;
   fecha: string;
   notas?: string;
+  empleadoId?: string;
 }
 
 export interface VentaFormData {
   clienteId: string;
   items: VentaItem[];
   notas: string;
+  empleadoId?: string;
 }
 
 export interface VentasStats {

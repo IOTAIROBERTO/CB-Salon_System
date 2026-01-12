@@ -1,14 +1,19 @@
 import { Cita, Venta, ReportData, ReportStats, ReportPeriod } from '../types/reportes';
+import { Expense } from '../db/db';
 
 export const calculateReportStats = (
-  citas: Cita[], 
-  ventas: Venta[]
+  citas: Cita[],
+  ventas: Venta[],
+  gastos: Expense[] = []
 ): ReportStats => {
   const citasCompletadas = citas.filter(c => c.estado === 'completada');
   const totalIngresosCitas = citasCompletadas.reduce((sum, c) => sum + (c.precioFinal || 0), 0);
   const totalIngresosVentas = ventas.reduce((sum, v) => sum + v.total, 0);
   const totalIngresos = totalIngresosCitas + totalIngresosVentas;
-  
+
+  const totalGastos = gastos.reduce((sum, g) => sum + g.monto, 0);
+  const gananciaNeta = totalIngresos - totalGastos;
+
   const saldosPendientes = citas
     .filter(c => c.estado !== 'cancelada')
     .reduce((sum, c) => sum + (c.saldoPendiente || 0), 0);
@@ -17,6 +22,8 @@ export const calculateReportStats = (
     totalIngresos,
     totalIngresosCitas,
     totalIngresosVentas,
+    totalGastos,
+    gananciaNeta,
     saldosPendientes,
     citasCompletadas: citasCompletadas.length,
     totalVentas: ventas.length
@@ -24,8 +31,8 @@ export const calculateReportStats = (
 };
 
 export const generateReportData = (
-  citas: Cita[], 
-  ventas: Venta[], 
+  citas: Cita[],
+  ventas: Venta[],
   period: ReportPeriod
 ): ReportData[] => {
   const now = new Date();
@@ -60,6 +67,8 @@ export const generateReportData = (
           ingresosCitas,
           ingresosVentas,
           ingresosTotales: ingresosCitas + ingresosVentas,
+          gastos: 0, // Placeholder for now or calculate per period if needed
+          gananciaNeta: ingresosCitas + ingresosVentas,
           servicios: weekCitas.length,
           ventasProductos: weekVentas.length
         });
@@ -97,6 +106,8 @@ export const generateReportData = (
           ingresosCitas,
           ingresosVentas,
           ingresosTotales: ingresosCitas + ingresosVentas,
+          gastos: 0,
+          gananciaNeta: ingresosCitas + ingresosVentas,
           servicios: monthCitas.length,
           ventasProductos: monthVentas.length
         });
@@ -127,6 +138,8 @@ export const generateReportData = (
           ingresosCitas,
           ingresosVentas,
           ingresosTotales: ingresosCitas + ingresosVentas,
+          gastos: 0,
+          gananciaNeta: ingresosCitas + ingresosVentas,
           servicios: yearCitas.length,
           ventasProductos: yearVentas.length
         });

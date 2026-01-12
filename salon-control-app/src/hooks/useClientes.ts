@@ -1,64 +1,33 @@
-import { useState, useEffect } from 'react';
-import { Cliente, CLIENTES_INICIALES } from '../types/clientes';
+import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/db';
+import { Cliente } from '../types/clientes';
 import { generateClienteId, hasClienteRegistros } from '../utils/clientesUtils';
 
-const STORAGE_KEY = 'clientes';
-
 export const useClientes = () => {
-  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [showInactivos, setShowInactivos] = useState(true);
 
-  // Cargar clientes desde localStorage
-  useEffect(() => {
-    const clientesData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    if (clientesData.length === 0) {
-      initializeWithDefaultData();
-    } else {
-      // Migrar datos antiguos si es necesario
-      const clientesMigrados = clientesData.map((cliente: any) => ({
-        ...cliente,
-        activo: cliente.posibleBaja !== undefined ? !cliente.posibleBaja : (cliente.activo ?? true),
-        fechaRegistro: cliente.fechaRegistro || new Date().toISOString().split('T')[0]
-      }));
-      setClientes(clientesMigrados);
-    }
-  }, []);
+  // Cargar clientes desde Dexie en tiempo real
+  const clientes = useLiveQuery(() => db.clientes.toArray()) || [];
 
-  const initializeWithDefaultData = () => {
-    setClientes(CLIENTES_INICIALES);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(CLIENTES_INICIALES));
-  };
-
-  const saveToStorage = (newClientes: Cliente[]) => {
-    setClientes(newClientes);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newClientes));
-  };
-
-  const addCliente = (clienteData: Omit<Cliente, 'id' | 'fechaRegistro'>) => {
+  const addCliente = async (clienteData: Omit<Cliente, 'id' | 'fechaRegistro'>) => {
     const newCliente: Cliente = {
       id: generateClienteId(),
       ...clienteData,
       fechaRegistro: new Date().toISOString().split('T')[0]
     };
-    const updatedClientes = [...clientes, newCliente];
-    saveToStorage(updatedClientes);
+    await db.clientes.add(newCliente as any);
     return newCliente;
   };
 
-  const updateCliente = (clienteId: string, updatedData: Partial<Cliente>) => {
-    const updatedClientes = clientes.map(cliente =>
-      cliente.id === clienteId
-        ? { 
-            ...cliente, 
-            ...updatedData,
-            ultimaVisita: new Date().toISOString().split('T')[0]
-          }
-        : cliente
-    );
-    saveToStorage(updatedClientes);
+  const updateCliente = async (clienteId: string, updatedData: Partial<Cliente>) => {
+    await db.clientes.update(clienteId, {
+      ...updatedData,
+      ultimaVisita: new Date().toISOString().split('T')[0]
+    } as any);
   };
 
-  const deleteCliente = (clienteId: string): boolean => {
+  const deleteCliente = async (clienteId: string) => {
     // Verificar si el cliente tiene registros
     if (hasClienteRegistros(clienteId)) {
       const confirmarEliminacion = confirm(
@@ -69,9 +38,8 @@ export const useClientes = () => {
     } else {
       if (!confirm('¿Estás seguro de que quieres eliminar este cliente?')) return false;
     }
-    
-    const updatedClientes = clientes.filter(cliente => cliente.id !== clienteId);
-    saveToStorage(updatedClientes);
+
+    await db.clientes.delete(clienteId);
     return true;
   };
 

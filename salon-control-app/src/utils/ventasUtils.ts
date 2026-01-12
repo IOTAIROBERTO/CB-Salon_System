@@ -1,19 +1,20 @@
 import { Venta, VentaFormData, VentasStats, Item, Cliente } from '../types/ventas';
+import { formatCurrency } from './financialUtils';
 
 export const validateVentaForm = (formData: VentaFormData): string | null => {
   if (!formData.clienteId) {
     return 'Debes seleccionar un cliente';
   }
-  
+
   if (formData.items.length === 0) {
     return 'Debes agregar al menos un producto';
   }
-  
+
   const hasValidItems = formData.items.some(item => item.cantidad > 0);
   if (!hasValidItems) {
     return 'Debes especificar cantidades válidas para los productos';
   }
-  
+
   return null;
 };
 
@@ -31,15 +32,15 @@ export const generateVentaId = (): string => {
 export const calculateVentasStats = (ventas: Venta[]): VentasStats => {
   const totalVentas = ventas.length;
   const ingresosTotales = ventas.reduce((sum, venta) => sum + venta.total, 0);
-  
+
   // Ventas de hoy
   const hoy = new Date().toDateString();
-  const ventasHoy = ventas.filter(venta => 
+  const ventasHoy = ventas.filter(venta =>
     new Date(venta.fecha).toDateString() === hoy
   ).length;
-  
+
   const promedioVenta = totalVentas > 0 ? ingresosTotales / totalVentas : 0;
-  
+
   return {
     totalVentas,
     ingresosTotales,
@@ -50,7 +51,7 @@ export const calculateVentasStats = (ventas: Venta[]): VentasStats => {
 
 export const filterVentasBySearch = (ventas: Venta[], clientes: Cliente[], searchTerm: string): Venta[] => {
   if (!searchTerm) return ventas;
-  
+
   return ventas.filter((venta) => {
     const cliente = clientes.find((c) => c.id === venta.clienteId);
     return (cliente?.nombre?.toLowerCase() || '').includes(searchTerm.toLowerCase());
@@ -63,7 +64,7 @@ export const getClienteName = (clienteId: string, clientes: Cliente[]): string =
 };
 
 export const formatPrice = (price: number): string => {
-  return `$${price.toFixed(2)}`;
+  return formatCurrency(price);
 };
 
 export const formatDate = (dateString: string): string => {
@@ -78,8 +79,8 @@ export const loadDataFromStorage = () => {
 
     return {
       ventas: Array.isArray(ventasData) ? ventasData : [],
-      clientes: Array.isArray(clientesData) 
-        ? clientesData.filter((c: Cliente) => c.activo) 
+      clientes: Array.isArray(clientesData)
+        ? clientesData.filter((c: Cliente) => c.activo)
         : [],
       inventario: Array.isArray(inventarioData) ? inventarioData : []
     };

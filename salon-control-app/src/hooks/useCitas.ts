@@ -1,36 +1,25 @@
-// src/hooks/useCitas.ts - Versión actualizada con función reagendar
-import { useState, useEffect } from "react";
+// src/hooks/useCitas.ts - Versión migrada a Dexie
+import { useState, useMemo } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "../db/db";
 import { Cita, Cliente, Servicio } from "../types/citas";
 
 export default function useCitas() {
-  const [citas, setCitas] = useState<Cita[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [servicios, setServicios] = useState<Servicio[]>([]);
   const [modalState, setModalState] = useState<{ type: string; data?: Cita | null }>({
     type: "",
     data: null,
   });
 
-  // --- Lógica de inicialización ---
-  useEffect(() => {
-    const citasData = JSON.parse(localStorage.getItem("citas") || "[]");
-    const clientesData = JSON.parse(localStorage.getItem("clientes") || "[]");
-    const serviciosData = JSON.parse(localStorage.getItem("servicios") || "[]");
-
-    setCitas(citasData);
-    setClientes(clientesData.filter((c: Cliente) => c.activo));
-    setServicios(serviciosData);
-  }, []);
+  // --- Lógica de Real-time con Dexie ---
+  const citas = useLiveQuery(() => db.citas.toArray()) || [];
+  const clientes = useLiveQuery(() => db.clientes.toArray().then(arr => arr.filter(c => c.activo !== false) as unknown as Cliente[])) || [];
+  const servicios = useLiveQuery(() => db.servicios.toArray()) || [];
 
   // --- CRUD ---
-  const saveCita = (formData: any) => {
+  const saveCita = async (formData: any) => {
     if (formData.id) {
       // Modo edición: actualizar cita existente
-      const updatedCitas = citas.map((c) =>
-        c.id === formData.id ? { ...c, ...formData } : c
-      );
-      setCitas(updatedCitas);
-      localStorage.setItem("citas", JSON.stringify(updatedCitas));
+      await db.citas.update(formData.id, formData);
     } else {
       // Modo creación: nueva cita
       const newCita: Cita = {
@@ -38,82 +27,71 @@ export default function useCitas() {
         ...formData,
         estado: "pendiente",
       };
-      const updatedCitas = [...citas, newCita];
-      setCitas(updatedCitas);
-      localStorage.setItem("citas", JSON.stringify(updatedCitas));
+      await db.citas.add(newCita);
     }
   };
 
-  const deleteCita = (id: string) => {
+  const deleteCita = async (id: string) => {
     if (!confirm('¿Estás seguro de que quieres eliminar esta cita?')) {
       return false;
     }
-    
-    const updatedCitas = citas.filter((c) => c.id !== id);
-    setCitas(updatedCitas);
-    localStorage.setItem("citas", JSON.stringify(updatedCitas));
+    await db.citas.delete(id);
     return true;
   };
 
-  const changeEstadoCita = (id: string, newEstado: Cita["estado"]) => {
-    const updatedCitas = citas.map((c) =>
-      c.id === id ? { ...c, estado: newEstado } : c
-    );
-    setCitas(updatedCitas);
-    localStorage.setItem("citas", JSON.stringify(updatedCitas));
+  const changeEstadoCita = async (id: string, newEstado: Cita["estado"]) => {
+    await db.citas.update(id, { estado: newEstado });
   };
 
-  const updateAnticipo = (id: string, anticipoConfirmado: boolean, monto?: number) => {
-    const updatedCitas = citas.map((c) =>
-      c.id === id ? { ...c, anticipoConfirmado, montoAnticipo: monto || 0 } : c
-    );
-    setCitas(updatedCitas);
-    localStorage.setItem("citas", JSON.stringify(updatedCitas));
-  };
-
-  // ✅ FUNCIÓN ACTUALIZADA: completarCita con nuevo sistema de redondeo y propina
-  const completarCita = (citaId: string, precioFinal: number, metodoPago: string, notas: string, datosCompletos?: any) => {
-    const updatedCitas = citas.map((c) => {
-      if (c.id === citaId) {
-        return {
-          ...c,
-          // Si se cambió el servicio principal, actualizarlo
-          servicioId: datosCompletos?.servicioSeleccionado || c.servicioId,
-          estado: "completada" as const,
-          precioFinal,
-          metodoPago,
-          notas: notas || c.notas,
-          // Actualizar anticipo si fue modificado en el CobroModal
-          montoAnticipo: datosCompletos?.anticipoRecibido || c.montoAnticipo,
-          anticipoConfirmado: true,
-          serviciosAdicionales: datosCompletos?.serviciosAdicionales || [],
-          
-          // ✅ NUEVOS CAMPOS DEL SISTEMA ACTUALIZADO
-          descuentoAplicado: datosCompletos?.descuento || 0,
-          subtotalOriginal: datosCompletos?.subtotalServicios || precioFinal,
-          montoDescuento: datosCompletos?.montoDescuento || 0,
-          subtotalConDescuento: datosCompletos?.subtotalConDescuento || precioFinal,
-          montoRedondeo: datosCompletos?.montoRedondeo || 0,
-          propina: datosCompletos?.propina || 0,
-          
-          saldoPendiente: 0, // Las citas completadas no tienen saldo pendiente
-          fechaCompletada: new Date().toISOString(),
-        };
-      }
-      return c;
+  const updateAnticipo = async (id: string, anticipoConfirmado: boolean, monto?: number) => {
+    await db.citas.update(id, {
+      anticipoConfirmado,
+      montoAnticipo: monto || 0
     });
-    
-    setCitas(updatedCitas);
-    localStorage.setItem("citas", JSON.stringify(updatedCitas));
   };
 
-  // ✅ NUEVA FUNCIÓN: reagendarCita específica
-  const reagendarCita = (citaId: string, nuevaFecha: string, nuevaHora: string) => {
-    const updatedCitas = citas.map((c) =>
-      c.id === citaId ? { ...c, fecha: nuevaFecha, hora: nuevaHora } : c
-    );
-    setCitas(updatedCitas);
-    localStorage.setItem("citas", JSON.stringify(updatedCitas));
+  const completarCita = async (citaId: string, precioFinal: number, metodoPago: string, notas: string, datosCompletos?: any) => {
+    // Si datosCompletos es un array (como se envía desde CobroModal), tomamos el primer elemento
+    const info = Array.isArray(datosCompletos) ? datosCompletos[0] : datosCompletos;
+
+    await db.citas.update(citaId, {
+      servicioId: info?.servicioSeleccionado || undefined,
+      estado: "completada",
+      precioFinal,
+      metodoPago,
+      notas: notas || undefined,
+      montoAnticipo: info?.anticipoRecibido || undefined,
+      anticipoConfirmado: true,
+      serviciosAdicionales: info?.serviciosAdicionales || [],
+
+      descuentoAplicado: info?.descuento || 0,
+      subtotalOriginal: info?.subtotalServicios || precioFinal,
+      montoDescuento: info?.montoDescuento || 0,
+      subtotalConDescuento: info?.subtotalConDescuento || precioFinal,
+      montoRedondeo: info?.montoRedondeo || 0,
+      propina: info?.propina || 0,
+
+      saldoPendiente: 0,
+      fechaCompletada: new Date().toISOString(),
+    });
+
+    // Registrar también como venta para el historial de ingresos
+    const cita = await db.citas.get(citaId);
+    if (cita) {
+      await db.ventas.add({
+        id: `vnt_cita_${citaId}`,
+        fecha: new Date().toISOString(),
+        clienteId: cita.clienteId,
+        servicioId: cita.servicioId,
+        total: precioFinal,
+        metodoPago: metodoPago,
+        empleadoId: cita.empleadoIds?.[0] // Tomamos el primer empleado para la comisión de venta de producto si aplica, pero aquí es servicio
+      });
+    }
+  };
+
+  const reagendarCita = async (citaId: string, nuevaFecha: string, nuevaHora: string) => {
+    await db.citas.update(citaId, { fecha: nuevaFecha, hora: nuevaHora });
   };
 
   const openModal = (type: string, data: Cita | null = null) =>

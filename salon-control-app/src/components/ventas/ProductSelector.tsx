@@ -1,4 +1,5 @@
 import { Item, VentaItem } from '../../types/ventas';
+import { formatCurrency } from '../../utils/financialUtils';
 
 interface ProductSelectorProps {
   inventario: Item[];
@@ -32,7 +33,7 @@ export default function ProductSelector({ inventario, selectedItems, onQuantityC
             <div className="flex-1">
               <p className="font-medium text-gray-900">{item.nombre}</p>
               <p className="text-xs text-gray-500">
-                ${item.precio.toFixed(2)} - Stock: {item.stock}
+                {formatCurrency(item.precio)} - Stock: {item.stock}
               </p>
             </div>
             <div className="flex items-center gap-2">

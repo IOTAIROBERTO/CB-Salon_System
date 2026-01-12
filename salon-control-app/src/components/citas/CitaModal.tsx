@@ -2,24 +2,30 @@
 import { X, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Cliente, Servicio, Cita } from "../../types/citas";
-import { 
-  obtenerFechaMinima, 
-  validarFechaHora 
+import {
+  obtenerFechaMinima,
+  validarFechaHora
 } from "../../utils/dateValidation";
 import TimeSelector from "./TimeSelector";
+
+import { db } from "../../db/db";
+import { useLiveQuery } from "dexie-react-hooks";
 
 interface CitaModalProps {
   clientes: Cliente[];
   servicios: Servicio[];
   onClose: () => void;
-  onSave: (formData: Omit<Cita, "id"> | { id: string; [key: string]: any }) => void;
+  onSave: (formData: Omit<Cita, "id"> | { id: string;[key: string]: any }) => void;
   citaEdit?: Cita | null;
 }
 
 export default function CitaModal({ clientes, servicios, onClose, onSave, citaEdit }: CitaModalProps) {
+  const empleados = useLiveQuery(() => db.empleados.toArray())?.filter(e => e.activo) || [];
+
   const [formData, setFormData] = useState({
     clienteId: citaEdit?.clienteId || "",
     servicioId: citaEdit?.servicioId || "",
+    empleadoIds: citaEdit?.empleadoIds || [],
     fecha: citaEdit?.fecha || "",
     hora: citaEdit?.hora || "",
     notas: citaEdit?.notas || "",
@@ -66,7 +72,7 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
   // Calcular hora mínima si es hoy
   const getMinTime = () => {
     if (!formData.fecha) return undefined;
-    
+
     const today = new Date().toISOString().split('T')[0];
     if (formData.fecha === today) {
       const now = new Date();
@@ -77,11 +83,11 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
     return undefined;
   };
 
-  const isValid = formData.clienteId && 
-                  formData.servicioId && 
-                  formData.fecha && 
-                  formData.hora && 
-                  !errorFechaHora;
+  const isValid = formData.clienteId &&
+    formData.servicioId &&
+    formData.fecha &&
+    formData.hora &&
+    !errorFechaHora;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -91,7 +97,7 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
             <h2 className="text-xl font-semibold text-gray-900">
               {citaEdit ? "Editar Cita" : "Nueva Cita"}
             </h2>
-            <button 
+            <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
             >
@@ -139,6 +145,34 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
             </select>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Empleados asignados (Participan en la comisión)
+            </label>
+            <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-lg border-2 border-gray-200">
+              {empleados.map((emp: any) => (
+                <label key={emp.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.empleadoIds.includes(emp.id)}
+                    onChange={(e) => {
+                      const newIds = e.target.checked
+                        ? [...formData.empleadoIds, emp.id]
+                        : formData.empleadoIds.filter(id => id !== emp.id);
+                      setFormData({ ...formData, empleadoIds: newIds });
+                    }}
+                    className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                  />
+                  <span className="text-sm text-gray-700">{emp.nombre}</span>
+                </label>
+              ))}
+              {empleados.length === 0 && (
+                <div className="col-span-2 text-xs text-gray-500 italic">No hay empleados activos registrados</div>
+              )}
+            </div>
+            <p className="text-[10px] text-gray-500 mt-1">La comisión se dividirá equitativamente entre los seleccionados</p>
+          </div>
+
           {/* Selector de fecha */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -149,11 +183,10 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
               value={formData.fecha}
               onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
               min={obtenerFechaMinima()}
-              className={`w-full border-2 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ${
-                errorFechaHora && formData.fecha 
-                  ? 'border-red-500 focus:ring-red-500' 
-                  : 'border-gray-300 focus:ring-purple-500 focus:border-transparent'
-              }`}
+              className={`w-full border-2 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ${errorFechaHora && formData.fecha
+                ? 'border-red-500 focus:ring-red-500'
+                : 'border-gray-300 focus:ring-purple-500 focus:border-transparent'
+                }`}
             />
             {formData.fecha && (
               <p className="text-xs text-gray-500 mt-1">
@@ -189,7 +222,7 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
               </label>
               <select
                 value={formData.estado}
-                onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, estado: e.target.value as any })}
                 className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="pendiente">Pendiente</option>
@@ -218,8 +251,8 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
         {/* Botones de acción */}
         <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 rounded-b-lg">
           <div className="flex flex-col sm:flex-row justify-end gap-2">
-            <button 
-              onClick={onClose} 
+            <button
+              onClick={onClose}
               className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
             >
               Cancelar
@@ -227,11 +260,10 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
             <button
               onClick={handleSave}
               disabled={!isValid}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                isValid 
-                  ? "bg-purple-600 text-white hover:bg-purple-700 shadow-md hover:shadow-lg" 
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${isValid
+                ? "bg-purple-600 text-white hover:bg-purple-700 shadow-md hover:shadow-lg"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
               title={!isValid && errorFechaHora ? errorFechaHora : ''}
             >
               {citaEdit ? "Actualizar" : "Guardar"} Cita

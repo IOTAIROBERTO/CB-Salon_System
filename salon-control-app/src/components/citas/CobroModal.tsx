@@ -3,10 +3,13 @@ import { X, Plus, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { Cita, Servicio } from "../../types/citas";
 import ResumenCobro from "./ResumenCobro";
-import { 
-  calcularTotalFinal, 
-  formatCurrency 
-} from "../../utils/discountUtils";
+import {
+  calculateChargeBreakdown,
+  calculateCommission,
+  formatCurrency
+} from "../../utils/financialUtils";
+import { db } from "../../db/db";
+import { useLiveQuery } from "dexie-react-hooks";
 
 interface CobroModalProps {
   cita: Cita;
@@ -25,11 +28,11 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   // Estado para el servicio seleccionado (inicialmente el servicio original de la cita)
   const [servicioSeleccionadoId, setServicioSeleccionadoId] = useState(cita.servicioId);
   const [serviciosAdicionales, setServiciosAdicionales] = useState<ServicioAdicional[]>([]);
-  
+
   // Estados para descuentos y propina
   const [porcentajeSeleccionado, setPorcentajeSeleccionado] = useState(0);
   const [propina, setPropina] = useState(0);
-  
+
   const [anticipoRecibido, setAnticipoRecibido] = useState(cita.montoAnticipo || 0);
   const [metodoPago, setMetodoPago] = useState("");
   const [notas, setNotas] = useState("");
@@ -40,15 +43,27 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   const servicioActual = servicios.find((s) => s.id === servicioSeleccionadoId);
 
   // Cálculos base
-  const subtotalServicios = (servicioActual?.precioSugerido || 0) + 
+  const subtotalServicios = (servicioActual?.precioSugerido || 0) +
     serviciosAdicionales.reduce((sum, s) => sum + s.precio, 0);
-  
-  // Calcular todos los valores finales
-  const calculoFinal = calcularTotalFinal(
-    subtotalServicios, 
-    porcentajeSeleccionado, 
+
+  // Cálculos base usando la nueva utilidad financiera
+  const calculoFinal = calculateChargeBreakdown(
+    subtotalServicios,
+    porcentajeSeleccionado,
     propina,
     anticipoRecibido
+  );
+
+  // Obtener empleados para el desglose de comisiones
+  const empleadosArray = useLiveQuery(() => db.empleados.toArray()) || [];
+  const empleadosAsignados = empleadosArray.filter(e => cita.empleadoIds?.includes(e.id));
+
+  // Calcular desglose de comisiones
+  const comisionInfo = calculateCommission(
+    calculoFinal.subtotalConDescuento, // La comisión se calcula sobre el precio con descuento
+    empleadosAsignados.length,
+    servicioActual?.comision,
+    empleadosAsignados[0]?.porcentajeComision
   );
 
   const agregarServicio = (servicio: Servicio) => {
@@ -76,9 +91,9 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   const confirmarCompletado = () => {
     // El precio final incluye todo: saldo + redondeo + propina
     const precioFinalCompleto = calculoFinal.subtotalConDescuento + calculoFinal.montoRedondeo + calculoFinal.propina;
-    
+
     // Incluir toda la información del servicio modificado y cálculos
-    const datosCompletos = {
+    const datosCompletos: any = {
       servicioSeleccionado: servicioSeleccionadoId,
       serviciosAdicionales: serviciosAdicionales,
       descuento: calculoFinal.descuentoPorcentaje,
@@ -91,8 +106,10 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
       porcentajeOriginal: porcentajeSeleccionado,
       subtotalConDescuento: calculoFinal.subtotalConDescuento
     };
-    
-    onCompletar(cita.id, precioFinalCompleto, metodoPago, notas, datosCompletos);
+
+    // Convertir a array si es lo que espera onCompletar (aunque parece que espera un objeto según el nombre de la prop en CobroModalProps)
+    // Pero la firma dice serviciosAdicionales?: any[]
+    onCompletar(cita.id, precioFinalCompleto, metodoPago, notas, [datosCompletos]);
     onClose();
   };
 
@@ -144,7 +161,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
           </div>
 
           <div className="flex justify-end gap-2">
-            <button 
+            <button
               onClick={cancelarCompletado}
               className="px-4 py-2 border rounded hover:bg-gray-50"
             >
@@ -189,7 +206,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                     <Plus size={14} />
                     Añadir
                   </button>
-                  
+
                   {showServiciosDropdown && (
                     <div className="absolute right-0 mt-1 w-64 bg-white border rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
                       {servicios
@@ -208,7 +225,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                   )}
                 </div>
               </div>
-              
+
               {/* Servicio principal - Editable */}
               <div className="bg-gray-50 p-3 rounded-lg mb-2">
                 <div className="flex justify-between items-center">
@@ -301,7 +318,6 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
             </div>
           </div>
 
-          {/* Columna derecha: Resumen de cobro */}
           <div>
             <ResumenCobro
               subtotalServicios={subtotalServicios}
@@ -312,12 +328,36 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
               onPorcentajeChange={setPorcentajeSeleccionado}
               onPropinaChange={setPropina}
             />
+
+            {/* Desglose de Ganancias Empleados */}
+            <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-100">
+              <h3 className="text-sm font-bold text-purple-900 mb-3 flex items-center justify-between">
+                <span>Ganancias Empleados</span>
+                <span className="text-xs font-normal text-purple-600">Comisión: {comisionInfo.percentageUsed}%</span>
+              </h3>
+              <div className="space-y-2">
+                {empleadosAsignados.length > 0 ? (
+                  empleadosAsignados.map(emp => (
+                    <div key={emp.id} className="flex justify-between items-center text-sm">
+                      <span className="text-gray-700">{emp.nombre}</span>
+                      <span className="font-bold text-purple-700">{formatCurrency(comisionInfo.perEmployeeCommission)}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-orange-600 italic">No hay empleados asignados para comisión</div>
+                )}
+                <div className="pt-2 border-t border-purple-200 flex justify-between items-center font-bold text-purple-900">
+                  <span>Total Comisiones</span>
+                  <span>{formatCurrency(comisionInfo.totalCommission)}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="flex justify-end gap-2 mt-6 pt-6 border-t">
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="px-4 py-2 border rounded hover:bg-gray-50"
           >
             Cancelar
@@ -325,11 +365,10 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
           <button
             onClick={handleCompletar}
             disabled={!metodoPago}
-            className={`px-4 py-2 rounded ${
-              metodoPago
-                ? "bg-green-600 text-white hover:bg-green-700" 
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
+            className={`px-4 py-2 rounded ${metodoPago
+              ? "bg-green-600 text-white hover:bg-green-700"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              }`}
           >
             Completar Cita
           </button>

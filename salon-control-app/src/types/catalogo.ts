@@ -3,12 +3,14 @@ export interface Servicio {
   nombre: string;
   precioSugerido: number;
   anticipoSugerido: number;
+  comision?: number;
 }
 
 export interface ServicioFormData {
   nombre: string;
   precioSugerido: number;
   anticipoSugerido: number;
+  comision?: number;
 }
 
 export const SERVICIOS_INICIALES: Servicio[] = [

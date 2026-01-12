@@ -30,7 +30,7 @@ interface WhatsAppBusinessConfig {
 class WhatsAppService {
   private twilioConfig: TwilioConfig;
   private whatsappBusinessConfig: WhatsAppBusinessConfig;
-  private salonInfo = { 
+  private salonInfo = {
     nombre: 'Cristina Borquez Beauty Salon',
     telefono: '+52 1 662 341 9038',
     direccion: 'Saturnino Campoy y República de Panamá 83170 Hermosillo, Mexico',
@@ -56,7 +56,7 @@ class WhatsAppService {
   private formatPhoneNumber(phone: string): string {
     // Remover espacios, guiones y paréntesis
     let cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
-    
+
     // Si no empieza con +, asumir que es México (+52)
     if (!cleanPhone.startsWith('+')) {
       if (cleanPhone.startsWith('52')) {
@@ -67,7 +67,7 @@ class WhatsAppService {
         cleanPhone = '+52' + cleanPhone;
       }
     }
-    
+
     return cleanPhone;
   }
 
@@ -202,10 +202,10 @@ Si deseas reagendar, no dudes en contactarnos.
       const formattedPhone = this.formatPhoneNumber(phone).replace('+', '');
       const encodedMessage = encodeURIComponent(message);
       const whatsappURL = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
-      
+
       // Abrir en nueva pestaña
       window.open(whatsappURL, '_blank');
-      
+
       return true;
     } catch (error) {
       console.error('Error opening WhatsApp Web:', error);
@@ -220,9 +220,9 @@ Si deseas reagendar, no dudes en contactarnos.
 
       // Por ahora solo usar WhatsApp Web para desarrollo
       const webSuccess = this.sendWithWhatsAppWeb(messageData.to, message);
-      return { 
-        success: webSuccess, 
-        method: webSuccess ? 'WhatsApp Web' : 'Failed' 
+      return {
+        success: webSuccess,
+        method: webSuccess ? 'WhatsApp Web' : 'Failed'
       };
 
     } catch (error) {
@@ -251,12 +251,12 @@ Si deseas reagendar, no dudes en contactarnos.
       }
 
       const formatted = this.formatPhoneNumber(phone);
-      
+
       // Validaciones básicas
       if (formatted.length < 10) {
         return { isValid: false, formatted: '', error: 'Número muy corto' };
       }
-      
+
       if (formatted.length > 15) {
         return { isValid: false, formatted: '', error: 'Número muy largo' };
       }
@@ -313,7 +313,38 @@ Si deseas reagendar, no dudes en contactarnos.
 
     return await this.sendMessage(testMessage);
   }
+  // Enviar Cotización
+  async sendQuote(phone: string, clientName: string, items: { nombre: string; precio: number }[]): Promise<{ success: boolean; method: string }> {
+    const total = items.reduce((sum, item) => sum + item.precio, 0);
+    const itemList = items.map(item => `• ${item.nombre}: $${item.precio}`).join('\n');
+
+    const message = `
+📊 *Cotización Solicitada*
+
+Hola ${clientName} 👋, aquí tienes la cotización solicitada:
+
+${itemList}
+
+💰 *Total: $${total}*
+
+📍 *${this.salonInfo.nombre}*
+${this.salonInfo.direccion}
+
+📞 ${this.salonInfo.telefono}
+    `.trim();
+
+    return await this.sendWithWhatsAppWeb(phone, message) ? { success: true, method: 'WhatsApp Web' } : { success: false, method: 'Error' };
+  }
+
+  // Generar enlace para que el cliente agende (Book via WhatsApp)
+  getBookingLink(serviceName?: string): string {
+    const phone = this.salonInfo.telefono.replace(/[\s\-\(\)\+]/g, ''); // Clean salon phone
+    const text = serviceName
+      ? `Hola, me gustaría agendar una cita para: ${serviceName}`
+      : `Hola, me gustaría agendar una cita.`;
+
+    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+  }
 }
 
-// Crear instancia singleton
 export const whatsappService = new WhatsAppService();

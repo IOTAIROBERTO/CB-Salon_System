@@ -1,34 +1,50 @@
-import { useState, useEffect } from 'react';
-import { Venta, Cliente, Item } from '../types/ventas';
-import { loadDataFromStorage } from '../utils/ventasUtils';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/db';
+import { Venta } from '../types/ventas';
 
 export const useVentas = () => {
-  const [ventas, setVentas] = useState<Venta[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [inventario, setInventario] = useState<Item[]>([]);
+  // Cargar datos desde Dexie en tiempo real
+  const rawVentas = useLiveQuery(() => db.ventas.toArray()) || [];
+  const rawClientes = useLiveQuery(() => db.clientes.toArray()) || [];
+  const rawInventario = useLiveQuery(() => db.inventario.toArray()) || [];
 
-  // Cargar datos desde localStorage
-  useEffect(() => {
-    const { ventas: ventasData, clientes: clientesData, inventario: inventarioData } = loadDataFromStorage();
-    setVentas(ventasData);
-    setClientes(clientesData);
-    setInventario(inventarioData);
-  }, []);
+  // Normalizar datos para la UI (tipos en src/types/ventas.ts)
+  const ventas: any[] = rawVentas.map(v => ({
+    ...v,
+    items: v.productos?.map(p => ({
+      itemId: p.productoId,
+      cantidad: p.cantidad
+    })) || []
+  }));
 
-  const addVenta = (nuevaVenta: Venta) => {
-    const updatedVentas = [...ventas, nuevaVenta];
-    setVentas(updatedVentas);
-    localStorage.setItem('ventas', JSON.stringify(updatedVentas));
+  const clientes: any[] = rawClientes.map(c => ({
+    ...c,
+    activo: c.activo ?? true
+  }));
+
+  const inventario: any[] = rawInventario.map(p => ({
+    ...p,
+    stock: p.cantidad
+  }));
+
+  const addVenta = async (nuevaVenta: any) => {
+    // Convertir de UI a DB format
+    const dbVenta = {
+      ...nuevaVenta,
+      productos: nuevaVenta.items?.map((i: any) => ({
+        productoId: i.itemId,
+        cantidad: i.cantidad,
+        precio: 0 // Se calculará en el proceso de venta o se guardará según se necesite
+      }))
+    };
+    await db.ventas.add(dbVenta);
   };
 
-  const deleteVenta = (ventaId: string): boolean => {
+  const deleteVenta = async (ventaId: string) => {
     if (!confirm('¿Estás seguro de que quieres eliminar esta venta?')) {
       return false;
     }
-    
-    const updatedVentas = ventas.filter(v => v.id !== ventaId);
-    setVentas(updatedVentas);
-    localStorage.setItem('ventas', JSON.stringify(updatedVentas));
+    await db.ventas.delete(ventaId);
     return true;
   };
 

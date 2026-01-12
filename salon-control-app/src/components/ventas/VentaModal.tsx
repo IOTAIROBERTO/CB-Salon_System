@@ -1,7 +1,11 @@
 import { X } from 'lucide-react';
+import { Plus, Trash2, Search, User, Package, Calculator, ShoppingCart, Tag } from "lucide-react";
+import { formatCurrency } from "../../utils/financialUtils";
 import { VentaFormData, Cliente, Item, Venta } from '../../types/ventas';
 import { validateVentaForm, calculateVentaTotal, generateVentaId } from '../../utils/ventasUtils';
 import ProductSelector from './ProductSelector';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db/db';
 
 interface VentaModalProps {
   isOpen: boolean;
@@ -14,21 +18,23 @@ interface VentaModalProps {
   onClose: () => void;
 }
 
-export default function VentaModal({ 
-  isOpen, 
-  ventaData, 
-  clientes, 
+export default function VentaModal({
+  isOpen,
+  ventaData,
+  clientes,
   inventario,
   updateFormData,
   updateItemQuantity,
   onSave,
-  onClose 
+  onClose
 }: VentaModalProps) {
   if (!isOpen) return null;
 
+  const empleados = useLiveQuery(() => db.empleados.toArray())?.filter(e => e.activo) || [];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validateVentaForm(ventaData);
     if (validationError) {
       alert(validationError);
@@ -36,10 +42,11 @@ export default function VentaModal({
     }
 
     const total = calculateVentaTotal(ventaData.items, inventario);
-    
+
     const nuevaVenta: Venta = {
       id: generateVentaId(),
       clienteId: ventaData.clienteId,
+      empleadoId: ventaData.empleadoId,
       items: ventaData.items,
       total,
       fecha: new Date().toISOString(),
@@ -58,7 +65,7 @@ export default function VentaModal({
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Registrar Nueva Venta</h2>
-            <button 
+            <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 p-1"
             >
@@ -69,23 +76,43 @@ export default function VentaModal({
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
               {/* Seleccionar cliente */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Cliente *
-                </label>
-                <select
-                  value={ventaData.clienteId}
-                  onChange={(e) => updateFormData('clienteId', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  required
-                >
-                  <option value="">Seleccionar cliente</option>
-                  {clientes.map((cliente) => (
-                    <option key={cliente.id} value={cliente.id}>
-                      {cliente.nombre}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cliente *
+                  </label>
+                  <select
+                    value={ventaData.clienteId}
+                    onChange={(e) => updateFormData('clienteId', e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Seleccionar cliente</option>
+                    {clientes.map((cliente) => (
+                      <option key={cliente.id} value={cliente.id}>
+                        {cliente.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Empleado (Comisión)
+                  </label>
+                  <select
+                    value={ventaData.empleadoId || ''}
+                    onChange={(e) => updateFormData('empleadoId', e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="">Sin asignar</option>
+                    {empleados.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.nombre} ({emp.porcentajeComision}%)
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Seleccionar productos */}
@@ -100,8 +127,8 @@ export default function VentaModal({
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-gray-700">Total:</span>
-                    <span className="text-lg font-bold text-green-600">
-                      ${total.toFixed(2)}
+                    <span className="font-bold text-lg text-purple-600">
+                      {formatCurrency(total)}
                     </span>
                   </div>
                   <div className="text-sm text-gray-500 mt-1">

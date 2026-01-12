@@ -1,22 +1,23 @@
 import { Producto, ProductoFormData, StockMovimiento, InventarioStats, MovimientoHistorial } from '../types/inventario';
+import { formatCurrency } from './financialUtils';
 
 export const validateProductoForm = (formData: ProductoFormData): string | null => {
   if (!formData.nombre.trim()) {
     return 'El nombre del producto es obligatorio';
   }
-  
+
   if (formData.precio <= 0) {
     return 'El precio debe ser mayor a 0';
   }
-  
+
   if (!formData.categoria.trim()) {
     return 'La categoría es obligatoria';
   }
-  
+
   if (formData.stockMinimo < 0) {
     return 'El stock mínimo no puede ser negativo';
   }
-  
+
   return null;
 };
 
@@ -24,11 +25,11 @@ export const validateStockForm = (stockData: StockMovimiento): string | null => 
   if (stockData.cantidad <= 0) {
     return 'La cantidad debe ser mayor a 0';
   }
-  
+
   if (!stockData.motivo.trim()) {
     return 'El motivo es obligatorio';
   }
-  
+
   return null;
 };
 
@@ -61,7 +62,7 @@ export const getStockColor = (producto: Producto): string => {
 };
 
 export const calculateNewStock = (currentStock: number, movement: StockMovimiento): number => {
-  return movement.operacion === 'suma' 
+  return movement.operacion === 'suma'
     ? currentStock + movement.cantidad
     : Math.max(0, currentStock - movement.cantidad);
 };
@@ -91,7 +92,7 @@ export const saveMovimientoHistorial = (movimiento: MovimientoHistorial): void =
 };
 
 export const formatPrice = (price: number): string => {
-  return `$${price.toLocaleString()}`;
+  return formatCurrency(price);
 };
 
 export const willBeStockBajo = (producto: Producto, cantidadARestar: number): boolean => {

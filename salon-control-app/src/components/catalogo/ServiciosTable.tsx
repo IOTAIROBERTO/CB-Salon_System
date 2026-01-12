@@ -29,6 +29,7 @@ export default function ServiciosTable({ servicios, onEdit, onDelete }: Servicio
             <th className="p-4 text-left font-semibold text-gray-900">Servicio</th>
             <th className="p-4 text-left font-semibold text-gray-900">Precio Sugerido</th>
             <th className="p-4 text-left font-semibold text-gray-900">Anticipo Sugerido</th>
+            <th className="p-4 text-left font-semibold text-gray-900">Comisión (%)</th>
             <th className="p-4 text-left font-semibold text-gray-900">Acciones</th>
           </tr>
         </thead>

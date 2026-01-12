@@ -4,7 +4,8 @@ import { VentaFormData, VentaItem } from '../types/ventas';
 const INITIAL_FORM_DATA: VentaFormData = {
   clienteId: '',
   items: [],
-  notas: ''
+  notas: '',
+  empleadoId: ''
 };
 
 export const useVentaModal = () => {

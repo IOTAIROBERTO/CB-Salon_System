@@ -55,6 +55,8 @@ export interface ReportData {
   ingresosCitas: number;
   ingresosVentas: number;
   ingresosTotales: number;
+  gastos: number;
+  gananciaNeta: number;
   servicios: number;
   ventasProductos: number;
 }
@@ -63,6 +65,8 @@ export interface ReportStats {
   totalIngresos: number;
   totalIngresosCitas: number;
   totalIngresosVentas: number;
+  totalGastos: number;
+  gananciaNeta: number;
   saldosPendientes: number;
   citasCompletadas: number;
   totalVentas: number;

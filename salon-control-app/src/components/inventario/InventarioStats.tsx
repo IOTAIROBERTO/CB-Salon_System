@@ -1,5 +1,6 @@
 import { Package, TrendingDown } from 'lucide-react';
 import { InventarioStats as IInventarioStats } from '../../types/inventario';
+import { formatCurrency } from '../../utils/financialUtils';
 
 interface InventarioStatsProps {
   stats: IInventarioStats;
@@ -40,7 +41,7 @@ export default function InventarioStats({ stats }: InventarioStatsProps) {
           <div>
             <p className="text-sm text-gray-600">Valor Total</p>
             <p className="text-2xl font-bold text-green-600">
-              ${valorTotalInventario.toLocaleString()}
+              {formatCurrency(valorTotalInventario)}
             </p>
           </div>
           <span className="text-2xl">💰</span>

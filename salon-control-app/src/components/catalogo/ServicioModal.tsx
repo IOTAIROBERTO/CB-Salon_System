@@ -12,20 +12,20 @@ interface ServicioModalProps {
   onClose: () => void;
 }
 
-export default function ServicioModal({ 
-  isOpen, 
-  editingServicio, 
-  formData, 
+export default function ServicioModal({
+  isOpen,
+  editingServicio,
+  formData,
   updateFormData,
   onSave,
   onUpdate,
-  onClose 
+  onClose
 }: ServicioModalProps) {
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validateServicioForm(formData);
     if (validationError) {
       alert(validationError);
@@ -41,7 +41,7 @@ export default function ServicioModal({
       };
       onSave(newServicio);
     }
-    
+
     onClose();
   };
 
@@ -61,7 +61,7 @@ export default function ServicioModal({
             <X size={24} />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-6">
           <div className="space-y-4">
             <div>
@@ -77,7 +77,7 @@ export default function ServicioModal({
                 required
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Precio Sugerido *
@@ -96,7 +96,7 @@ export default function ServicioModal({
                 />
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Anticipo Sugerido
@@ -117,17 +117,39 @@ export default function ServicioModal({
                 Opcional. Puede dejarse en 0 si no requiere anticipo.
               </p>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Comisión Especial (%)
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={formData.comision || ''}
+                  onChange={(e) => updateFormData('comision', Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  min="0"
+                  max="100"
+                  step="1"
+                  placeholder="Ej: 40"
+                />
+                <span className="absolute right-3 top-2 text-gray-400">%</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Si se define, ignorará el % base del empleado asignado.
+              </p>
+            </div>
           </div>
 
           <div className="flex gap-3 mt-6">
-            <button 
+            <button
               type="button"
               onClick={onClose}
               className="flex-1 border border-gray-300 text-gray-700 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors duration-200"
             >
               Cancelar
             </button>
-            <button 
+            <button
               type="submit"
               className="flex-1 bg-purple-600 text-white rounded-lg px-4 py-2 hover:bg-purple-700 transition-colors duration-200 flex items-center justify-center gap-2"
             >

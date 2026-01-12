@@ -1,12 +1,13 @@
 // src/components/citas/ResumenCobro.tsx
-import React from 'react';
+
 import { Percent, Calculator, Gift } from 'lucide-react';
-import { 
-  CalculoFinal,
-  DESCUENTO_PORCENTAJE_OPTIONS,
+import {
+  ChargeBreakdown as CalculoFinal,
   formatCurrency,
   esDecenaExacta
-} from '../../utils/discountUtils';
+} from '../../utils/financialUtils';
+
+const DESCUENTO_PORCENTAJE_OPTIONS = [0, 5, 10, 15, 20, 25, 30, 40, 50, 100];
 
 interface ResumenCobroProps {
   subtotalServicios: number;
@@ -19,7 +20,6 @@ interface ResumenCobroProps {
 }
 
 export default function ResumenCobro({
-  subtotalServicios,
   porcentajeSeleccionado,
   propina,
   anticipo,
@@ -43,11 +43,10 @@ export default function ResumenCobro({
               key={porcentaje}
               type="button"
               onClick={() => onPorcentajeChange(porcentaje)}
-              className={`px-3 py-1 text-sm rounded transition-colors ${
-                porcentajeSeleccionado === porcentaje
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-3 py-1 text-sm rounded transition-colors ${porcentajeSeleccionado === porcentaje
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               {porcentaje}%
             </button>
@@ -86,7 +85,7 @@ export default function ResumenCobro({
           <Calculator size={16} />
           Desglose del cobro
         </h4>
-        
+
         <div className="space-y-2 text-sm">
           {/* Subtotal de servicios */}
           <div className="flex justify-between">

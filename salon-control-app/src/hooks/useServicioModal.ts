@@ -4,7 +4,8 @@ import { Servicio, ServicioFormData } from '../types/catalogo';
 const INITIAL_FORM_DATA: ServicioFormData = {
   nombre: '',
   precioSugerido: 0,
-  anticipoSugerido: 0
+  anticipoSugerido: 0,
+  comision: 0
 };
 
 export const useServicioModal = () => {
@@ -22,7 +23,8 @@ export const useServicioModal = () => {
     setFormData({
       nombre: servicio.nombre,
       precioSugerido: servicio.precioSugerido,
-      anticipoSugerido: servicio.anticipoSugerido
+      anticipoSugerido: servicio.anticipoSugerido,
+      comision: servicio.comision || 0
     });
     setEditingServicio(servicio);
     setIsModalOpen(true);

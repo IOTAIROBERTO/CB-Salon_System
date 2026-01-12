@@ -11,9 +11,9 @@ interface VentaCardProps {
 }
 
 export default function VentaCard({ venta, clientes, inventario, onDelete }: VentaCardProps) {
-  const handleDelete = () => {
-    const success = onDelete(venta.id);
-    if (success) {
+  const handleDelete = async () => {
+    const confirmed = await onDelete(venta.id);
+    if (confirmed) {
       alert('Venta eliminada exitosamente');
     }
   };
@@ -35,7 +35,7 @@ export default function VentaCard({ venta, clientes, inventario, onDelete }: Ven
     };
   };
 
-  const totalProductos = venta.items.reduce((sum, item) => sum + item.cantidad, 0);
+  const totalProductos = (venta.items || []).reduce((sum, item) => sum + item.cantidad, 0);
 
   return (
     <div className="bg-white rounded-lg shadow border p-4 hover:shadow-md transition-shadow">
@@ -76,7 +76,7 @@ export default function VentaCard({ venta, clientes, inventario, onDelete }: Ven
           Productos comprados:
         </h4>
         <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-          {venta.items.map((item, index) => {
+          {(venta.items || []).map((item, index) => {
             const detalles = getProductoDetails(item.itemId, item.cantidad);
             return (
               <div key={index} className="flex justify-between items-center text-sm">
@@ -92,7 +92,13 @@ export default function VentaCard({ venta, clientes, inventario, onDelete }: Ven
               </div>
             );
           })}
-          
+
+          {(!venta.items || venta.items.length === 0) && (
+            <div className="text-sm text-gray-500 italic pb-2">
+              Venta de servicio o sin productos detallados
+            </div>
+          )}
+
           {/* Total */}
           <div className="border-t border-gray-200 pt-2 mt-2">
             <div className="flex justify-between items-center">

@@ -19,6 +19,7 @@ export interface Servicio {
   duracionMinutos: number;
   categoria?: string;
   activo: boolean;
+  comision?: number;
 }
 
 export interface Cita {
@@ -38,6 +39,7 @@ export interface Cita {
     nombre: string;
     precio: number;
   }>;
+  empleadoIds?: string[];
   // Campos actualizados para el nuevo sistema de descuentos y redondeo
   descuentoAplicado?: number; // Porcentaje de descuento aplicado
   subtotalOriginal?: number; // Subtotal de servicios antes del descuento

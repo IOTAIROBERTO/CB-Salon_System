@@ -1,6 +1,7 @@
 import { Edit, Trash2, Package } from 'lucide-react';
 import { Producto } from '../../types/inventario';
 import { getStockColor } from '../../utils/inventarioUtils';
+import { formatCurrency } from '../../utils/financialUtils';
 
 interface ProductosTableProps {
   productos: Producto[];
@@ -10,9 +11,9 @@ interface ProductosTableProps {
 }
 
 export default function ProductosTable({ productos, onEdit, onEditStock, onDelete }: ProductosTableProps) {
-  const handleDelete = (producto: Producto) => {
-    const success = onDelete(producto.id);
-    if (success) {
+  const handleDelete = async (producto: Producto) => {
+    const confirmed = await onDelete(producto.id);
+    if (confirmed) {
       alert('Producto eliminado exitosamente');
     }
   };
@@ -72,7 +73,7 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <span className="text-lg font-semibold text-gray-900">
-                      ${producto.precio.toLocaleString()}
+                      {formatCurrency(producto.precio)}
                     </span>
                     <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                       Protegido
@@ -80,7 +81,7 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-lg font-semibold text-green-600">
-                  ${(producto.cantidad * producto.precio).toLocaleString()}
+                  {formatCurrency(producto.cantidad * producto.precio)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex gap-2">

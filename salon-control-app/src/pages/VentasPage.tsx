@@ -10,7 +10,7 @@ import VentaModal from '../components/ventas/VentaModal';
 export default function VentasPage() {
   // Custom hooks
   const { ventas, clientes, inventario, addVenta, deleteVenta } = useVentas();
-  
+
   const {
     isModalOpen,
     ventaData,
@@ -19,7 +19,7 @@ export default function VentasPage() {
     updateFormData,
     updateItemQuantity
   } = useVentaModal();
-  
+
   const { searchTerm, setSearchTerm, filteredVentas } = useVentasSearch(ventas, clientes);
 
   return (
@@ -44,13 +44,13 @@ export default function VentasPage() {
         <div className="bg-white p-4 rounded-lg shadow border">
           <div className="text-sm text-gray-600">Ingresos Totales</div>
           <div className="text-2xl font-bold text-green-600">
-            ${ventas.reduce((sum, v) => sum + v.total, 0).toLocaleString()}
+            ${ventas.reduce((sum, v) => sum + (v.total || 0), 0).toLocaleString()}
           </div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow border">
           <div className="text-sm text-gray-600">Promedio por Venta</div>
           <div className="text-2xl font-bold text-green-600">
-            ${ventas.length > 0 ? Math.round(ventas.reduce((sum, v) => sum + v.total, 0) / ventas.length).toLocaleString() : 0}
+            ${ventas.length > 0 ? Math.round(ventas.reduce((sum, v) => sum + (v.total || 0), 0) / ventas.length).toLocaleString() : 0}
           </div>
         </div>
       </div>
