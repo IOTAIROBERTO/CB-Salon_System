@@ -21,6 +21,18 @@ export interface Empleado {
     porcentajeComision: number; // 0-100
     activo: boolean;
     fechaContratacion: string;
+    cumple?: string; // YYYY-MM-DD
+    googleCalendarId?: string; // Specific calendar ID for this employee
+}
+
+export interface EmpleadoEvent {
+    id?: string;
+    empleadoId: string;
+    tipo: 'vacaciones' | 'dia_inhabit' | 'horario_especial' | 'apoyo';
+    fechaInicio: string;
+    fechaFin: string;
+    descripcion?: string;
+    googleEventId?: string;
 }
 
 export interface SalonDocument {
@@ -44,6 +56,16 @@ export interface AppSettings {
         templateId: string;
         publicKey: string;
     };
+    googleCredentials?: {
+        clientId: string;
+        apiKey: string;
+    };
+    // Respaldo automático: carpeta elegida por el usuario (el handle se guarda
+    // tal cual, IndexedDB lo clona) y fecha ISO del último respaldo escrito.
+    respaldoCarpeta?: FileSystemDirectoryHandle;
+    respaldoUltimo?: string;
+    // Qué lista de precios está activa: la de 2026 o la de enero de 2027.
+    listaPrecios?: '2026' | '2027';
 }
 
 export interface Cliente {
@@ -64,9 +86,27 @@ export interface Cita {
     servicioId: string;
     fecha: string;
     hora: string;
-    estado: 'confirmada' | 'pendiente' | 'cancelada' | 'completada';
+    estado: 'confirmada' | 'pendiente' | 'iniciada' | 'cancelada' | 'completada';
     notas?: string;
-    empleadoIds?: string[]; // Multiple assigned employees
+    montoAnticipo?: number;
+    anticipoConfirmado?: boolean;
+    precioFinal?: number;
+    metodoPago?: string;
+    serviciosAdicionales?: Array<{
+        servicioId: string;
+        nombre: string;
+        precio: number;
+    }>;
+    empleadoIds?: string[];
+    descuentoAplicado?: number;
+    subtotalOriginal?: number;
+    montoDescuento?: number;
+    subtotalConDescuento?: number;
+    montoRedondeo?: number;
+    propina?: number;
+    saldoPendiente?: number;
+    fechaCompletada?: string;
+    googleEventId?: string;
 }
 
 export interface Venta {
@@ -92,6 +132,12 @@ export interface Servicio {
     duracion: number;
     descripcion?: string;
     comision?: number;
+    categoria?: string;
+    // Precios de las dos listas, para cambiar de una a otra sin reimportar.
+    precio2026?: number;
+    anticipo2026?: number;
+    precio2027?: number;
+    anticipo2027?: number;
 }
 
 export interface Producto {
@@ -159,6 +205,7 @@ export class SalonDatabase extends Dexie {
     plantillas!: Table<EmailTemplate>;
     automatizaciones!: Table<AutomationRule>;
     gastos!: Table<Expense>;
+    empleadoEvents!: Table<EmpleadoEvent>;
 
     constructor() {
         super('BeautySalonDB');
@@ -189,6 +236,24 @@ export class SalonDatabase extends Dexie {
             empleados: 'id, nombre, activo',
             citas: 'id, clienteId, fecha, estado, empleadoId',
             ventas: 'id, fecha, clienteId, empleadoId'
+        });
+
+        // Version 4: Add employee events and birthday field
+        this.version(4).stores({
+            empleadoEvents: '++id, empleadoId, tipo, fechaInicio, fechaFin'
+        });
+
+        // Version 5: Google Calendar integration fields
+        this.version(5).stores({
+            empleados: 'id, nombre, activo, googleCalendarId',
+            citas: 'id, clienteId, fecha, estado, googleEventId'
+        });
+
+        // Version 6: Add googleEventId index to empleadoEvents
+        this.version(6).stores({
+            empleadoEvents: '++id, empleadoId, tipo, fechaInicio, googleEventId',
+            citas: 'id, clienteId, fecha, estado, googleEventId',
+            empleados: 'id, nombre, activo, googleCalendarId'
         });
     }
 }

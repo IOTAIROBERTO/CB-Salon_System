@@ -3,16 +3,21 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, Empleado } from '../db/db';
 import { Users, UserPlus, DollarSign, Trash2, Edit2, Search, X } from 'lucide-react';
 import { calculateCommission, formatCurrency } from '../utils/financialUtils';
+import { formatDate } from '../utils/clientesUtils';
+import { sinVentasEspejo } from '../utils/ventasUtils';
+import CalendarSection from '../components/empleados/CalendarSection';
 
 export default function EmpleadosPage() {
     const empleados = useLiveQuery(() => db.empleados.toArray());
     const citas = useLiveQuery(() => db.citas.toArray());
-    const ventas = useLiveQuery(() => db.ventas.toArray());
+    // Sin ventas espejo de citas: su comisión ya se paga en el bloque de citas
+    const ventas = sinVentasEspejo(useLiveQuery(() => db.ventas.toArray()) || []);
     const servicios = useLiveQuery(() => db.servicios.toArray());
 
     const [showModal, setShowModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedEmpleadoId, setSelectedEmpleadoId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'info' | 'calendar'>('info');
     const [dateRange, setDateRange] = useState({
         inicio: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
         fin: new Date().toISOString().split('T')[0]
@@ -25,7 +30,9 @@ export default function EmpleadosPage() {
         email: '',
         porcentajeComision: 30,
         activo: true,
-        fechaContratacion: new Date().toISOString().split('T')[0]
+        fechaContratacion: new Date().toISOString().split('T')[0],
+        cumple: '',
+        googleCalendarId: ''
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -44,9 +51,12 @@ export default function EmpleadosPage() {
             email: '',
             porcentajeComision: 30,
             activo: true,
-            fechaContratacion: new Date().toISOString().split('T')[0]
+            fechaContratacion: new Date().toISOString().split('T')[0],
+            cumple: '',
+            googleCalendarId: ''
         });
         setSelectedEmpleadoId(null);
+        setActiveTab('info');
     };
 
     const handleEdit = (emp: Empleado) => {
@@ -87,20 +97,23 @@ export default function EmpleadosPage() {
 
         empJobs.forEach((j: any) => {
             const s = servicios?.find(s => s.id === j.servicioId);
-            if (!s) return;
 
-            // Precio base del servicio + adicionales
-            const precioTotalServicio = (s as any).precioSugerido + (j.serviciosAdicionales?.reduce((sum: number, sa: any) => sum + sa.precio, 0) || 0);
+            // Base de comisión = lo realmente cobrado con descuento, igual que
+            // el desglose de CobroModal. Sin propina ni redondeo. Para citas
+            // anteriores a ese desglose se cae al precio de catálogo.
+            const precioCatalogo = ((s as any)?.precioSugerido || 0) +
+                (j.serviciosAdicionales?.reduce((sum: number, sa: any) => sum + sa.precio, 0) || 0);
+            const baseComision = j.subtotalConDescuento ?? j.subtotalOriginal ?? precioCatalogo;
 
             // Determinar % de comisión (prioridad al servicio)
             const comisionResult = calculateCommission(
-                precioTotalServicio,
+                baseComision,
                 j.empleadoIds?.length || 1,
-                (s as any).comision,
+                (s as any)?.comision,
                 emp.porcentajeComision
             );
 
-            totalServiciosGenerado += precioTotalServicio / (j.empleadoIds?.length || 1);
+            totalServiciosGenerado += baseComision / (j.empleadoIds?.length || 1);
             comisionServicios += comisionResult.perEmployeeCommission;
         });
 
@@ -164,6 +177,7 @@ export default function EmpleadosPage() {
                                 <tr>
                                     <th className="px-6 py-4">Empleado</th>
                                     <th className="px-6 py-4">Especialidad</th>
+                                    <th className="px-6 py-4">Cumpleaños</th>
                                     <th className="px-6 py-4">Comisión</th>
                                     <th className="px-6 py-4">Estado</th>
                                     <th className="px-6 py-4 text-right">Acciones</th>
@@ -177,6 +191,9 @@ export default function EmpleadosPage() {
                                             <div className="text-xs text-gray-500">{emp.telefono}</div>
                                         </td>
                                         <td className="px-6 py-4 border-b text-gray-600">{emp.especialidad || '-'}</td>
+                                        <td className="px-6 py-4 border-b text-gray-600">
+                                            {emp.cumple ? formatDate(emp.cumple) : '-'}
+                                        </td>
                                         <td className="px-6 py-4 border-b text-purple-600 font-semibold">{emp.porcentajeComision}%</td>
                                         <td className="px-6 py-4 border-b">
                                             <span className={`px-2 py-1 rounded-full text-xs ${emp.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -245,79 +262,143 @@ export default function EmpleadosPage() {
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="bg-purple-600 p-4 text-white flex justify-between items-center">
-                            <h3 className="text-lg font-bold">{selectedEmpleadoId ? 'Editar Empleado' : 'Registro de Empleado'}</h3>
-                            <button onClick={() => setShowModal(false)} className="hover:bg-purple-700 p-1 rounded-lg"><X size={20} /></button>
+                        <div className="bg-purple-600 px-4 pt-4 text-white">
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="text-lg font-bold">{selectedEmpleadoId ? 'Editar Empleado' : 'Registro de Empleado'}</h3>
+                                <button onClick={() => setShowModal(false)} className="hover:bg-purple-700 p-1 rounded-lg"><X size={20} /></button>
+                            </div>
+                            {selectedEmpleadoId && (
+                                <div className="flex gap-4 text-sm mt-2">
+                                    <button
+                                        onClick={() => setActiveTab('info')}
+                                        className={`pb-2 px-1 border-b-2 transition-colors ${activeTab === 'info' ? 'border-white font-bold' : 'border-transparent text-purple-200'}`}
+                                    >
+                                        Información
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('calendar')}
+                                        className={`pb-2 px-1 border-b-2 transition-colors ${activeTab === 'calendar' ? 'border-white font-bold' : 'border-transparent text-purple-200'}`}
+                                    >
+                                        Calendario / Días
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
-                                    <input
-                                        required
-                                        type="text"
-                                        className="w-full p-2.5 border rounded-xl"
-                                        value={formData.nombre}
-                                        onChange={e => setFormData({ ...formData, nombre: e.target.value })}
-                                    />
+                        {activeTab === 'info' ? (
+                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+                                        <input
+                                            required
+                                            type="text"
+                                            className="w-full p-2.5 border rounded-xl"
+                                            value={formData.nombre}
+                                            onChange={e => setFormData({ ...formData, nombre: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Especialidad</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Peluquería, Uñas..."
+                                            className="w-full p-2.5 border rounded-xl"
+                                            value={formData.especialidad}
+                                            onChange={e => setFormData({ ...formData, especialidad: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                                        <input
+                                            type="tel"
+                                            className="w-full p-2.5 border rounded-xl"
+                                            value={formData.telefono}
+                                            onChange={e => setFormData({ ...formData, telefono: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                        <input
+                                            type="email"
+                                            className="w-full p-2.5 border rounded-xl"
+                                            value={formData.email}
+                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Comisión (%)</label>
+                                        <input
+                                            required
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            className="w-full p-2.5 border rounded-xl"
+                                            value={formData.porcentajeComision}
+                                            onChange={e => setFormData({ ...formData, porcentajeComision: Number(e.target.value) })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Cumpleaños</label>
+                                        <input
+                                            type="date"
+                                            className="w-full p-2.5 border rounded-xl"
+                                            value={formData.cumple}
+                                            onChange={e => setFormData({ ...formData, cumple: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Contratación</label>
+                                        <input
+                                            type="date"
+                                            className="w-full p-2.5 border rounded-xl"
+                                            value={formData.fechaContratacion}
+                                            onChange={e => setFormData({ ...formData, fechaContratacion: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Google Calendar ID</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Nombre del calendario o ID"
+                                            className="w-full p-2.5 border rounded-xl"
+                                            value={formData.googleCalendarId}
+                                            onChange={e => setFormData({ ...formData, googleCalendarId: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.activo}
+                                                onChange={e => setFormData({ ...formData, activo: e.target.checked })}
+                                                className="rounded text-purple-600"
+                                            />
+                                            <span className="text-sm font-medium text-gray-700">Empleado Activo</span>
+                                        </label>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Especialidad</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Peluquería, Uñas..."
-                                        className="w-full p-2.5 border rounded-xl"
-                                        value={formData.especialidad}
-                                        onChange={e => setFormData({ ...formData, especialidad: e.target.value })}
-                                    />
+                                <div className="pt-4 flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowModal(false)}
+                                        className="flex-1 px-4 py-2.5 border rounded-xl hover:bg-gray-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 shadow-md"
+                                    >
+                                        Guardar Cambios
+                                    </button>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                                    <input
-                                        type="tel"
-                                        className="w-full p-2.5 border rounded-xl"
-                                        value={formData.telefono}
-                                        onChange={e => setFormData({ ...formData, telefono: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Comisión (%)</label>
-                                    <input
-                                        required
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        className="w-full p-2.5 border rounded-xl"
-                                        value={formData.porcentajeComision}
-                                        onChange={e => setFormData({ ...formData, porcentajeComision: Number(e.target.value) })}
-                                    />
-                                </div>
-                                <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Contratación</label>
-                                    <input
-                                        type="date"
-                                        className="w-full p-2.5 border rounded-xl"
-                                        value={formData.fechaContratacion}
-                                        onChange={e => setFormData({ ...formData, fechaContratacion: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div className="pt-4 flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="flex-1 px-4 py-2.5 border rounded-xl hover:bg-gray-50"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 shadow-md"
-                                >
-                                    Guardar
-                                </button>
-                            </div>
-                        </form>
+                            </form>
+                        ) : (
+                            <CalendarSection
+                                empleadoId={selectedEmpleadoId!}
+                                onClose={() => setShowModal(false)}
+                            />
+                        )}
                     </div>
                 </div>
             )}

@@ -7,13 +7,15 @@ import {
   ReportPeriod
 } from '../types/reportes';
 import { calculateReportStats, generateReportData } from '../utils/reportUtils';
+import { sinVentasEspejo } from '../utils/ventasUtils';
 
 export const useReportData = () => {
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('month');
 
   // Cargar datos desde Dexie en tiempo real
   const citas = useLiveQuery(() => db.citas.toArray()) || [];
-  const ventas = useLiveQuery(() => db.ventas.toArray()) || [];
+  // Las ventas espejo de citas se excluyen: su ingreso ya viene en `citas`
+  const ventas = sinVentasEspejo(useLiveQuery(() => db.ventas.toArray()) || []);
   const clientes = useLiveQuery(() => db.clientes.toArray()) || [];
   const catalogoServicios = useLiveQuery(() => db.servicios.toArray()) || [];
   const gastos = useLiveQuery(() => db.gastos.toArray()) || [];

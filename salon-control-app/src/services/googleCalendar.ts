@@ -24,45 +24,52 @@ export interface CalendarEvent {
   };
 }
 
+import { db } from '../db/db';
+
 class GoogleCalendarService {
   private gapi: any = null;
   private isSignedIn = false;
-  private clientId = '';
-  private apiKey = '';
   private discoveryDoc = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
   private scopes = 'https://www.googleapis.com/auth/calendar.events';
 
-  constructor() {
-    // Configuración temporal - puedes cambiar estas credenciales más tarde
-    this.clientId = '';
-    this.apiKey = '';
-  }
+  constructor() { }
 
   async initialize(): Promise<boolean> {
     try {
-      if (!this.clientId || !this.apiKey) {
-        console.log('Google Calendar credentials not configured - service disabled');
+      const config = await db.configuracion.get('settings');
+      const creds = config?.googleCredentials;
+
+      if (!creds?.clientId || !creds?.apiKey) {
+        console.log('Google Calendar credentials not configured');
         return false;
       }
 
-      // Cargar la API de Google
       await this.loadGoogleAPI();
-      
-      // Inicializar gapi
-      await this.gapi.load('client:auth2', async () => {
-        await this.gapi.client.init({
-          apiKey: this.apiKey,
-          clientId: this.clientId,
-          discoveryDocs: [this.discoveryDoc],
-          scope: this.scopes
+
+      return new Promise((resolve) => {
+        this.gapi.load('client:auth2', async () => {
+          try {
+            await this.gapi.client.init({
+              apiKey: creds.apiKey,
+              clientId: creds.clientId,
+              discoveryDocs: [this.discoveryDoc],
+              scope: this.scopes
+            });
+
+            const authInstance = this.gapi.auth2.getAuthInstance();
+            this.isSignedIn = authInstance.isSignedIn.get();
+
+            authInstance.isSignedIn.listen((status: boolean) => {
+              this.isSignedIn = status;
+            });
+
+            resolve(true);
+          } catch (e) {
+            console.error('Error init gapi client', e);
+            resolve(false);
+          }
         });
-
-        // Verificar si ya está autenticado
-        const authInstance = this.gapi.auth2.getAuthInstance();
-        this.isSignedIn = authInstance.isSignedIn.get();
       });
-
-      return true;
     } catch (error) {
       console.error('Error initializing Google Calendar API:', error);
       return false;
@@ -90,10 +97,7 @@ class GoogleCalendarService {
 
   async signIn(): Promise<boolean> {
     try {
-      if (!this.gapi) {
-        throw new Error('Google API not loaded');
-      }
-
+      if (!this.gapi) await this.initialize();
       const authInstance = this.gapi.auth2.getAuthInstance();
       await authInstance.signIn();
       this.isSignedIn = authInstance.isSignedIn.get();
@@ -120,15 +124,12 @@ class GoogleCalendarService {
     return this.isSignedIn;
   }
 
-  async createEvent(event: CalendarEvent): Promise<string | null> {
+  async createEvent(event: CalendarEvent, calendarId: string = 'primary'): Promise<string | null> {
     try {
-      if (!this.isSignedIn) {
-        console.log('Not signed in to Google Calendar');
-        return null;
-      }
+      if (!this.isSignedIn) return null;
 
       const response = await this.gapi.client.calendar.events.insert({
-        calendarId: 'primary',
+        calendarId: calendarId,
         resource: event
       });
 
@@ -139,15 +140,12 @@ class GoogleCalendarService {
     }
   }
 
-  async updateEvent(eventId: string, event: CalendarEvent): Promise<boolean> {
+  async updateEvent(eventId: string, event: CalendarEvent, calendarId: string = 'primary'): Promise<boolean> {
     try {
-      if (!this.isSignedIn) {
-        console.log('Not signed in to Google Calendar');
-        return false;
-      }
+      if (!this.isSignedIn) return false;
 
       await this.gapi.client.calendar.events.update({
-        calendarId: 'primary',
+        calendarId: calendarId,
         eventId: eventId,
         resource: event
       });
@@ -159,15 +157,12 @@ class GoogleCalendarService {
     }
   }
 
-  async deleteEvent(eventId: string): Promise<boolean> {
+  async deleteEvent(eventId: string, calendarId: string = 'primary'): Promise<boolean> {
     try {
-      if (!this.isSignedIn) {
-        console.log('Not signed in to Google Calendar');
-        return false;
-      }
+      if (!this.isSignedIn) return false;
 
       await this.gapi.client.calendar.events.delete({
-        calendarId: 'primary',
+        calendarId: calendarId,
         eventId: eventId
       });
 
@@ -178,19 +173,20 @@ class GoogleCalendarService {
     }
   }
 
-  // Convertir cita a evento de Google Calendar
   citaToCalendarEvent(cita: any, cliente: any, servicio: any): CalendarEvent {
     const startDateTime = new Date(`${cita.fecha}T${cita.hora}`);
-    const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // Asume 1 hora de duración
+    const endDateTime = new Date(startDateTime.getTime() + (servicio.duracion || 60) * 60 * 1000);
 
     return {
       summary: `${servicio.nombre} - ${cliente.nombre}`,
       description: `
 Cliente: ${cliente.nombre}
+Tel: ${cliente.telefono}
 Servicio: ${servicio.nombre}
-Precio: $${servicio.precioSugerido}
+Precio: $${cita.precioFinal || servicio.precioSugerido}
 Estado: ${cita.estado}
 ${cita.notas ? `Notas: ${cita.notas}` : ''}
+Sent from Salon Control App
       `.trim(),
       start: {
         dateTime: startDateTime.toISOString(),
@@ -203,10 +199,30 @@ ${cita.notas ? `Notas: ${cita.notas}` : ''}
       reminders: {
         useDefault: false,
         overrides: [
-          { method: 'email', minutes: 24 * 60 }, // 1 día antes
-          { method: 'email', minutes: 2 * 60 },  // 2 horas antes
-          { method: 'popup', minutes: 30 }       // 30 minutos antes
+          { method: 'popup', minutes: 30 },
+          { method: 'email', minutes: 120 }
         ]
+      }
+    };
+  }
+
+  empleadoEventToCalendarEvent(event: any, empleado: any): CalendarEvent {
+    // Treat as all-day event or use T00:00:00Z
+    return {
+      summary: `${event.tipo.toUpperCase()}: ${empleado.nombre}`,
+      description: `
+Tipo: ${event.tipo}
+Empleado: ${empleado.nombre}
+${event.descripcion ? `Notas: ${event.descripcion}` : ''}
+Sent from Salon Control App
+      `.trim(),
+      start: {
+        dateTime: new Date(event.fechaInicio + 'T00:00:00').toISOString(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      },
+      end: {
+        dateTime: new Date(event.fechaFin + 'T23:59:59').toISOString(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
       }
     };
   }

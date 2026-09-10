@@ -29,6 +29,18 @@ export const generateVentaId = (): string => {
   return `venta_${Date.now()}`;
 };
 
+/**
+ * Las citas completadas antes de esta versión generaban además una venta
+ * espejo con id `vnt_cita_<citaId>`. Esa venta duplicaba el ingreso (ya
+ * contabilizado en la cita) y la comisión del empleado, así que se excluye
+ * de todo agregado. Ya no se crean nuevas.
+ */
+export const esVentaEspejoDeCita = (venta: { id?: string }): boolean =>
+  !!venta.id?.startsWith('vnt_cita_');
+
+export const sinVentasEspejo = <T extends { id?: string }>(ventas: T[]): T[] =>
+  ventas.filter(v => !esVentaEspejoDeCita(v));
+
 export const calculateVentasStats = (ventas: Venta[]): VentasStats => {
   const totalVentas = ventas.length;
   const ingresosTotales = ventas.reduce((sum, venta) => sum + venta.total, 0);

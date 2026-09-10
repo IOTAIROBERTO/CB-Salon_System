@@ -3,6 +3,17 @@ import { db } from '../db/db';
 import { migrateLocalStorageToDexie } from '../utils/migrateData';
 import serviciosData from '../data/servicios_dataset.json';
 
+/**
+ * Rellena los campos que el sistema sí lee a partir de los nombres viejos
+ * (`precio`) o del dataset original. No pisa valores ya presentes.
+ */
+export const repararServicio = (s: any, origen?: any) => ({
+  ...s,
+  precioSugerido: s.precioSugerido ?? s.precio ?? origen?.precioActualizado ?? 0,
+  anticipoSugerido: s.anticipoSugerido ?? origen?.anticipo ?? 0,
+  duracion: s.duracion ?? origen?.duracion ?? 60
+});
+
 export const useInitializeData = () => {
   useEffect(() => {
     const initDB = async () => {
@@ -17,12 +28,36 @@ export const useInitializeData = () => {
         const serviciosMapped = serviciosData.map((s: any) => ({
           id: s.id,
           nombre: s.nombre,
-          precio: s.precioActualizado, // Map from JSON
+          // El resto del sistema lee precioSugerido/anticipoSugerido; el JSON
+          // los trae como precioActualizado/anticipo.
+          precioSugerido: s.precioActualizado,
+          anticipoSugerido: s.anticipo ?? 0,
+          // Las dos listas viajan con el servicio para poder cambiar de una a
+          // otra desde Configuración sin volver a importar.
+          precio2026: s.precioActualizado,
+          anticipo2026: s.anticipo ?? 0,
+          precio2027: s.precio2027,
+          anticipo2027: s.anticipo2027,
           categoria: s.categoria,
           duracion: s.duracion,
           descripcion: s.descripcion
         }));
         await db.servicios.bulkPut(serviciosMapped);
+      } else {
+        // Reparación: versiones anteriores sembraron el precio en `precio`, un
+        // campo que nadie lee, dejando el catálogo en $0. Se rellena una sola
+        // vez y sin tocar los servicios que ya tengan precio.
+        const sinPrecio = await db.servicios
+          .filter((s: any) => s.precioSugerido === undefined)
+          .toArray();
+
+        if (sinPrecio.length > 0) {
+          const dataset: any[] = serviciosData;
+          await db.servicios.bulkPut(
+            sinPrecio.map((s: any) => repararServicio(s, dataset.find(d => d.id === s.id)))
+          );
+          console.log(`Catálogo reparado: ${sinPrecio.length} servicios sin precioSugerido`);
+        }
       }
 
       // Clients (Seed demo data if absolutely empty)

@@ -77,7 +77,10 @@ class EmailMarketingService {
     templateId: string,
     asuntoPersonalizado?: string,
     contenidoPersonalizado?: string,
-    targetClients?: any[] // New optional argument
+    targetClients?: any[], // New optional argument
+    // Identidad fija para campañas automáticas: permite deduplicar por clave
+    // primaria en vez de por `nombre`, que no está indexado.
+    identidad?: { id: string; nombre: string }
   ): Promise<EmailCampaign> {
     const template = await db.plantillas.get(templateId);
     if (!template) throw new Error('Plantilla no encontrada');
@@ -107,8 +110,8 @@ class EmailMarketingService {
     }));
 
     const campaign: EmailCampaign = {
-      id: `campaign_${Date.now()}`,
-      nombre: `${template.nombre} - ${new Date().toLocaleDateString('es-ES')}`,
+      id: identidad?.id || `campaign_${Date.now()}`,
+      nombre: identidad?.nombre || `${template.nombre} - ${new Date().toLocaleDateString('es-ES')}`,
       tipo,
       estado: config.programarEnvio ? 'programada' : 'borrador',
       plantillaId: template.id,
@@ -203,6 +206,59 @@ class EmailMarketingService {
 
   // --- Automations ---
 
+  /**
+   * Crea y envía la campaña de una regla automática, una sola vez por
+   * `clave` (normalmente la fecha objetivo).
+   *
+   * La deduplicación va por clave primaria: antes se buscaba con
+   * `db.campanas.where('nombre')`, pero `nombre` no está indexado, así que
+   * Dexie lanzaba SchemaError y el catch de checkAutomations se lo tragaba:
+   * ninguna automatización llegaba a ejecutarse.
+   */
+  private async lanzarCampanaAutomatica(
+    rule: any,
+    opciones: {
+      tipo: CampaignType;
+      clave: string;
+      clientes: any[];
+      asunto?: string;
+      incluirDescuentos?: boolean;
+    }
+  ): Promise<EmailCampaign | undefined> {
+    const { tipo, clave, clientes, asunto, incluirDescuentos = false } = opciones;
+
+    if (!rule.plantillaId || clientes.length === 0) return;
+
+    const id = `auto_${rule.id}_${clave}`;
+    if (await db.campanas.get(id)) return; // ya se lanzó para esta clave
+
+    const campaign = await this.createCampaign(
+      tipo,
+      {
+        programarEnvio: true,
+        enviarSoloActivos: true,
+        incluirDescuentos,
+        personalizarPorCliente: true
+      },
+      rule.plantillaId,
+      asunto,
+      undefined,
+      clientes,
+      { id, nombre: `Auto: ${rule.nombre} - ${clave}` }
+    );
+
+    // Sin este envío la regla solo dejaba la campaña en estado 'programada'
+    // esperando que alguien apretara el botón a mano.
+    await this.sendCampaign(campaign.id);
+    console.log(`Automatización "${rule.nombre}": ${campaign.destinatarios.length} destinatarios`);
+
+    return campaign;
+  }
+
+  private hoy(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
   async checkAutomations() {
     console.log('Verificando automatizaciones...');
     const rules = await db.automatizaciones.filter(r => !!r.activa).toArray();
@@ -236,20 +292,12 @@ class EmailMarketingService {
     const allClients = await db.clientes.toArray();
     const birthdayClients = allClients.filter(c => c.cumple && c.cumple.endsWith(todayStr) && c.email);
 
-    if (birthdayClients.length === 0) return;
-
-    const campaignName = `Auto: ${rule.nombre} - ${new Date().toLocaleDateString('es-ES')}`;
-    const existing = await db.campanas.where('nombre').equals(campaignName).first();
-    if (existing) return;
-
-    await this.createCampaign(
-      'cumpleanos',
-      { programarEnvio: true, enviarSoloActivos: true, incluirDescuentos: true, personalizarPorCliente: true },
-      rule.plantillaId,
-      undefined,
-      undefined,
-      birthdayClients
-    );
+    await this.lanzarCampanaAutomatica(rule, {
+      tipo: 'cumpleanos',
+      clave: this.hoy(),
+      clientes: birthdayClients,
+      incluirDescuentos: true
+    });
   }
 
   private async checkNewClients(rule: any) {
@@ -265,20 +313,11 @@ class EmailMarketingService {
       c.email
     );
 
-    if (newClients.length === 0) return;
-
-    const campaignName = `Auto: ${rule.nombre} - ${new Date().toLocaleDateString('es-ES')}`;
-    const existing = await db.campanas.where('nombre').equals(campaignName).first();
-    if (existing) return;
-
-    await this.createCampaign(
-      'promocion_general',
-      { programarEnvio: true, enviarSoloActivos: true, incluirDescuentos: false, personalizarPorCliente: true },
-      rule.plantillaId,
-      undefined,
-      undefined,
-      newClients
-    );
+    await this.lanzarCampanaAutomatica(rule, {
+      tipo: 'promocion_general',
+      clave: this.hoy(),
+      clientes: newClients
+    });
   }
 
   private async checkReminders(rule: any) {
@@ -296,26 +335,16 @@ class EmailMarketingService {
 
     const appointments = await db.citas.filter(c => c.fecha === targetDateStr && c.estado === 'confirmada').toArray();
 
-    if (appointments.length === 0) return;
-
     const clientIds = [...new Set(appointments.map(a => a.clienteId))];
     const clients = await db.clientes.bulkGet(clientIds);
     const validClients = clients.filter(c => c && c.email);
 
-    if (validClients.length === 0) return;
-
-    const campaignName = `Auto: ${rule.nombre} - ${targetDateStr}`;
-    const existing = await db.campanas.where('nombre').equals(campaignName).first();
-    if (existing) return;
-
-    await this.createCampaign(
-      'recordatorio_cita',
-      { programarEnvio: true, enviarSoloActivos: true, incluirDescuentos: false, personalizarPorCliente: true },
-      rule.plantillaId,
-      `Recordatorio de Cita`,
-      undefined,
-      validClients
-    );
+    await this.lanzarCampanaAutomatica(rule, {
+      tipo: 'recordatorio_cita',
+      clave: targetDateStr,
+      clientes: validClients,
+      asunto: 'Recordatorio de Cita'
+    });
   }
 
   private async checkReactivation(rule: any) {
@@ -355,25 +384,14 @@ class EmailMarketingService {
       }
     }
 
-    if (targetClients.length === 0) return;
-
-    // Prevent spamming: Check if we sent this SAME reactivation campaign recently?
-    // For now, simpler check: One campaign per day per rule. 
-    // Ideally, we should check "Did we send THIS rule to THIS client recently?"
-    // That's complex. Let's stick to daily batch for now.
-
-    const campaignName = `Auto: ${rule.nombre} - ${new Date().toLocaleDateString('es-ES')}`;
-    const existing = await db.campanas.where('nombre').equals(campaignName).first();
-    if (existing) return;
-
-    await this.createCampaign(
-      'reactivacion_cliente',
-      { programarEnvio: true, enviarSoloActivos: true, incluirDescuentos: true, personalizarPorCliente: true },
-      rule.plantillaId,
-      undefined,
-      undefined,
-      targetClients
-    );
+    // Anti-spam: un lote por regla y por día. Lo ideal sería "¿le mandamos a
+    // ESTE cliente hace poco?", pero el lote diario ya evita la repetición.
+    await this.lanzarCampanaAutomatica(rule, {
+      tipo: 'reactivacion_cliente',
+      clave: this.hoy(),
+      clientes: targetClients,
+      incluirDescuentos: true
+    });
   }
 
   private async checkPostVisit(rule: any) {
@@ -389,26 +407,15 @@ class EmailMarketingService {
       .filter(c => c.estado === 'completada' || c.estado === 'confirmada') // assuming confirmed past dates are 'done'
       .toArray();
 
-    if (appointments.length === 0) return;
-
     const clientIds = [...new Set(appointments.map(a => a.clienteId))];
     const clients = await db.clientes.bulkGet(clientIds);
     const validClients = clients.filter(c => c && c.email);
 
-    if (validClients.length === 0) return;
-
-    const campaignName = `Auto: ${rule.nombre} - ${targetDateStr}`;
-    const existing = await db.campanas.where('nombre').equals(campaignName).first();
-    if (existing) return;
-
-    await this.createCampaign(
-      'personalizado',
-      { programarEnvio: true, enviarSoloActivos: true, incluirDescuentos: false, personalizarPorCliente: true },
-      rule.plantillaId,
-      undefined,
-      undefined,
-      validClients
-    );
+    await this.lanzarCampanaAutomatica(rule, {
+      tipo: 'personalizado',
+      clave: targetDateStr,
+      clientes: validClients
+    });
   }
 
   private async sendWithEmailJS(to: string, subject: string, html: string, name: string, config: any): Promise<boolean> {

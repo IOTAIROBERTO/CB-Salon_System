@@ -3,6 +3,8 @@ import { Save, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import { emailMarketingService } from '../services/emailMarketingService';
 import { whatsappService } from '../services/whatsappService';
+import { googleCalendarService } from '../services/googleCalendar';
+import RespaldosTab from '../components/configuracion/RespaldosTab';
 
 export default function ConfiguracionPage() {
   const { settings, updateSettings, loading } = useSettings();
@@ -21,7 +23,8 @@ export default function ConfiguracionPage() {
         telefono: settings.telefono,
         direccion: settings.direccion,
         email: settings.email,
-        emailConfig: settings.emailConfig || { serviceId: '', templateId: '', publicKey: '' }
+        emailConfig: settings.emailConfig || { serviceId: '', templateId: '', publicKey: '' },
+        googleCredentials: settings.googleCredentials || { clientId: '', apiKey: '' }
       });
     }
   }, [settings]);
@@ -42,6 +45,19 @@ export default function ConfiguracionPage() {
     });
     await emailMarketingService.saveConfiguration(formData.emailConfig);
     showSavedMessage('Configuración Email Guardada');
+  };
+
+  const handleSaveGoogle = async () => {
+    await updateSettings({
+      googleCredentials: formData.googleCredentials
+    });
+    showSavedMessage('Configuración Google Calendar Guardada');
+  };
+
+  const handleGoogleSignIn = async () => {
+    const success = await googleCalendarService.signIn();
+    if (success) showSavedMessage('Google Calendar Conectado');
+    else alert('Error al conectar con Google Calendar');
   };
 
   const showSavedMessage = (msg: string) => {
@@ -76,8 +92,12 @@ export default function ConfiguracionPage() {
           <button onClick={() => setActiveTab('general')} className={`pb-2 border-b-2 ${activeTab === 'general' ? 'border-purple-600' : 'border-transparent'}`}>General</button>
           <button onClick={() => setActiveTab('email')} className={`pb-2 border-b-2 ${activeTab === 'email' ? 'border-purple-600' : 'border-transparent'}`}>Email Marketing</button>
           <button onClick={() => setActiveTab('whatsapp')} className={`pb-2 border-b-2 ${activeTab === 'whatsapp' ? 'border-purple-600' : 'border-transparent'}`}>WhatsApp</button>
+          <button onClick={() => setActiveTab('google')} className={`pb-2 border-b-2 ${activeTab === 'google' ? 'border-purple-600' : 'border-transparent'}`}>Google Calendar</button>
+          <button onClick={() => setActiveTab('respaldos')} className={`pb-2 border-b-2 ${activeTab === 'respaldos' ? 'border-purple-600' : 'border-transparent'}`}>Datos y respaldos</button>
         </nav>
       </div>
+
+      {activeTab === 'respaldos' && <RespaldosTab />}
 
       {activeTab === 'general' && (
         <div className="bg-white p-6 rounded-lg shadow space-y-4">
@@ -209,6 +229,82 @@ export default function ConfiguracionPage() {
                 Test
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'google' && (
+        <div className="bg-white p-6 rounded-lg shadow space-y-6">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-lg text-gray-800">Sincronización con Google Calendar</h3>
+            <div className="flex items-center gap-2">
+              <span className={`w-3 h-3 rounded-full ${googleCalendarService.getSignInStatus() ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              <span className="text-sm font-medium">{googleCalendarService.getSignInStatus() ? 'Conectado' : 'Desconectado'}</span>
+            </div>
+          </div>
+
+          <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 text-sm text-purple-800 space-y-2">
+            <p className="font-bold">¿Cómo activar esta integración?</p>
+            <ol className="list-decimal ml-4 space-y-1">
+              <li>Ve a <a href="https://console.cloud.google.com/" target="_blank" className="underline font-bold">Google Cloud Console</a>.</li>
+              <li>Crea un proyecto y habilita la <strong>Google Calendar API</strong>.</li>
+              <li>En "APIs & Services &gt; Credentials", crea una <strong>API Key</strong> y un <strong>OAuth 2.0 Client ID</strong> (Web application).</li>
+              <li>Añade la URL de este sistema a los "Authorized JavaScript origins".</li>
+            </ol>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+              <input
+                type="text"
+                placeholder="Introducir API Key..."
+                className="w-full border rounded-xl p-2.5 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                value={formData.googleCredentials?.apiKey || ''}
+                onChange={e => setFormData({
+                  ...formData,
+                  googleCredentials: { ...formData.googleCredentials, apiKey: e.target.value }
+                })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+              <input
+                type="text"
+                placeholder="xxxxxx.apps.googleusercontent.com"
+                className="w-full border rounded-xl p-2.5 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                value={formData.googleCredentials?.clientId || ''}
+                onChange={e => setFormData({
+                  ...formData,
+                  googleCredentials: { ...formData.googleCredentials, clientId: e.target.value }
+                })}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-4 pt-2">
+            <button
+              onClick={handleSaveGoogle}
+              className="bg-purple-600 text-white px-6 py-2 rounded-xl flex items-center gap-2 hover:bg-purple-700 transition-all font-bold"
+            >
+              <Save size={18} /> Guardar Credenciales
+            </button>
+
+            <button
+              onClick={handleGoogleSignIn}
+              className="bg-white text-gray-700 border-2 border-gray-200 px-6 py-2 rounded-xl flex items-center gap-2 hover:bg-gray-50 transition-all font-bold"
+            >
+              <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google" className="w-5 h-5" />
+              Conectar con Google
+            </button>
+          </div>
+
+          <div className="pt-6 border-t">
+            <h4 className="font-bold text-gray-800 mb-2">Información sobre Cristina y Auxiliares</h4>
+            <p className="text-sm text-gray-500">
+              Al conectar tu cuenta de Google, tus citas personales se sincronizarán con el calendario de **cristinaeborquez@gmail.com**.
+              Para las auxiliares, puedes especificar un ID de calendario diferente en la sección de gestión de empleados.
+            </p>
           </div>
         </div>
       )}

@@ -11,7 +11,10 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const dbSettings = useLiveQuery(() => db.configuracion.get('settings'));
+    // `?? null` distingue "todavía consultando" (undefined) de "no hay fila
+    // guardada" (null). Sin eso, una instalación nueva nunca tiene la fila y
+    // Configuración se quedaba para siempre en "Cargando configuración...".
+    const dbSettings = useLiveQuery(() => db.configuracion.get('settings').then(s => s ?? null));
 
     // Default settings if not found in DB
     const defaultSettings: AppSettings = {
@@ -24,6 +27,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     const currentSettings = dbSettings || defaultSettings;
+    const cargando = dbSettings === undefined;
 
     const updateSettings = async (newSettings: Partial<AppSettings>) => {
         await db.configuracion.put({
@@ -37,7 +41,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         <SettingsContext.Provider value={{
             settings: currentSettings,
             updateSettings,
-            loading: !dbSettings
+            loading: cargando
         }}>
             {children}
         </SettingsContext.Provider>

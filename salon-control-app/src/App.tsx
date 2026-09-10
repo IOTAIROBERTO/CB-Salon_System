@@ -1,8 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { db } from './db/db';
-import { migrateLocalStorageToDexie } from './utils/migrateData';
-import { loadEmailJS } from "./services/emailService";
+import { loadEmailJS } from "./utils/emailJSLoader";
 import { Menu, X } from "lucide-react";
 import CitasPage from "./pages/CitasPage";
 import VentasPage from "./pages/VentasPage";
@@ -15,23 +13,29 @@ import DocumentosPage from "./pages/DocumentosPage";
 import GastosPage from "./pages/GastosPage";
 import ConfiguracionPage from "./pages/ConfiguracionPage";
 import EmpleadosPage from "./pages/EmpleadosPage";
+import CalendarioPage from "./pages/CalendarioPage";
 import { useInitializeData } from "./hooks/useInitializeData";
 import { useMarketingAutomations } from "./hooks/useMarketingAutomations";
+import { useAutoBackup } from "./hooks/useAutoBackup";
+import { googleCalendarService } from "./services/googleCalendar";
 
 import { SettingsProvider } from "./contexts/SettingsContext";
 
 export default function App() {
   useInitializeData();
   useMarketingAutomations();
+  useAutoBackup();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Inicialización y Carga de EmailJS
   useEffect(() => {
     loadEmailJS();
+    googleCalendarService.initialize();
   }, []);
 
   const navLinks = [
     { to: "/citas", label: "Citas y Servicios" },
+    { to: "/calendario", label: "Calendario" },
     { to: "/ventas", label: "Ventas de Productos" },
     { to: "/inventario", label: "Inventario" },
     { to: "/clientes", label: "Clientes" },
@@ -126,6 +130,7 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Navigate to="/citas" replace />} />
                   <Route path="/citas" element={<CitasPage />} />
+                  <Route path="/calendario" element={<CalendarioPage />} />
                   <Route path="/ventas" element={<VentasPage />} />
                   <Route path="/inventario" element={<InventarioPage />} />
                   <Route path="/clientes" element={<ClientesPage />} />

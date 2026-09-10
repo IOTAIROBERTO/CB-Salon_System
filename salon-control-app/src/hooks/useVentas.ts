@@ -1,10 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { Venta } from '../types/ventas';
+import { sinVentasEspejo } from '../utils/ventasUtils';
 
 export const useVentas = () => {
-  // Cargar datos desde Dexie en tiempo real
-  const rawVentas = useLiveQuery(() => db.ventas.toArray()) || [];
+  // Cargar datos desde Dexie en tiempo real (sin las ventas espejo de citas)
+  const rawVentas = sinVentasEspejo(useLiveQuery(() => db.ventas.toArray()) || []);
   const rawClientes = useLiveQuery(() => db.clientes.toArray()) || [];
   const rawInventario = useLiveQuery(() => db.inventario.toArray()) || [];
 

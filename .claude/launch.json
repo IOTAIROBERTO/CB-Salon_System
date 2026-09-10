@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "salon-control-app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "salon-control-app", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}
