@@ -63,7 +63,7 @@ export const useInitializeData = () => {
       // Clients (Seed demo data if absolutely empty)
       const clientsCount = await db.clientes.count();
       if (clientsCount === 0) {
-        await db.clientes.bulkAdd([
+        await db.clientes.bulkPut([
           {
             id: 'c1',
             nombre: 'Ana López',
@@ -103,7 +103,7 @@ export const useInitializeData = () => {
       // Inventory
       const inventoryCount = await db.inventario.count();
       if (inventoryCount === 0) {
-        await db.inventario.bulkAdd([
+        await db.inventario.bulkPut([
           {
             id: 'p1',
             nombre: 'Shampoo Hidratante L\'Oreal',
