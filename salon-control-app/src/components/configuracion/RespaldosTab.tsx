@@ -5,8 +5,8 @@ import {
     historicoCargado,
     importarCatalogo,
     importarHistorico,
-    listaActiva,
-    totalHistorico
+    leerArchivoHistorico,
+    listaActiva
 } from '../../services/importService';
 import {
     descargarRespaldo,
@@ -29,6 +29,7 @@ export default function RespaldosTab() {
     const [ocupado, setOcupado] = useState(false);
     const [porRestaurar, setPorRestaurar] = useState<{ archivo: File; datos: Respaldo } | null>(null);
     const inputArchivo = useRef<HTMLInputElement>(null);
+    const inputHistorico = useRef<HTMLInputElement>(null);
     const [lista, setLista] = useState<'2026' | '2027'>('2026');
     const [historico, setHistorico] = useState(0);
 
@@ -138,23 +139,41 @@ export default function RespaldosTab() {
                     </button>
 
                     <button
-                        onClick={() => conError(async () => {
-                            const r = await importarHistorico();
-                            await refrescar();
-                            avisar(Object.entries(r).map(([k, v]) => `${v} ${k}`).join(' · '));
-                        })}
+                        onClick={() => inputHistorico.current?.click()}
                         disabled={ocupado}
                         className="border-2 border-purple-200 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-50 disabled:opacity-50"
                     >
                         <Database size={18} />
-                        {historico > 0 ? 'Recargar histórico 2024-2026' : 'Cargar histórico 2024-2026'}
+                        {historico > 0 ? 'Recargar histórico desde archivo' : 'Cargar histórico desde archivo'}
                     </button>
+                    <input
+                        ref={inputHistorico}
+                        type="file"
+                        accept="application/json,.json"
+                        className="hidden"
+                        onChange={e => {
+                            const archivo = e.target.files?.[0];
+                            e.target.value = '';
+                            if (!archivo) return;
+                            conError(async () => {
+                                const r = await importarHistorico(await leerArchivoHistorico(archivo));
+                                await refrescar();
+                                avisar(Object.entries(r).map(([k, v]) => `${v} ${k}`).join(' · '));
+                            });
+                        }}
+                    />
                 </div>
 
-                {historico > 0 && (
+                {historico > 0 ? (
                     <p className="text-xs text-green-700">
-                        Histórico ya cargado: {totalHistorico.toLocaleString('es-MX')} servicios
-                        cobrados entre 2024 y 2026 aparecen en Reportes.
+                        Histórico cargado: {historico.toLocaleString('es-MX')} servicios cobrados
+                        aparecen en Reportes.
+                    </p>
+                ) : (
+                    <p className="text-xs text-gray-500">
+                        El histórico no viaja dentro de la app: son tres años de ventas y
+                        cualquiera puede descargar el código de un sitio publicado. Búscalo en
+                        tu computadora como <strong>datos-salon-historico.json</strong>.
                     </p>
                 )}
 

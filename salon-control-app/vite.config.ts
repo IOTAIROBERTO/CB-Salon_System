@@ -18,7 +18,6 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
-          charts: ['recharts'],
           icons: ['lucide-react']
         }
       }
@@ -30,6 +29,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom', 'lucide-react', 'recharts']
+    include: ['react', 'react-dom', 'react-router-dom', 'lucide-react']
   }
 })
