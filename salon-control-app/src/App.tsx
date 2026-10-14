@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Link, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { loadEmailJS } from "./utils/emailJSLoader";
 import { Menu, X } from "lucide-react";
@@ -181,7 +181,7 @@ export default function App() {
 
           {/* Indicador de pagina activa en movil */}
           <div className="lg:hidden bg-purple-800 text-white text-center py-1 text-xs">
-            {navLinks.find(link => window.location.pathname === link.to)?.label || 'Salon Total Control'}
+            {navLinks.find(link => window.location.hash === `#${link.to}`)?.label || 'Salon Total Control'}
           </div>
         </div>
       </Router>
