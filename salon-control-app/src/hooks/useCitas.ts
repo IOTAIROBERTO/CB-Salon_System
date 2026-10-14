@@ -100,13 +100,16 @@ export default function useCitas() {
 
   const completarCita = async (citaId: string, precioFinal: number, metodoPago: string, notas: string, datosCompletos?: any) => {
     const info = Array.isArray(datosCompletos) ? datosCompletos[0] : datosCompletos;
+    // Conserva las notas de la cita y agrega las del cobro (antes se sobrescribían)
+    const notasPrevias = (await db.citas.get(citaId))?.notas;
+    const notasFinales = [notasPrevias, notas].filter(Boolean).join('\n');
 
     await db.citas.update(citaId, {
       servicioId: info?.servicioSeleccionado || undefined,
       estado: "completada",
       precioFinal,
       metodoPago,
-      notas: notas || undefined,
+      notas: notasFinales || undefined,
       montoAnticipo: info?.anticipoRecibido || undefined,
       anticipoConfirmado: true,
       serviciosAdicionales: info?.serviciosAdicionales || [],

@@ -270,7 +270,7 @@ export default function CitaCard({
               )}
               
               {/* Mostrar información de descuento, redondeo y propina */}
-              {(cita.montoDescuento && cita.montoDescuento > 0) && (
+              {(!!cita.montoDescuento && cita.montoDescuento > 0) && (
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-700">Subtotal servicios:</span>
@@ -293,7 +293,7 @@ export default function CitaCard({
               </div>
 
               {/* Mostrar redondeo si existe */}
-              {(cita.montoRedondeo && cita.montoRedondeo > 0) && (
+              {(!!cita.montoRedondeo && cita.montoRedondeo > 0) && (
                 <div className="flex justify-between items-center text-green-600">
                   <div className="flex items-center gap-1">
                     <Calculator size={14} />
@@ -304,7 +304,7 @@ export default function CitaCard({
               )}
 
               {/* Mostrar propina si existe */}
-              {(cita.propina && cita.propina > 0) && (
+              {(!!cita.propina && cita.propina > 0) && (
                 <div className="flex justify-between items-center text-purple-600">
                   <div className="flex items-center gap-1">
                     <Gift size={14} />

@@ -1,3 +1,4 @@
+import { parseFechaLocal, fechaLocalISO } from '../utils/dateValidation';
 // services/emailService.tsx - Versión actualizada
 
 interface EmailTemplate {
@@ -79,7 +80,7 @@ class EmailService {
     `;
 
     const formatDate = (fecha: string) => {
-      return new Date(fecha).toLocaleDateString('es-ES', {
+      return parseFechaLocal(fecha).toLocaleDateString('es-ES', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -359,7 +360,7 @@ class EmailService {
       to,
       clienteName: 'Cliente de Prueba',
       servicioNombre: 'Mensaje de Prueba del Sistema',
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: fechaLocalISO(),
       hora: '10:00',
       type: 'confirmacion',
       notas: 'Este es un email de prueba para verificar la configuración de EmailJS'

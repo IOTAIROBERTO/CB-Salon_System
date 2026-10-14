@@ -4,6 +4,7 @@ import { db, EmpleadoEvent } from '../../db/db';
 import { Calendar, Plus, Trash2, Tag, CalendarDays, Clock, Briefcase, HelpCircle } from 'lucide-react';
 import { googleCalendarService } from '../../services/googleCalendar';
 import { formatDate } from '../../utils/clientesUtils';
+import { fechaLocalISO } from '../../utils/dateValidation';
 
 interface CalendarSectionProps {
     empleadoId: string;
@@ -19,8 +20,8 @@ export default function CalendarSection({ empleadoId, onClose }: CalendarSection
     const [formData, setFormData] = useState<Omit<EmpleadoEvent, 'id'>>({
         empleadoId: empleadoId,
         tipo: 'vacaciones',
-        fechaInicio: new Date().toISOString().split('T')[0],
-        fechaFin: new Date().toISOString().split('T')[0],
+        fechaInicio: fechaLocalISO(),
+        fechaFin: fechaLocalISO(),
         descripcion: ''
     });
 
@@ -57,8 +58,8 @@ export default function CalendarSection({ empleadoId, onClose }: CalendarSection
         setFormData({
             empleadoId: empleadoId,
             tipo: 'vacaciones',
-            fechaInicio: new Date().toISOString().split('T')[0],
-            fechaFin: new Date().toISOString().split('T')[0],
+            fechaInicio: fechaLocalISO(),
+            fechaFin: fechaLocalISO(),
             descripcion: ''
         });
     };

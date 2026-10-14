@@ -1,5 +1,6 @@
 // src/utils/clientesUtils.ts
 import { Cliente, ClienteFormData, ClientesStats } from '../types/clientes';
+import { parseFechaLocal } from './dateValidation';
 
 export const validateClienteForm = (formData: ClienteFormData): string | null => {
   if (!formData.nombre.trim()) {
@@ -28,7 +29,7 @@ export const generateClienteId = (): string => {
 
 export const formatDate = (dateString: string): string => {
   try {
-    return new Date(dateString + 'T00:00:00').toLocaleDateString('es-ES', {
+    return parseFechaLocal(dateString).toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -40,7 +41,7 @@ export const formatDate = (dateString: string): string => {
 
 export const formatDateBirthday = (dateString: string): string => {
   try {
-    const date = new Date(dateString + 'T00:00:00');
+    const date = parseFechaLocal(dateString);
     return date.toLocaleDateString('es-ES', {
       day: '2-digit',
       month: 'long'
@@ -54,7 +55,7 @@ export const formatDateBirthday = (dateString: string): string => {
 export const calcularEdad = (fechaNacimiento: string): number => {
   try {
     const today = new Date();
-    const birthDate = new Date(fechaNacimiento + 'T00:00:00');
+    const birthDate = parseFechaLocal(fechaNacimiento);
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
 
@@ -71,7 +72,7 @@ export const calcularEdad = (fechaNacimiento: string): number => {
 // Nueva función para formatear cumpleaños con edad
 export const formatBirthdayWithAge = (fechaNacimiento: string): string => {
   try {
-    const date = new Date(fechaNacimiento + 'T00:00:00');
+    const date = parseFechaLocal(fechaNacimiento);
     const edad = calcularEdad(fechaNacimiento);
 
     const fechaFormateada = date.toLocaleDateString('es-ES', {
@@ -89,7 +90,7 @@ export const formatBirthdayWithAge = (fechaNacimiento: string): string => {
 export const esCumpleanosHoy = (fechaNacimiento: string): boolean => {
   try {
     const today = new Date();
-    const birthDate = new Date(fechaNacimiento + 'T00:00:00');
+    const birthDate = parseFechaLocal(fechaNacimiento);
 
     return today.getMonth() === birthDate.getMonth() &&
       today.getDate() === birthDate.getDate();
@@ -118,15 +119,15 @@ export const getCumpleanerosMes = (clientes: Cliente[]): Cliente[] => {
   const mesActual = new Date().getMonth() + 1;
   return clientes.filter(cliente => {
     try {
-      const fechaCumple = new Date(cliente.cumple + 'T00:00:00');
+      const fechaCumple = parseFechaLocal(cliente.cumple);
       return fechaCumple.getMonth() + 1 === mesActual && cliente.activo;
     } catch (error) {
       return false;
     }
   }).sort((a, b) => {
     try {
-      const fechaA = new Date(a.cumple + 'T00:00:00').getDate();
-      const fechaB = new Date(b.cumple + 'T00:00:00').getDate();
+      const fechaA = parseFechaLocal(a.cumple).getDate();
+      const fechaB = parseFechaLocal(b.cumple).getDate();
       return fechaA - fechaB;
     } catch (error) {
       return 0;

@@ -1,5 +1,6 @@
 import { Venta, VentaFormData, VentasStats, Item, Cliente } from '../types/ventas';
 import { formatCurrency } from './financialUtils';
+import { parseFechaLocal } from './dateValidation';
 
 export const validateVentaForm = (formData: VentaFormData): string | null => {
   if (!formData.clienteId) {
@@ -48,7 +49,7 @@ export const calculateVentasStats = (ventas: Venta[]): VentasStats => {
   // Ventas de hoy
   const hoy = new Date().toDateString();
   const ventasHoy = ventas.filter(venta =>
-    new Date(venta.fecha).toDateString() === hoy
+    parseFechaLocal(venta.fecha).toDateString() === hoy
   ).length;
 
   const promedioVenta = totalVentas > 0 ? ingresosTotales / totalVentas : 0;
@@ -80,7 +81,7 @@ export const formatPrice = (price: number): string => {
 };
 
 export const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString('es-ES');
+  return parseFechaLocal(dateString).toLocaleDateString('es-ES');
 };
 
 export const loadDataFromStorage = () => {

@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, Expense } from '../db/db';
 import { Plus, Trash2, Calendar } from 'lucide-react';
 import { formatCurrency } from '../utils/financialUtils';
+import { fechaLocalISO, parseFechaLocal } from '../utils/dateValidation';
 
 export default function GastosPage() {
     const expenses = useLiveQuery(() => db.gastos.orderBy('fecha').reverse().toArray());
@@ -10,7 +11,7 @@ export default function GastosPage() {
     const [formData, setFormData] = useState<Partial<Expense>>({
         concepto: '',
         monto: 0,
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: fechaLocalISO(),
         categoria: 'variable',
         pagado: true,
         notas: ''
@@ -31,7 +32,7 @@ export default function GastosPage() {
             setFormData({
                 concepto: '',
                 monto: 0,
-                fecha: new Date().toISOString().split('T')[0],
+                fecha: fechaLocalISO(),
                 categoria: 'variable',
                 pagado: true,
                 notas: ''
@@ -89,7 +90,7 @@ export default function GastosPage() {
                                 <td className="p-4 text-gray-600">
                                     <div className="flex items-center gap-2">
                                         <Calendar size={16} />
-                                        {new Date(expense.fecha).toLocaleDateString()}
+                                        {parseFechaLocal(expense.fecha).toLocaleDateString()}
                                     </div>
                                 </td>
                                 <td className="p-4 font-medium text-gray-800">{expense.concepto}</td>

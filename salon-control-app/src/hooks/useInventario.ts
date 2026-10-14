@@ -7,17 +7,20 @@ import {
   createMovimientoHistorial,
   saveMovimientoHistorial
 } from '../utils/inventarioUtils';
+import { fechaLocalISO } from '../utils/dateValidation';
 
 export const useInventario = () => {
   // Cargar inventario desde Dexie en tiempo real
-  const inventario = useLiveQuery(() => db.inventario.toArray()) || [];
+  // Productos viejos sin stockMinimo usan 5 (si no, nunca salta la alerta de stock bajo)
+  const inventario = (useLiveQuery(() => db.inventario.toArray()) || [])
+    .map(p => ({ ...p, stockMinimo: p.stockMinimo ?? 5 }));
 
-  const addProducto = async (productoData: Omit<Producto, 'id' | 'fechaUltimaCompra' | 'stockMinimo'>) => {
+  const addProducto = async (productoData: Omit<Producto, 'id' | 'fechaUltimaCompra' | 'stockMinimo'> & { stockMinimo?: number }) => {
     const newProducto: Producto = {
       id: generateProductoId(),
+      stockMinimo: 5, // Default si no viene en el formulario
       ...productoData,
-      stockMinimo: 5, // Default stock minimo if not provided
-      fechaUltimaCompra: new Date().toISOString().split('T')[0]
+      fechaUltimaCompra: fechaLocalISO()
     } as any;
 
     await db.inventario.add(newProducto);
@@ -42,7 +45,7 @@ export const useInventario = () => {
     const updatedData: Partial<Producto> = {
       cantidad: nuevaCantidad,
       fechaUltimaCompra: stockData.operacion === 'suma'
-        ? new Date().toISOString().split('T')[0]
+        ? fechaLocalISO()
         : producto.fechaUltimaCompra
     };
 

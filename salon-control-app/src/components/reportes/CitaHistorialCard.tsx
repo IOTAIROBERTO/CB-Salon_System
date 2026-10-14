@@ -3,6 +3,7 @@ import { Calendar, CheckCircle, XCircle, User, Scissors, DollarSign, Eye, Trendi
 import { Cita, Cliente, ServicioCatalogo } from '../../types/reportes';
 import { getClienteName, getServicioName } from '../../utils/reportUtils';
 import { formatCurrency } from '../../utils/discountUtils';
+import { parseFechaLocal } from '../../utils/dateValidation';
 
 interface CitaHistorialCardProps {
   cita: Cita;
@@ -47,7 +48,7 @@ export default function CitaHistorialCard({
             </div>
             <div className="flex items-center gap-2">
               <Calendar size={14} className="text-gray-400" />
-              <span>{new Date(cita.fecha).toLocaleDateString('es-ES')}</span>
+              <span>{parseFechaLocal(cita.fecha).toLocaleDateString('es-ES')}</span>
             </div>
             <div className="flex items-center gap-2">
               <DollarSign size={14} className="text-gray-400" />
@@ -69,7 +70,7 @@ export default function CitaHistorialCard({
               )}
 
               {/* Subtotal original */}
-              {(cita.subtotalOriginal && cita.subtotalOriginal > 0) && (
+              {(!!cita.subtotalOriginal && cita.subtotalOriginal > 0) && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal servicios:</span>
                   <span className="font-medium">{formatCurrency(cita.subtotalOriginal)}</span>
@@ -77,7 +78,7 @@ export default function CitaHistorialCard({
               )}
 
               {/* Descuento aplicado */}
-              {(cita.montoDescuento && cita.montoDescuento > 0) && (
+              {(!!cita.montoDescuento && cita.montoDescuento > 0) && (
                 <div className="flex justify-between text-orange-600">
                   <div className="flex items-center gap-1">
                     <TrendingDown size={10} />
@@ -88,7 +89,7 @@ export default function CitaHistorialCard({
               )}
 
               {/* Anticipo */}
-              {(cita.montoAnticipo && cita.montoAnticipo > 0) && (
+              {(!!cita.montoAnticipo && cita.montoAnticipo > 0) && (
                 <div className="flex justify-between text-blue-600">
                   <span>Anticipo recibido:</span>
                   <span>-{formatCurrency(cita.montoAnticipo)}</span>
@@ -96,7 +97,7 @@ export default function CitaHistorialCard({
               )}
 
               {/* Redondeo */}
-              {(cita.montoRedondeo && cita.montoRedondeo > 0) && (
+              {(!!cita.montoRedondeo && cita.montoRedondeo > 0) && (
                 <div className="flex justify-between text-green-600">
                   <div className="flex items-center gap-1">
                     <Calculator size={10} />
@@ -107,7 +108,7 @@ export default function CitaHistorialCard({
               )}
 
               {/* Propina */}
-              {(cita.propina && cita.propina > 0) && (
+              {(!!cita.propina && cita.propina > 0) && (
                 <div className="flex justify-between text-purple-600">
                   <div className="flex items-center gap-1">
                     <Gift size={10} />
@@ -138,7 +139,7 @@ export default function CitaHistorialCard({
           {/* Información básica para citas canceladas */}
           {!isCompletada && (
             <div className="text-xs text-gray-600">
-              <span>Fecha de la cita: {new Date(cita.fecha).toLocaleDateString('es-ES')}</span>
+              <span>Fecha de la cita: {parseFechaLocal(cita.fecha).toLocaleDateString('es-ES')}</span>
               {cita.notas && <span> • Notas: {cita.notas}</span>}
             </div>
           )}

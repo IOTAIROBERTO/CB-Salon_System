@@ -6,6 +6,7 @@ import { calculateCommission, formatCurrency } from '../utils/financialUtils';
 import { formatDate } from '../utils/clientesUtils';
 import { sinVentasEspejo } from '../utils/ventasUtils';
 import CalendarSection from '../components/empleados/CalendarSection';
+import { fechaLocalISO, parseFechaLocal } from '../utils/dateValidation';
 
 export default function EmpleadosPage() {
     const empleados = useLiveQuery(() => db.empleados.toArray());
@@ -19,8 +20,8 @@ export default function EmpleadosPage() {
     const [selectedEmpleadoId, setSelectedEmpleadoId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'info' | 'calendar'>('info');
     const [dateRange, setDateRange] = useState({
-        inicio: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-        fin: new Date().toISOString().split('T')[0]
+        inicio: fechaLocalISO(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+        fin: fechaLocalISO()
     });
 
     const [formData, setFormData] = useState<Omit<Empleado, 'id'>>({
@@ -30,7 +31,7 @@ export default function EmpleadosPage() {
         email: '',
         porcentajeComision: 30,
         activo: true,
-        fechaContratacion: new Date().toISOString().split('T')[0],
+        fechaContratacion: fechaLocalISO(),
         cumple: '',
         googleCalendarId: ''
     });
@@ -51,7 +52,7 @@ export default function EmpleadosPage() {
             email: '',
             porcentajeComision: 30,
             activo: true,
-            fechaContratacion: new Date().toISOString().split('T')[0],
+            fechaContratacion: fechaLocalISO(),
             cumple: '',
             googleCalendarId: ''
         });
@@ -73,13 +74,10 @@ export default function EmpleadosPage() {
     };
 
     const calculateStats = (empId: string) => {
-        const periodStart = new Date(dateRange.inicio);
-        const periodEnd = new Date(dateRange.fin);
-        periodEnd.setHours(23, 59, 59);
-
+        // Compara por día local (YYYY-MM-DD); citas guardan solo fecha, ventas guardan ISO con hora
         const filterDate = (dateStr: string) => {
-            const d = new Date(dateStr);
-            return d >= periodStart && d <= periodEnd;
+            const dia = fechaLocalISO(parseFechaLocal(dateStr));
+            return dia >= dateRange.inicio && dia <= dateRange.fin;
         };
 
         const emp = empleados?.find(e => e.id === empId);

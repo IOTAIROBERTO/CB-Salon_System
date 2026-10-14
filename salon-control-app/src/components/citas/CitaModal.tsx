@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { Cliente, Servicio, Cita } from "../../types/citas";
 import {
   obtenerFechaMinima,
-  validarFechaHora
+  validarFechaHora,
+  fechaLocalISO
 } from "../../utils/dateValidation";
 import TimeSelector from "./TimeSelector";
 
@@ -73,7 +74,7 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
   const getMinTime = () => {
     if (!formData.fecha) return undefined;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = fechaLocalISO();
     if (formData.fecha === today) {
       const now = new Date();
       const hours = String(now.getHours()).padStart(2, '0');

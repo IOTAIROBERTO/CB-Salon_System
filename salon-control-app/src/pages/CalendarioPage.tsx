@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, Scissors } from 'lucide-react';
+import { fechaLocalISO } from '../utils/dateValidation';
 
 export default function CalendarioPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -116,7 +117,7 @@ export default function CalendarioPage() {
                 <div className="grid grid-cols-7 auto-rows-[120px]">
                     {calendarGrid.map((item, idx) => {
                         const items = getItemsForDate(item.fullDate || '');
-                        const isToday = item.fullDate === new Date().toISOString().split('T')[0];
+                        const isToday = item.fullDate === fechaLocalISO();
 
                         return (
                             <div

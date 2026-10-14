@@ -1,3 +1,4 @@
+import { fechaLocalISO, parseFechaLocal } from '../utils/dateValidation';
 // src/services/emailAutomationIntegratedService.ts - Automatización integrada con el sistema de citas
 
 interface AutomationConfig {
@@ -152,7 +153,7 @@ class EmailAutomationIntegratedService {
 
     const mañana = new Date();
     mañana.setDate(mañana.getDate() + this.config.diasAntesRecordatorio);
-    const fechaMañana = mañana.toISOString().split('T')[0];
+    const fechaMañana = fechaLocalISO(mañana);
 
     const citasParaRecordar = citas.filter(cita => 
       cita.fecha === fechaMañana &&
@@ -176,7 +177,7 @@ class EmailAutomationIntegratedService {
     const cumpleaneros = clientes.filter(cliente => {
       if (!cliente.email || !cliente.cumple || !cliente.activo) return false;
       
-      const cumple = new Date(cliente.cumple);
+      const cumple = parseFechaLocal(cliente.cumple);
       const cumpleStr = `${String(cumple.getMonth() + 1).padStart(2, '0')}-${String(cumple.getDate()).padStart(2, '0')}`;
       
       return cumpleStr === hoyStr && !this.yaSeEnvioCumpleanos(cliente);
@@ -197,7 +198,7 @@ class EmailAutomationIntegratedService {
 
     const fechaLimite = new Date();
     fechaLimite.setDate(fechaLimite.getDate() - this.config.diasDespuesSeguimiento);
-    const fechaLimiteStr = fechaLimite.toISOString().split('T')[0];
+    const fechaLimiteStr = fechaLocalISO(fechaLimite);
 
     const citasParaSeguimiento = citas.filter(cita =>
       cita.estado === 'completada' &&
@@ -344,7 +345,7 @@ class EmailAutomationIntegratedService {
 
   // Formatear fecha
   private formatDate(fecha: string): string {
-    return new Date(fecha).toLocaleDateString('es-ES', {
+    return parseFechaLocal(fecha).toLocaleDateString('es-ES', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -453,7 +454,7 @@ class EmailAutomationIntegratedService {
     const hoyStr = `${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
     const cumpleaneros = clientes.filter(cliente => {
       if (!cliente.cumple) return false;
-      const cumple = new Date(cliente.cumple);
+      const cumple = parseFechaLocal(cliente.cumple);
       const cumpleStr = `${String(cumple.getMonth() + 1).padStart(2, '0')}-${String(cumple.getDate()).padStart(2, '0')}`;
       return cumpleStr === hoyStr && cliente.activo;
     }).length;
@@ -461,7 +462,7 @@ class EmailAutomationIntegratedService {
     // Recordatorios pendientes
     const mañana = new Date();
     mañana.setDate(mañana.getDate() + this.config.diasAntesRecordatorio);
-    const fechaMañana = mañana.toISOString().split('T')[0];
+    const fechaMañana = fechaLocalISO(mañana);
     
     const recordatorios = citas.filter(cita => 
       cita.fecha === fechaMañana &&
@@ -472,7 +473,7 @@ class EmailAutomationIntegratedService {
     // Seguimientos pendientes
     const fechaLimite = new Date();
     fechaLimite.setDate(fechaLimite.getDate() - this.config.diasDespuesSeguimiento);
-    const fechaLimiteStr = fechaLimite.toISOString().split('T')[0];
+    const fechaLimiteStr = fechaLocalISO(fechaLimite);
 
     const seguimientos = citas.filter(cita =>
       cita.estado === 'completada' &&

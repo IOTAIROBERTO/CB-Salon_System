@@ -9,13 +9,31 @@ export const obtenerFechaHoraActual = () => {
 };
 
 /**
+ * Fecha en hora local como YYYY-MM-DD.
+ * No usar toISOString(): da el día en UTC (en Hermosillo, después de las 17:00 ya es "mañana").
+ */
+export const fechaLocalISO = (fecha: Date = new Date()): string => {
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, '0');
+  const d = String(fecha.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+/**
+ * Convierte a Date. "YYYY-MM-DD" se interpreta en hora local
+ * (new Date('YYYY-MM-DD') lo toma como UTC y muestra el día anterior).
+ */
+export const parseFechaLocal = (fecha: string | Date | undefined): Date => {
+  if (!fecha) return new Date(NaN);
+  if (fecha instanceof Date) return fecha;
+  return /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? new Date(fecha + 'T00:00:00') : new Date(fecha);
+};
+
+/**
  * Obtiene la fecha mínima permitida (hoy)
  * @returns string en formato YYYY-MM-DD
  */
-export const obtenerFechaMinima = (): string => {
-  const hoy = new Date();
-  return hoy.toISOString().split('T')[0];
-};
+export const obtenerFechaMinima = (): string => fechaLocalISO();
 
 /**
  * Valida si una fecha es anterior a hoy

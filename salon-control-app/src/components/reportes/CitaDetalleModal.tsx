@@ -3,6 +3,7 @@ import { CheckCircle, XCircle, TrendingDown, Calculator, Gift } from 'lucide-rea
 import { Cita, Cliente, ServicioCatalogo } from '../../types/reportes';
 import { getClienteName, getServicioName } from '../../utils/reportUtils';
 import { formatCurrency } from '../../utils/discountUtils';
+import { parseFechaLocal } from '../../utils/dateValidation';
 
 interface CitaDetalleModalProps {
   cita: Cita | null;
@@ -60,7 +61,7 @@ export default function CitaDetalleModal({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
-              <p className="text-gray-900">{new Date(cita.fecha).toLocaleDateString('es-ES')}</p>
+              <p className="text-gray-900">{parseFechaLocal(cita.fecha).toLocaleDateString('es-ES')}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Hora</label>
@@ -95,7 +96,7 @@ export default function CitaDetalleModal({
                 <h4 className="font-medium text-gray-900 mb-3">Desglose Financiero</h4>
                 <div className="space-y-2 text-sm">
                   {/* Subtotal de servicios */}
-                  {(cita.subtotalOriginal && cita.subtotalOriginal > 0) && (
+                  {(!!cita.subtotalOriginal && cita.subtotalOriginal > 0) && (
                     <div className="flex justify-between">
                       <span className="text-gray-700">Subtotal de servicios:</span>
                       <span className="font-medium">{formatCurrency(cita.subtotalOriginal)}</span>
@@ -103,7 +104,7 @@ export default function CitaDetalleModal({
                   )}
 
                   {/* Descuento aplicado */}
-                  {(cita.montoDescuento && cita.montoDescuento > 0) && (
+                  {(!!cita.montoDescuento && cita.montoDescuento > 0) && (
                     <div className="flex justify-between text-orange-600">
                       <div className="flex items-center gap-1">
                         <TrendingDown size={14} />
@@ -140,7 +141,7 @@ export default function CitaDetalleModal({
                   })()}
 
                   {/* Redondeo */}
-                  {(cita.montoRedondeo && cita.montoRedondeo > 0) && (
+                  {(!!cita.montoRedondeo && cita.montoRedondeo > 0) && (
                     <div className="flex justify-between text-green-600">
                       <div className="flex items-center gap-1">
                         <Calculator size={14} />
@@ -151,7 +152,7 @@ export default function CitaDetalleModal({
                   )}
 
                   {/* Propina */}
-                  {(cita.propina && cita.propina > 0) && (
+                  {(!!cita.propina && cita.propina > 0) && (
                     <div className="flex justify-between text-purple-600">
                       <div className="flex items-center gap-1">
                         <Gift size={14} />

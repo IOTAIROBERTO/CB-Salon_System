@@ -2,6 +2,7 @@
 // CONSOLIDADO: CitaEmailButton + EmailReminderIntegration
 import { useState } from 'react';
 import { Mail, Send, X, Check, AlertCircle, Loader, User, Calendar, Clock } from 'lucide-react';
+import { parseFechaLocal } from '../../utils/dateValidation';
 
 interface Cita {
   id: string;
@@ -164,7 +165,7 @@ export default function CitaEmailButton({
   };
 
   const getEmailMessage = (type: string) => {
-    const fecha = new Date(cita.fecha).toLocaleDateString('es-ES', {
+    const fecha = parseFechaLocal(cita.fecha).toLocaleDateString('es-ES', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -188,7 +189,7 @@ Beauty Salon`;
   };
 
   const getEmailHTML = (type: string) => {
-    const fecha = new Date(cita.fecha).toLocaleDateString('es-ES', {
+    const fecha = parseFechaLocal(cita.fecha).toLocaleDateString('es-ES', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -352,7 +353,7 @@ Beauty Salon`;
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar size={14} className="text-gray-400" />
-                  {new Date(cita.fecha).toLocaleDateString('es-ES')}
+                  {parseFechaLocal(cita.fecha).toLocaleDateString('es-ES')}
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock size={14} className="text-gray-400" />

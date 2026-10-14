@@ -2,6 +2,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { fechaLocalISO } from './utils/dateValidation';
 import './index.css'
 
 // Configuración de errores globales
@@ -83,7 +84,7 @@ if (import.meta.env.DEV) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `beauty-salon-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `beauty-salon-backup-${fechaLocalISO()}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

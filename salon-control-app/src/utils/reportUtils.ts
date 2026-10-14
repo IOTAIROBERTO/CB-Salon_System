@@ -1,5 +1,6 @@
 import { Cita, Venta, ReportData, ReportStats, ReportPeriod } from '../types/reportes';
 import { Expense } from '../db/db';
+import { parseFechaLocal } from './dateValidation';
 
 export const calculateReportStats = (
   citas: Cita[],
@@ -50,12 +51,12 @@ export const generateReportData = (
         weekEnd.setDate(weekStart.getDate() + 6);
 
         const weekCitas = citas.filter(cita => {
-          const citaDate = new Date(cita.fecha);
+          const citaDate = parseFechaLocal(cita.fecha);
           return citaDate >= weekStart && citaDate <= weekEnd && cita.estado === 'completada';
         });
 
         const weekVentas = ventas.filter(venta => {
-          const ventaDate = new Date(venta.fecha);
+          const ventaDate = parseFechaLocal(venta.fecha);
           return ventaDate >= weekStart && ventaDate <= weekEnd;
         });
 
@@ -82,7 +83,7 @@ export const generateReportData = (
         monthDate.setMonth(now.getMonth() - i);
 
         const monthCitas = citas.filter(cita => {
-          const citaDate = new Date(cita.fecha);
+          const citaDate = parseFechaLocal(cita.fecha);
           return (
             citaDate.getMonth() === monthDate.getMonth() &&
             citaDate.getFullYear() === monthDate.getFullYear() &&
@@ -91,7 +92,7 @@ export const generateReportData = (
         });
 
         const monthVentas = ventas.filter(venta => {
-          const ventaDate = new Date(venta.fecha);
+          const ventaDate = parseFechaLocal(venta.fecha);
           return (
             ventaDate.getMonth() === monthDate.getMonth() &&
             ventaDate.getFullYear() === monthDate.getFullYear()
@@ -121,12 +122,12 @@ export const generateReportData = (
         yearDate.setFullYear(now.getFullYear() - i);
 
         const yearCitas = citas.filter(cita => {
-          const citaDate = new Date(cita.fecha);
+          const citaDate = parseFechaLocal(cita.fecha);
           return citaDate.getFullYear() === yearDate.getFullYear() && cita.estado === 'completada';
         });
 
         const yearVentas = ventas.filter(venta => {
-          const ventaDate = new Date(venta.fecha);
+          const ventaDate = parseFechaLocal(venta.fecha);
           return ventaDate.getFullYear() === yearDate.getFullYear();
         });
 

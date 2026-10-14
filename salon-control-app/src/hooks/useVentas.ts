@@ -28,24 +28,37 @@ export const useVentas = () => {
     stock: p.cantidad
   }));
 
+  // Guarda la venta y descuenta el stock en una sola transacción (o todo o nada)
   const addVenta = async (nuevaVenta: any) => {
-    // Convertir de UI a DB format
-    const dbVenta = {
-      ...nuevaVenta,
-      productos: nuevaVenta.items?.map((i: any) => ({
-        productoId: i.itemId,
-        cantidad: i.cantidad,
-        precio: 0 // Se calculará en el proceso de venta o se guardará según se necesite
-      }))
-    };
-    await db.ventas.add(dbVenta);
+    await db.transaction('rw', db.ventas, db.inventario, async () => {
+      const productos = [];
+      for (const i of nuevaVenta.items || []) {
+        const producto = await db.inventario.get(i.itemId);
+        if (!producto) throw new Error('Producto no encontrado en inventario');
+        if (producto.cantidad < i.cantidad) {
+          throw new Error(`Stock insuficiente de ${producto.nombre} (quedan ${producto.cantidad})`);
+        }
+        await db.inventario.update(producto.id, { cantidad: producto.cantidad - i.cantidad });
+        // Precio congelado al momento de la venta
+        productos.push({ productoId: i.itemId, cantidad: i.cantidad, precio: producto.precio });
+      }
+      await db.ventas.add({ ...nuevaVenta, productos });
+    });
   };
 
+  // Elimina la venta y devuelve el stock al inventario
   const deleteVenta = async (ventaId: string) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta venta?')) {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta venta? El stock se devolverá al inventario.')) {
       return false;
     }
-    await db.ventas.delete(ventaId);
+    await db.transaction('rw', db.ventas, db.inventario, async () => {
+      const venta = await db.ventas.get(ventaId);
+      for (const p of venta?.productos || []) {
+        const producto = await db.inventario.get(p.productoId);
+        if (producto) await db.inventario.update(producto.id, { cantidad: producto.cantidad + p.cantidad });
+      }
+      await db.ventas.delete(ventaId);
+    });
     return true;
   };
 

@@ -1,3 +1,4 @@
+import { parseFechaLocal, fechaLocalISO } from '../utils/dateValidation';
 // services/whatsappService.ts
 
 interface WhatsAppMessage {
@@ -74,7 +75,7 @@ class WhatsAppService {
   // Obtener plantillas de mensaje
   private getMessageTemplate(type: WhatsAppMessage['type'], data: WhatsAppMessage): string {
     const formatDate = (fecha: string) => {
-      return new Date(fecha).toLocaleDateString('es-ES', {
+      return parseFechaLocal(fecha).toLocaleDateString('es-ES', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -290,7 +291,7 @@ Si deseas reagendar, no dudes en contactarnos.
       to: '+521234567890',
       clienteName: data.clienteName || 'Cliente Ejemplo',
       servicioNombre: data.servicioNombre || 'Corte de cabello',
-      fecha: data.fecha || new Date().toISOString().split('T')[0],
+      fecha: data.fecha || fechaLocalISO(),
       hora: data.hora || '10:00',
       notas: data.notas || 'Sin notas especiales',
       type: type
@@ -305,7 +306,7 @@ Si deseas reagendar, no dudes en contactarnos.
       to,
       clienteName: 'Cliente de Prueba',
       servicioNombre: 'Mensaje de Prueba',
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: fechaLocalISO(),
       hora: '10:00',
       type: 'confirmacion',
       notas: 'Este es un mensaje de prueba del sistema'

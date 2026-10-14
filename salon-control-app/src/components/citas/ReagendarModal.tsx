@@ -6,7 +6,8 @@ import {
   obtenerFechaMinima, 
   validarFechaHora,
   formatearFechaLegible,
-  formatearHoraLegible
+  formatearHoraLegible,
+  parseFechaLocal
 } from "../../utils/dateValidation";
 
 interface ReagendarModalProps {
@@ -119,7 +120,7 @@ export default function ReagendarModal({ cita, onClose, onSave }: ReagendarModal
               />
               {fecha && hora && (
                 <p className="text-xs text-gray-500 mt-1">
-                  {new Date(fecha).toDateString() === new Date().toDateString()
+                  {parseFechaLocal(fecha).toDateString() === new Date().toDateString()
                     ? 'Para hoy, la hora debe ser futura'
                     : 'Hora de inicio del servicio'
                   }

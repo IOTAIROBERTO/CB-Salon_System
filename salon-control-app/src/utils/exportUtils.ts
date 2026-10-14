@@ -1,4 +1,5 @@
 import { ReportData, ReportPeriod } from '../types/reportes';
+import { fechaLocalISO } from './dateValidation';
 
 export const exportReportToCSV = (reportData: ReportData[], period: ReportPeriod): void => {
   const csvContent = [
@@ -19,7 +20,7 @@ export const exportReportToCSV = (reportData: ReportData[], period: ReportPeriod
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `reporte_${period}_${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = `reporte_${period}_${fechaLocalISO()}.csv`;
   a.click();
   window.URL.revokeObjectURL(url);
 };

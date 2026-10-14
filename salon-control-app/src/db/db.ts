@@ -147,6 +147,8 @@ export interface Producto {
     precio: number;
     proveedor?: string;
     categoria?: string;
+    stockMinimo?: number;
+    fechaUltimaCompra?: string;
 }
 
 // Marketing Interfaces

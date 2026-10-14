@@ -1,6 +1,7 @@
 // src/components/email/CampaignScheduler.tsx
 import { useState } from 'react';
 import { Calendar, Clock, Send, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { fechaLocalISO } from '../../../utils/dateValidation';
 
 interface SchedulerProps {
   campaignName: string;
@@ -34,7 +35,7 @@ export default function CampaignScheduler({
   const [showCustomTime, setShowCustomTime] = useState(false);
 
   const today = new Date();
-  const minDate = today.toISOString().split('T')[0];
+  const minDate = fechaLocalISO(today);
   
   const selectedDateTime = selectedDate && selectedTime 
     ? new Date(`${selectedDate}T${selectedTime}`)

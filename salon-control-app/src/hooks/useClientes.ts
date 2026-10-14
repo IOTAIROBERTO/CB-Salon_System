@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { Cliente } from '../types/clientes';
 import { generateClienteId, hasClienteRegistros } from '../utils/clientesUtils';
+import { fechaLocalISO } from '../utils/dateValidation';
 
 export const useClientes = () => {
   const [showInactivos, setShowInactivos] = useState(true);
@@ -14,7 +15,7 @@ export const useClientes = () => {
     const newCliente: Cliente = {
       id: generateClienteId(),
       ...clienteData,
-      fechaRegistro: new Date().toISOString().split('T')[0]
+      fechaRegistro: fechaLocalISO()
     };
     await db.clientes.add(newCliente as any);
     return newCliente;
@@ -23,7 +24,7 @@ export const useClientes = () => {
   const updateCliente = async (clienteId: string, updatedData: Partial<Cliente>) => {
     await db.clientes.update(clienteId, {
       ...updatedData,
-      ultimaVisita: new Date().toISOString().split('T')[0]
+      ultimaVisita: fechaLocalISO()
     } as any);
   };
 

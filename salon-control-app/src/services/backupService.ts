@@ -6,6 +6,7 @@
 // borrado del sitio se lleva clientes, citas, ventas y documentos.
 import { exportDB, importInto } from 'dexie-export-import';
 import { db } from '../db/db';
+import { fechaLocalISO } from '../utils/dateValidation';
 
 const PREFIJO = 'respaldo-salon-';
 const COPIAS_A_CONSERVAR = 30;
@@ -21,7 +22,7 @@ export interface Respaldo {
 export const soportaCarpetaLocal = (): boolean => 'showDirectoryPicker' in window;
 
 const nombreArchivo = (fecha = new Date()): string =>
-    `${PREFIJO}${fecha.toISOString().split('T')[0]}.json`;
+    `${PREFIJO}${fechaLocalISO(fecha)}.json`;
 
 /**
  * Pide al navegador no desalojar la base. Sin esto, IndexedDB es "best effort"
@@ -151,7 +152,7 @@ const rotarCopias = async (carpeta: FileSystemDirectoryHandle): Promise<void> =>
 
 /** ¿Ya se respaldó hoy? */
 export const respaldadoHoy = (ultimo?: string): boolean =>
-    !!ultimo && ultimo.split('T')[0] === new Date().toISOString().split('T')[0];
+    !!ultimo && fechaLocalISO(new Date(ultimo)) === fechaLocalISO();
 
 /**
  * Respaldo diario automático. No hace nada si no hay carpeta, si el permiso

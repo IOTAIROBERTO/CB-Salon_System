@@ -8,6 +8,7 @@ import {
 import { Cliente } from '../types/clientes';
 import { loadEmailJS } from '../utils/emailJSLoader';
 import { db } from '../db/db';
+import { fechaLocalISO } from '../utils/dateValidation';
 
 class EmailMarketingService {
   private isEmailJsLoaded = false;
@@ -256,7 +257,7 @@ class EmailMarketingService {
   }
 
   private hoy(): string {
-    return new Date().toISOString().split('T')[0];
+    return fechaLocalISO();
   }
 
   async checkAutomations() {
@@ -331,7 +332,7 @@ class EmailMarketingService {
 
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + daysAhead);
-    const targetDateStr = targetDate.toISOString().split('T')[0];
+    const targetDateStr = fechaLocalISO(targetDate);
 
     const appointments = await db.citas.filter(c => c.fecha === targetDateStr && c.estado === 'confirmada').toArray();
 
@@ -400,7 +401,7 @@ class EmailMarketingService {
 
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() - diasDespues);
-    const targetDateStr = targetDate.toISOString().split('T')[0];
+    const targetDateStr = fechaLocalISO(targetDate);
 
     const appointments = await db.citas
       .where('fecha').equals(targetDateStr)

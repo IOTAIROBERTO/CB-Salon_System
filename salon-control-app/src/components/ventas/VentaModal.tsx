@@ -14,7 +14,7 @@ interface VentaModalProps {
   inventario: Item[];
   updateFormData: (field: keyof VentaFormData, value: any) => void;
   updateItemQuantity: (itemId: string, cantidad: number) => void;
-  onSave: (venta: Venta) => void;
+  onSave: (venta: Venta) => Promise<void>;
   onClose: () => void;
 }
 
@@ -28,11 +28,12 @@ export default function VentaModal({
   onSave,
   onClose
 }: VentaModalProps) {
-  if (!isOpen) return null;
-
+  // Hooks antes del return condicional (regla de hooks de React)
   const empleados = useLiveQuery(() => db.empleados.toArray())?.filter(e => e.activo) || [];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const validationError = validateVentaForm(ventaData);
@@ -53,8 +54,12 @@ export default function VentaModal({
       notas: ventaData.notas
     };
 
-    onSave(nuevaVenta);
-    onClose();
+    try {
+      await onSave(nuevaVenta);
+      onClose();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo guardar la venta');
+    }
   };
 
   const total = calculateVentaTotal(ventaData.items, inventario);
