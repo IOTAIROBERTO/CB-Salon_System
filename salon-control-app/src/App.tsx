@@ -23,9 +23,30 @@ import { googleCalendarService } from "./services/googleCalendar";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { useObservable } from "dexie-react-hooks";
 import { db } from "./db/db";
+import { useRolSalon, NOMBRE_ROL } from "./db/salon";
+import { LoginSalon, PantallaSinSalon } from "./components/auth/AccesoSalon";
+
+// Páginas solo para la dueña (la empleada no las ve en el menú ni por URL)
+const SOLO_DUENA = new Set(["/reportes", "/configuracion"]);
 
 export default function App() {
-  useInitializeData();
+  const { estado, reintentar } = useInitializeData();
+  return (
+    <>
+      <LoginSalon />
+      {estado === "listo" ? (
+        <AppSalon />
+      ) : estado === "cargando" ? (
+        <div className="min-h-screen flex items-center justify-center text-gray-500">Cargando salón…</div>
+      ) : (
+        <PantallaSinSalon estado={estado} reintentar={reintentar} />
+      )}
+    </>
+  );
+}
+
+function AppSalon() {
+  const rol = useRolSalon();
   useMarketingAutomations();
   useAutoBackup();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -51,7 +72,7 @@ export default function App() {
     { to: "/documentos", label: "Documentos" },
     { to: "/reportes", label: "Reportes" },
     { to: "/configuracion", label: "Configuración" }
-  ];
+  ].filter(link => rol === "duena" || !SOLO_DUENA.has(link.to));
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -98,7 +119,7 @@ export default function App() {
                 {usuario?.isLoggedIn && (
                   <button
                     onClick={() => db.cloud.logout().then(() => location.reload())}
-                    title={`Sesión: ${usuario.email}`}
+                    title={`Sesión: ${usuario.email}${rol ? ` (${NOMBRE_ROL[rol]})` : ""}`}
                     className="hidden xl:block ml-2 hover:bg-white/10 hover:text-marca-dorado px-2 py-2 rounded-md text-xs xl:text-sm font-medium"
                   >
                     Salir
@@ -167,8 +188,8 @@ export default function App() {
                   <Route path="/empleados" element={<EmpleadosPage />} />
                   <Route path="/gastos" element={<GastosPage />} />
                   <Route path="/documentos" element={<DocumentosPage />} />
-                  <Route path="/reportes" element={<ReportesPage />} />
-                  <Route path="/configuracion" element={<ConfiguracionPage />} />
+                  {rol === "duena" && <Route path="/reportes" element={<ReportesPage />} />}
+                  {rol === "duena" && <Route path="/configuracion" element={<ConfiguracionPage />} />}
 
                   {/* Redirecciones para compatibilidad con URLs antiguas */}
                   <Route path="/servicios" element={<Navigate to="/citas" replace />} />

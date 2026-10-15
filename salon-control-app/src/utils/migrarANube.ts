@@ -12,6 +12,10 @@ const BANDERA = 'nube_migracion_hecha';
 // se descarta el id numérico para que Dexie Cloud genere uno nuevo.
 const SIN_ID = new Set(['gastos', 'empleadoEvents']);
 
+/** ¿Queda en este navegador una base anterior sin migrar? */
+export const hayBaseLocalAnterior = async () =>
+  !localStorage.getItem(BANDERA) && (await Dexie.exists(BASE_ANTERIOR));
+
 /** ¿La nube ya tiene datos del salón? (otro dispositivo ya migró) */
 const nubeTieneDatos = async () =>
   (await db.clientes.count()) + (await db.citas.count()) +
