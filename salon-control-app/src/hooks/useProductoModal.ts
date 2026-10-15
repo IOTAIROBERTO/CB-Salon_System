@@ -5,6 +5,7 @@ const INITIAL_FORM_DATA: ProductoFormData = {
   nombre: '',
   cantidad: 0,
   precio: 0,
+  costo: 0,
   stockMinimo: 5,
   categoria: '',
   proveedor: ''
@@ -35,6 +36,7 @@ export const useProductoModal = () => {
       nombre: producto.nombre,
       cantidad: producto.cantidad,
       precio: producto.precio,
+      costo: producto.costo ?? 0,
       stockMinimo: producto.stockMinimo,
       categoria: producto.categoria,
       proveedor: producto.proveedor || ''

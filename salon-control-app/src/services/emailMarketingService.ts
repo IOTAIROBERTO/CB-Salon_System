@@ -459,7 +459,7 @@ class EmailMarketingService {
       NOMBRE: cliente.nombre,
       EMAIL: cliente.email || '',
       TELEFONO: cliente.telefono || '',
-      SALON_NOMBRE: 'Beauty Salon Total Control' // Could load from settings too
+      SALON_NOMBRE: 'Cristina Bórquez Beauty Salon' // Could load from settings too
     };
   }
 
@@ -471,7 +471,7 @@ class EmailMarketingService {
         .header { background: #fdfdfd; padding: 20px; text-align: center; }
         .content { padding: 20px; color: #333; line-height: 1.6; }
         .footer { background: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #666; }
-        .btn { display: inline-block; padding: 10px 20px; background: #7c3aed; color: white; text-decoration: none; border-radius: 5px; }
+        .btn { display: inline-block; padding: 10px 20px; background: #8A6A2F; color: white; text-decoration: none; border-radius: 5px; }
       </style>
     `;
 

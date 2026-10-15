@@ -1,9 +1,10 @@
 import { useInventario } from '../hooks/useInventario';
 import { useProductoModal } from '../hooks/useProductoModal';
-import { calculateStats, getProductosStockBajo } from '../utils/inventarioUtils';
+import { calculateStats, getProductosStockBajo, getProductosPrecioBajo } from '../utils/inventarioUtils';
 import AddProductoButton from '../components/inventario/AddProductoButton';
 import InventarioStats from '../components/inventario/InventarioStats';
 import StockBajoAlert from '../components/inventario/StockBajoAlert';
+import PrecioBajoAlert from '../components/inventario/PrecioBajoAlert';
 import ProductosTable from '../components/inventario/ProductosTable';
 import ProductoModal from '../components/inventario/ProductoModal';
 import StockModal from '../components/inventario/StockModal';
@@ -36,6 +37,7 @@ export default function InventarioPage() {
   // Calcular datos derivados
   const stats = calculateStats(inventario);
   const productosStockBajo = getProductosStockBajo(inventario);
+  const productosPrecioBajo = getProductosPrecioBajo(inventario);
 
   // Handlers
   const handleDeleteProducto = (id: string) => {
@@ -61,6 +63,11 @@ export default function InventarioPage() {
         {/* Alertas de stock bajo */}
         <div className="mt-4">
           <StockBajoAlert productosStockBajo={productosStockBajo} />
+        </div>
+
+        {/* Precios de venta por debajo del margen mínimo */}
+        <div className="mt-4">
+          <PrecioBajoAlert productos={productosPrecioBajo} />
         </div>
       </div>
 

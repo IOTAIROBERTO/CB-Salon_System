@@ -3,6 +3,7 @@ export interface Producto {
   nombre: string;
   cantidad: number;
   precio: number;
+  costo?: number; // Lo que cuesta al salón; sirve para vigilar el margen
   stockMinimo: number;
   categoria: string;
   fechaUltimaCompra?: string;
@@ -13,6 +14,7 @@ export interface ProductoFormData {
   nombre: string;
   cantidad: number;
   precio: number;
+  costo: number;
   stockMinimo: number;
   categoria: string;
   proveedor: string;

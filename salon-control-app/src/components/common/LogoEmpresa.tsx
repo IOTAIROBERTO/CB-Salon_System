@@ -21,7 +21,7 @@ export default function LogoEmpresa({
   hideTextWhenLogo = false 
 }: LogoEmpresaProps) {
   const [configuracion, setConfiguracion] = useState<ConfiguracionEmpresa>({
-    nombre: 'Beauty Salon Total Control',
+    nombre: 'Cristina Bórquez Beauty Salon',
     logo: null
   });
 
@@ -31,7 +31,7 @@ export default function LogoEmpresa({
       try {
         const config = JSON.parse(configGuardada);
         setConfiguracion({
-          nombre: config?.nombre || 'Beauty Salon Total Control',
+          nombre: config?.nombre || 'Cristina Bórquez Beauty Salon',
           logo: config?.logo || null
         });
       } catch (error) {
@@ -49,7 +49,7 @@ export default function LogoEmpresa({
         try {
           const config = JSON.parse(configGuardada);
           setConfiguracion({
-            nombre: config?.nombre || 'Beauty Salon Total Control',
+            nombre: config?.nombre || 'Cristina Bórquez Beauty Salon',
             logo: config?.logo || null
           });
         } catch (error) {

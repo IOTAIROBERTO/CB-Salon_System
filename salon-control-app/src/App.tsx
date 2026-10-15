@@ -64,14 +64,17 @@ export default function App() {
       <Router>
         <div className="min-h-screen w-full flex flex-col bg-gray-50">
           {/* Barra de navegacion */}
-          <nav className="bg-purple-600 text-white shadow-lg relative z-50">
+          <nav className="bg-marca-negro text-white shadow-lg relative z-50 border-b border-marca-dorado/40">
             <div className="max-w-full px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between items-center h-16">
                 {/* Logo/Titulo y Widget */}
                 <div className="flex items-center gap-4">
-                  <div className="flex-shrink-0">
-                    <h1 className="text-lg sm:text-xl font-bold">Salon Total Control</h1>
-                  </div>
+                  <Link to="/citas" className="flex-shrink-0 flex items-center gap-3" title="Cristina Bórquez Beauty Salon">
+                    <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-9 w-auto" />
+                    <span className="font-display text-xl sm:text-2xl leading-none tracking-wide">
+                      CB <em className="text-marca-dorado">Control</em>
+                    </span>
+                  </Link>
                 </div>
 
                 {/* Navegacion Desktop */}
@@ -80,7 +83,7 @@ export default function App() {
                     {navLinks.map((link) => (
                       <Link
                         key={link.to}
-                        className="hover:bg-purple-700 px-2 py-2 rounded-md text-xs xl:text-sm font-medium transition-colors duration-200 whitespace-nowrap"
+                        className="hover:bg-white/10 hover:text-marca-dorado px-2 py-2 rounded-md text-xs xl:text-sm font-medium transition-colors duration-200 whitespace-nowrap"
                         to={link.to}
                       >
                         {link.label}
@@ -94,7 +97,7 @@ export default function App() {
                   <button
                     onClick={() => db.cloud.logout().then(() => location.reload())}
                     title={`Sesión: ${usuario.email}`}
-                    className="hidden lg:block ml-2 hover:bg-purple-700 px-2 py-2 rounded-md text-xs xl:text-sm font-medium"
+                    className="hidden lg:block ml-2 hover:bg-white/10 hover:text-marca-dorado px-2 py-2 rounded-md text-xs xl:text-sm font-medium"
                   >
                     Salir
                   </button>
@@ -104,7 +107,7 @@ export default function App() {
                 <div className="lg:hidden">
                   <button
                     onClick={toggleMobileMenu}
-                    className="inline-flex items-center justify-center p-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors duration-200"
+                    className="inline-flex items-center justify-center p-2 rounded-md hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors duration-200"
                   >
                     <span className="sr-only">Abrir menu principal</span>
                     {isMobileMenuOpen ? (
@@ -119,14 +122,14 @@ export default function App() {
 
             {/* Menu movil */}
             <div className={`lg:hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen
-              ? 'max-h-96 opacity-100 visible'
+              ? 'max-h-[80vh] overflow-y-auto opacity-100 visible'
               : 'max-h-0 opacity-0 invisible overflow-hidden'
               }`}>
-              <div className="px-2 pt-2 pb-3 space-y-1 bg-purple-700">
+              <div className="px-2 pt-2 pb-3 space-y-1 bg-[#1A1A1A]">
                 {navLinks.map((link) => (
                   <Link
                     key={link.to}
-                    className="block hover:bg-purple-800 px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
+                    className="block hover:bg-white/10 hover:text-marca-dorado px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
                     to={link.to}
                     onClick={closeMobileMenu}
                   >
@@ -136,7 +139,7 @@ export default function App() {
                 {usuario?.isLoggedIn && (
                   <button
                     onClick={() => db.cloud.logout().then(() => location.reload())}
-                    className="block w-full text-left hover:bg-purple-800 px-3 py-2 rounded-md text-base font-medium"
+                    className="block w-full text-left hover:bg-white/10 hover:text-marca-dorado px-3 py-2 rounded-md text-base font-medium"
                   >
                     Salir ({usuario.email})
                   </button>
@@ -202,8 +205,8 @@ export default function App() {
           )}
 
           {/* Indicador de pagina activa en movil */}
-          <div className="lg:hidden bg-purple-800 text-white text-center py-1 text-xs">
-            {navLinks.find(link => window.location.hash === `#${link.to}`)?.label || 'Salon Total Control'}
+          <div className="lg:hidden bg-black text-marca-dorado text-center py-1 text-xs tracking-[0.2em] uppercase">
+            {navLinks.find(link => window.location.hash === `#${link.to}`)?.label || 'CB Control'}
           </div>
         </div>
       </Router>

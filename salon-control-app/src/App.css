@@ -141,7 +141,7 @@ input, select, textarea {
 
 /* Mejoras para accesibilidad */
 :focus-visible {
-  outline: 2px solid #646cff;
+  outline: 2px solid #C29B57;
   outline-offset: 2px;
 }
 

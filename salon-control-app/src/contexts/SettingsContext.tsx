@@ -1,3 +1,4 @@
+import { DATOS_SALON } from '../data/datosSalon';
 import React, { createContext, useContext } from 'react';
 import { db, AppSettings } from '../db/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -19,10 +20,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Default settings if not found in DB
     const defaultSettings: AppSettings = {
         id: 'settings',
-        nombreSalon: 'Beauty Salon Total Control',
-        direccion: '',
-        telefono: '',
-        email: '',
+        nombreSalon: DATOS_SALON.nombre,
+        direccion: DATOS_SALON.direccion,
+        telefono: DATOS_SALON.telefono,
+        email: DATOS_SALON.email,
         tipoCambioUSD: 20.0
     };
 

@@ -149,6 +149,7 @@ export interface Producto {
     nombre: string;
     cantidad: number;
     precio: number;
+    costo?: number; // Costo al salón (para el margen de venta)
     proveedor?: string;
     categoria?: string;
     stockMinimo?: number;

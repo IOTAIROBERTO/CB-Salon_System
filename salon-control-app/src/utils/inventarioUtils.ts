@@ -18,6 +18,10 @@ export const validateProductoForm = (formData: ProductoFormData): string | null 
     return 'El stock mínimo no puede ser negativo';
   }
 
+  if (formData.costo < 0) {
+    return 'El costo no puede ser negativo';
+  }
+
   return null;
 };
 
@@ -98,3 +102,24 @@ export const formatPrice = (price: number): string => {
 export const willBeStockBajo = (producto: Producto, cantidadARestar: number): boolean => {
   return (producto.cantidad - cantidadARestar) < producto.stockMinimo;
 };
+// Regla de la auditoría 2026: ningún producto se vende a menos de costo × 1.6.
+export const MARGEN_MINIMO = 1.6;
+
+export type EstadoPrecio = 'sin-costo' | 'perdida' | 'subir' | 'ok';
+
+export const estadoPrecio = (producto: Pick<Producto, 'precio' | 'costo'>): EstadoPrecio => {
+  if (!producto.costo) return 'sin-costo';
+  if (producto.precio < producto.costo) return 'perdida';
+  if (producto.precio < producto.costo * MARGEN_MINIMO) return 'subir';
+  return 'ok';
+};
+
+/** Precio mínimo sugerido, redondeado a la decena */
+export const precioMinimo = (costo: number): number => Math.round((costo * MARGEN_MINIMO) / 10) * 10;
+
+/** Margen sobre el precio de venta (0.32 = 32%) */
+export const margenPorcentaje = (producto: Pick<Producto, 'precio' | 'costo'>): number | null =>
+  producto.costo && producto.precio > 0 ? (producto.precio - producto.costo) / producto.precio : null;
+
+export const getProductosPrecioBajo = (inventario: Producto[]): Producto[] =>
+  inventario.filter(p => ['perdida', 'subir'].includes(estadoPrecio(p)));

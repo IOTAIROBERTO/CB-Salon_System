@@ -17,7 +17,7 @@ export interface ConfiguracionEmpresa {
 }
 
 const CONFIGURACION_DEFAULT: ConfiguracionEmpresa = {
-  nombre: 'Beauty Salon Total Control',
+  nombre: 'Cristina Bórquez Beauty Salon',
   telefono: '+52 55 1234-5678',
   direccion: 'Calle Principal 123, Col. Centro',
   email: 'contacto@beautysalon.com',

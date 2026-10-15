@@ -16,10 +16,12 @@ import {
   Calculator,
   Gift,
   Cake,
+  FileSignature,
 } from "lucide-react";
 import { useState } from "react";
 import { Cita, Cliente, Servicio } from "../../types/citas";
 import { formatCurrency } from "../../utils/discountUtils";
+import { imprimirConsentimiento } from "../../utils/consentimiento";
 
 interface CitaCardProps {
   cita: Cita;
@@ -464,6 +466,21 @@ export default function CitaCard({
 
             {/* Editar / Eliminar */}
             <div className="flex gap-2 pt-2 border-t">
+              <button
+                onClick={() => imprimirConsentimiento({
+                  clienteNombre: clienteData?.nombre,
+                  telefono: clienteData?.telefono,
+                  cumple: clienteData?.cumple,
+                  servicio: [servicio?.nombre, ...(cita.serviciosAdicionales || []).map(s => s.nombre)].filter(Boolean).join(' + '),
+                  precio: cita.precioFinal ?? servicio?.precioSugerido,
+                  anticipo: cita.anticipoConfirmado ? cita.montoAnticipo : undefined,
+                  fecha: cita.fecha
+                })}
+                className="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded"
+                title="Imprimir consentimiento informado"
+              >
+                <FileSignature size={16} />
+              </button>
               <button
                 onClick={onOpenEdit}
                 className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
