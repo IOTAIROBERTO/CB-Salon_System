@@ -255,7 +255,10 @@ export default function CitaCard({
               {/* Servicio principal */}
               <div className="flex justify-between items-center">
                 <span className="text-gray-700">{servicio?.nombre || "Servicio"}:</span>
-                <span className="font-semibold">{formatCurrency(servicio?.precioSugerido || 0)}</span>
+                <span className="font-semibold">{formatCurrency(
+                  (cita.subtotalOriginal ?? ((cita.precioFinal ?? servicio?.precioSugerido ?? 0) - (cita.propina || 0))) -
+                  (cita.serviciosAdicionales || []).reduce((t, s) => t + (s.precio || 0), 0)
+                )}</span>
               </div>
               
               {/* Servicios adicionales */}

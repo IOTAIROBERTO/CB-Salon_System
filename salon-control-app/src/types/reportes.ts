@@ -6,6 +6,7 @@ export interface Cita {
   hora: string;
   estado: 'pendiente' | 'confirmada' | 'iniciada' | 'completada' | 'cancelada';
   precioFinal?: number;
+  propina?: number;
   montoAnticipo?: number;
   saldoPendiente?: number;
   metodoPago?: string;

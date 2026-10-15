@@ -46,7 +46,8 @@ export default function GastosPage() {
         }
     };
 
-    const totalGastos = expenses?.reduce((sum, expense) => sum + expense.monto, 0) || 0;
+    const mesActual = fechaLocalISO().slice(0, 7);
+    const totalGastos = expenses?.filter(e => e.fecha.startsWith(mesActual)).reduce((sum, expense) => sum + expense.monto, 0) || 0;
 
     return (
         <div className="p-6">

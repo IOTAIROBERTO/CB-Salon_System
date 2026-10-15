@@ -1,4 +1,8 @@
 // services/googleCalendar.ts
+// Google Calendar con Google Identity Services (GIS). La librería anterior
+// (gapi.auth2) quedó dada de baja por Google y no funciona con clientes OAuth
+// nuevos. Aquí gapi solo se usa como cliente REST; el permiso lo da GIS con un
+// token de acceso de 1 hora que se guarda en este navegador.
 export interface CalendarEvent {
   id?: string;
   summary: string;
@@ -24,16 +28,42 @@ export interface CalendarEvent {
   };
 }
 
+/** Evento leído de Google para mostrarlo en el calendario del sistema */
+export interface EventoGoogle {
+  id: string;
+  titulo: string;
+  inicio: string; // ISO o YYYY-MM-DD si es de día completo
+  fin: string;
+  diaCompleto: boolean;
+}
+
 import { db } from '../db/db';
+
+const ALCANCE = 'https://www.googleapis.com/auth/calendar.events';
+const DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+const CLAVE_TOKEN = 'cbGoogleToken';
+
+const cargarScript = (src: string) =>
+  new Promise<void>((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
 
 class GoogleCalendarService {
   private gapi: any = null;
-  private isSignedIn = false;
-  private discoveryDoc = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-  private scopes = 'https://www.googleapis.com/auth/calendar.events';
+  private tokenClient: any = null;
+  private clientId = '';
+  private token: { access_token: string; expira: number } | null = null;
+  private cuenta = '';
 
   constructor() { }
 
+  /** Carga las librerías con las credenciales de Configuración. No abre ventanas. */
   async initialize(): Promise<boolean> {
     try {
       const config = await db.configuracion.get('settings');
@@ -44,64 +74,62 @@ class GoogleCalendarService {
         return false;
       }
 
-      await this.loadGoogleAPI();
+      await Promise.all([
+        cargarScript('https://apis.google.com/js/api.js'),
+        cargarScript('https://accounts.google.com/gsi/client')
+      ]);
+      this.gapi = window.gapi;
+      await new Promise<void>(resolve => this.gapi.load('client', () => resolve()));
+      await this.gapi.client.init({ apiKey: creds.apiKey, discoveryDocs: [DISCOVERY] });
 
-      return new Promise((resolve) => {
-        this.gapi.load('client:auth2', async () => {
-          try {
-            await this.gapi.client.init({
-              apiKey: creds.apiKey,
-              clientId: creds.clientId,
-              discoveryDocs: [this.discoveryDoc],
-              scope: this.scopes
-            });
-
-            const authInstance = this.gapi.auth2.getAuthInstance();
-            this.isSignedIn = authInstance.isSignedIn.get();
-
-            authInstance.isSignedIn.listen((status: boolean) => {
-              this.isSignedIn = status;
-            });
-
-            resolve(true);
-          } catch (e) {
-            console.error('Error init gapi client', e);
-            resolve(false);
-          }
+      if (!this.tokenClient || this.clientId !== creds.clientId) {
+        this.clientId = creds.clientId;
+        this.tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: creds.clientId,
+          scope: ALCANCE,
+          callback: () => { } // se reemplaza en cada pedido
         });
-      });
+      }
+
+      // Recuperar el token vigente de una visita anterior
+      try {
+        const guardado = JSON.parse(localStorage.getItem(CLAVE_TOKEN) || 'null');
+        if (guardado?.access_token && guardado.expira > Date.now() + 60_000) {
+          this.token = guardado;
+          this.cuenta = guardado.cuenta || '';
+          this.gapi.client.setToken({ access_token: guardado.access_token });
+        }
+      } catch {
+        localStorage.removeItem(CLAVE_TOKEN);
+      }
+      return true;
     } catch (error) {
       console.error('Error initializing Google Calendar API:', error);
       return false;
     }
   }
 
-  private loadGoogleAPI(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (window.gapi) {
-        this.gapi = window.gapi;
-        resolve();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://apis.google.com/js/api.js';
-      script.onload = () => {
-        this.gapi = window.gapi;
-        resolve();
-      };
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
-  }
-
+  /** Abre la ventana de Google para dar permiso (debe llamarse desde un clic) */
   async signIn(): Promise<boolean> {
     try {
-      if (!this.gapi) await this.initialize();
-      const authInstance = this.gapi.auth2.getAuthInstance();
-      await authInstance.signIn();
-      this.isSignedIn = authInstance.isSignedIn.get();
-      return this.isSignedIn;
+      if (!this.tokenClient && !(await this.initialize())) return false;
+      const respuesta: any = await new Promise((resolve, reject) => {
+        this.tokenClient.callback = (r: any) => (r.error ? reject(r) : resolve(r));
+        this.tokenClient.error_callback = (e: any) => reject(e);
+        this.tokenClient.requestAccessToken({ prompt: this.token ? '' : 'consent' });
+      });
+      this.token = {
+        access_token: respuesta.access_token,
+        expira: Date.now() + Number(respuesta.expires_in || 3600) * 1000
+      };
+      this.gapi.client.setToken({ access_token: this.token.access_token });
+      // El calendario principal se llama como el correo de la cuenta
+      try {
+        const r = await this.gapi.client.calendar.events.list({ calendarId: 'primary', maxResults: 1 });
+        this.cuenta = r.result.summary || '';
+      } catch { /* sin nombre de cuenta no pasa nada */ }
+      localStorage.setItem(CLAVE_TOKEN, JSON.stringify({ ...this.token, cuenta: this.cuenta }));
+      return true;
     } catch (error) {
       console.error('Error signing in to Google:', error);
       return false;
@@ -110,23 +138,31 @@ class GoogleCalendarService {
 
   async signOut(): Promise<void> {
     try {
-      if (this.gapi) {
-        const authInstance = this.gapi.auth2.getAuthInstance();
-        await authInstance.signOut();
-        this.isSignedIn = false;
+      if (this.token && window.google?.accounts?.oauth2) {
+        window.google.accounts.oauth2.revoke(this.token.access_token, () => { });
       }
     } catch (error) {
       console.error('Error signing out:', error);
     }
+    this.token = null;
+    this.cuenta = '';
+    this.gapi?.client?.setToken(null);
+    localStorage.removeItem(CLAVE_TOKEN);
   }
 
+  /** Conectado = hay un token sin vencer */
   getSignInStatus(): boolean {
-    return this.isSignedIn;
+    return !!this.token && this.token.expira > Date.now();
+  }
+
+  /** Correo de la cuenta conectada (si Google lo informó) */
+  getCuenta(): string {
+    return this.cuenta;
   }
 
   async createEvent(event: CalendarEvent, calendarId: string = 'primary'): Promise<string | null> {
     try {
-      if (!this.isSignedIn) return null;
+      if (!this.getSignInStatus()) return null;
 
       const response = await this.gapi.client.calendar.events.insert({
         calendarId: calendarId,
@@ -142,7 +178,7 @@ class GoogleCalendarService {
 
   async updateEvent(eventId: string, event: CalendarEvent, calendarId: string = 'primary'): Promise<boolean> {
     try {
-      if (!this.isSignedIn) return false;
+      if (!this.getSignInStatus()) return false;
 
       await this.gapi.client.calendar.events.update({
         calendarId: calendarId,
@@ -159,7 +195,7 @@ class GoogleCalendarService {
 
   async deleteEvent(eventId: string, calendarId: string = 'primary'): Promise<boolean> {
     try {
-      if (!this.isSignedIn) return false;
+      if (!this.getSignInStatus()) return false;
 
       await this.gapi.client.calendar.events.delete({
         calendarId: calendarId,
@@ -171,6 +207,36 @@ class GoogleCalendarService {
       console.error('Error deleting calendar event:', error);
       return false;
     }
+  }
+
+  /** Eventos del calendario entre dos fechas (YYYY-MM-DD, fin exclusivo) */
+  async listEvents(desde: string, hasta: string, calendarId: string = 'primary'): Promise<EventoGoogle[]> {
+    if (!this.getSignInStatus()) return [];
+    const eventos: EventoGoogle[] = [];
+    let pageToken: string | undefined;
+    do {
+      const r = await this.gapi.client.calendar.events.list({
+        calendarId,
+        timeMin: new Date(`${desde}T00:00:00`).toISOString(),
+        timeMax: new Date(`${hasta}T00:00:00`).toISOString(),
+        singleEvents: true,
+        orderBy: 'startTime',
+        maxResults: 250,
+        pageToken
+      });
+      for (const e of r.result.items || []) {
+        if (e.status === 'cancelled') continue;
+        eventos.push({
+          id: e.id,
+          titulo: e.summary || '(Sin título)',
+          inicio: e.start?.dateTime || e.start?.date,
+          fin: e.end?.dateTime || e.end?.date,
+          diaCompleto: !e.start?.dateTime
+        });
+      }
+      pageToken = r.result.nextPageToken;
+    } while (pageToken);
+    return eventos;
   }
 
   citaToCalendarEvent(cita: any, cliente: any, servicio: any): CalendarEvent {
@@ -186,7 +252,7 @@ Servicio: ${servicio.nombre}
 Precio: $${cita.precioFinal || servicio.precioSugerido}
 Estado: ${cita.estado}
 ${cita.notas ? `Notas: ${cita.notas}` : ''}
-Sent from Salon Control App
+Enviado desde CB Control
       `.trim(),
       start: {
         dateTime: startDateTime.toISOString(),
@@ -214,7 +280,7 @@ Sent from Salon Control App
 Tipo: ${event.tipo}
 Empleado: ${empleado.nombre}
 ${event.descripcion ? `Notas: ${event.descripcion}` : ''}
-Sent from Salon Control App
+Enviado desde CB Control
       `.trim(),
       start: {
         dateTime: new Date(event.fechaInicio + 'T00:00:00').toISOString(),
@@ -235,5 +301,6 @@ export const googleCalendarService = new GoogleCalendarService();
 declare global {
   interface Window {
     gapi: any;
+    google: any;
   }
 }

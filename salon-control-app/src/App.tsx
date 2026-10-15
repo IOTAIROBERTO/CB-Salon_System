@@ -14,6 +14,7 @@ import GastosPage from "./pages/GastosPage";
 import ConfiguracionPage from "./pages/ConfiguracionPage";
 import EmpleadosPage from "./pages/EmpleadosPage";
 import CalendarioPage from "./pages/CalendarioPage";
+import CirculoPage from "./pages/CirculoPage";
 import { useInitializeData } from "./hooks/useInitializeData";
 import { useMarketingAutomations } from "./hooks/useMarketingAutomations";
 import { useAutoBackup } from "./hooks/useAutoBackup";
@@ -37,12 +38,13 @@ export default function App() {
   }, []);
 
   const navLinks = [
-    { to: "/citas", label: "Citas y Servicios" },
+    { to: "/citas", label: "Citas" },
     { to: "/calendario", label: "Calendario" },
-    { to: "/ventas", label: "Ventas de Productos" },
+    { to: "/ventas", label: "Ventas" },
     { to: "/inventario", label: "Inventario" },
     { to: "/clientes", label: "Clientes" },
-    { to: "/catalogo", label: "Catalogo de Servicios" },
+    { to: "/circulo", label: "Círculo CB" },
+    { to: "/catalogo", label: "Catálogo" },
     { to: "/campanas", label: "Campañas" },
     { to: "/empleados", label: "Empleados" },
     { to: "/gastos", label: "Gastos" },
@@ -78,7 +80,7 @@ export default function App() {
                 </div>
 
                 {/* Navegacion Desktop */}
-                <div className="hidden lg:block">
+                <div className="hidden xl:block">
                   <div className="ml-4 flex items-baseline space-x-1 xl:space-x-2">
                     {navLinks.map((link) => (
                       <Link
@@ -97,14 +99,14 @@ export default function App() {
                   <button
                     onClick={() => db.cloud.logout().then(() => location.reload())}
                     title={`Sesión: ${usuario.email}`}
-                    className="hidden lg:block ml-2 hover:bg-white/10 hover:text-marca-dorado px-2 py-2 rounded-md text-xs xl:text-sm font-medium"
+                    className="hidden xl:block ml-2 hover:bg-white/10 hover:text-marca-dorado px-2 py-2 rounded-md text-xs xl:text-sm font-medium"
                   >
                     Salir
                   </button>
                 )}
 
                 {/* Boton hamburguesa movil */}
-                <div className="lg:hidden">
+                <div className="xl:hidden">
                   <button
                     onClick={toggleMobileMenu}
                     className="inline-flex items-center justify-center p-2 rounded-md hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors duration-200"
@@ -121,7 +123,7 @@ export default function App() {
             </div>
 
             {/* Menu movil */}
-            <div className={`lg:hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen
+            <div className={`xl:hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen
               ? 'max-h-[80vh] overflow-y-auto opacity-100 visible'
               : 'max-h-0 opacity-0 invisible overflow-hidden'
               }`}>
@@ -159,6 +161,7 @@ export default function App() {
                   <Route path="/ventas" element={<VentasPage />} />
                   <Route path="/inventario" element={<InventarioPage />} />
                   <Route path="/clientes" element={<ClientesPage />} />
+                  <Route path="/circulo" element={<CirculoPage />} />
                   <Route path="/catalogo" element={<CatalogoPreciosPage />} />
                   <Route path="/campanas" element={<EmailCampaignsPage />} />
                   <Route path="/empleados" element={<EmpleadosPage />} />
@@ -199,13 +202,13 @@ export default function App() {
           {/* Overlay para cerrar menu movil */}
           {isMobileMenuOpen && (
             <div
-              className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+              className="fixed inset-0 bg-black bg-opacity-50 z-40 xl:hidden"
               onClick={closeMobileMenu}
             ></div>
           )}
 
           {/* Indicador de pagina activa en movil */}
-          <div className="lg:hidden bg-black text-marca-dorado text-center py-1 text-xs tracking-[0.2em] uppercase">
+          <div className="xl:hidden bg-black text-marca-dorado text-center py-1 text-xs tracking-[0.2em] uppercase">
             {navLinks.find(link => window.location.hash === `#${link.to}`)?.label || 'CB Control'}
           </div>
         </div>

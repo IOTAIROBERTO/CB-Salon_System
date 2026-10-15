@@ -2,13 +2,16 @@ import { Cita, Venta, ReportData, ReportStats, ReportPeriod } from '../types/rep
 import { Expense } from '../db/db';
 import { parseFechaLocal } from './dateValidation';
 
+/** Ingreso de una cita cobrada: lo pagado menos la propina (la propina no es venta) */
+const ingresoCita = (c: Cita) => (c.precioFinal || 0) - (c.propina || 0);
+
 export const calculateReportStats = (
   citas: Cita[],
   ventas: Venta[],
   gastos: Expense[] = []
 ): ReportStats => {
   const citasCompletadas = citas.filter(c => c.estado === 'completada');
-  const totalIngresosCitas = citasCompletadas.reduce((sum, c) => sum + (c.precioFinal || 0), 0);
+  const totalIngresosCitas = citasCompletadas.reduce((sum, c) => sum + ingresoCita(c), 0);
   const totalIngresosVentas = ventas.reduce((sum, v) => sum + v.total, 0);
   const totalIngresos = totalIngresosCitas + totalIngresosVentas;
 
@@ -60,7 +63,7 @@ export const generateReportData = (
           return ventaDate >= weekStart && ventaDate <= weekEnd;
         });
 
-        const ingresosCitas = weekCitas.reduce((sum, c) => sum + (c.precioFinal || 0), 0);
+        const ingresosCitas = weekCitas.reduce((sum, c) => sum + ingresoCita(c), 0);
         const ingresosVentas = weekVentas.reduce((sum, v) => sum + v.total, 0);
 
         data.push({
@@ -99,7 +102,7 @@ export const generateReportData = (
           );
         });
 
-        const ingresosCitas = monthCitas.reduce((sum, c) => sum + (c.precioFinal || 0), 0);
+        const ingresosCitas = monthCitas.reduce((sum, c) => sum + ingresoCita(c), 0);
         const ingresosVentas = monthVentas.reduce((sum, v) => sum + v.total, 0);
 
         data.push({
@@ -131,7 +134,7 @@ export const generateReportData = (
           return ventaDate.getFullYear() === yearDate.getFullYear();
         });
 
-        const ingresosCitas = yearCitas.reduce((sum, c) => sum + (c.precioFinal || 0), 0);
+        const ingresosCitas = yearCitas.reduce((sum, c) => sum + ingresoCita(c), 0);
         const ingresosVentas = yearVentas.reduce((sum, v) => sum + v.total, 0);
 
         data.push({

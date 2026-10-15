@@ -30,7 +30,11 @@ export const calculateCommission = (
     overridePercentage?: number,
     defaultEmployeePercentage: number = 30
 ): CommissionResult => {
-    const safeNumEmployees = numEmployees > 0 ? numEmployees : 1;
+    // Sin empleadas asignadas no hay comisión que pagar
+    if (numEmployees <= 0) {
+        return { totalCommission: 0, perEmployeeCommission: 0, percentageUsed: 0 };
+    }
+    const safeNumEmployees = numEmployees;
 
     const percentage = (overridePercentage !== undefined && overridePercentage > 0)
         ? overridePercentage

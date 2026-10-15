@@ -4,6 +4,7 @@ import dexieCloud from 'dexie-cloud-addon';
 // URL pública de la base (dexie-cloud.json). La clave secreta vive en dexie-cloud.key, fuera de git.
 export const DEXIE_CLOUD_URL = 'https://zt3tyd7cy.dexie.cloud';
 import { CampaignType } from '../types/email';
+import type { Canje } from '../utils/lealtad';
 
 // Interfaces for new tables
 export interface Expense {
@@ -82,6 +83,9 @@ export interface Cliente {
     posibleBaja?: boolean;
     activo?: boolean;
     fechaRegistro?: string;
+    // Círculo CB (programa de lealtad)
+    referidaPor?: string; // id de la clienta que la recomendó
+    canjes?: Canje[];
 }
 
 export interface Cita {
