@@ -64,7 +64,7 @@ export default function CalendarSection({ empleadoId, onClose }: CalendarSection
         });
     };
 
-    const handleDelete = async (id: number) => {
+    const handleDelete = async (id: string) => {
         if (confirm('¿Eliminar este evento del calendario?')) {
             const event = await db.empleadoEvents.get(id);
             if (event?.googleEventId && googleCalendarService.getSignInStatus()) {

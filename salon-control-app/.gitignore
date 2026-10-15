@@ -41,3 +41,6 @@ coverage/
 desktop.ini
 # Datos del salón: nunca dentro del repositorio ni del bundle publicado
 src/data/historico.json
+
+# Dexie Cloud: credenciales secretas, nunca subir
+dexie-cloud.key

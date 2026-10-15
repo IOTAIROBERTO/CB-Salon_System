@@ -2,6 +2,18 @@ import { useEffect } from 'react';
 import { db } from '../db/db';
 import { migrateLocalStorageToDexie } from '../utils/migrateData';
 import serviciosData from '../data/servicios_dataset.json';
+import { migrarDatosLocalesANube } from '../utils/migrarANube';
+
+/** Resuelve cuando hay una sesión iniciada en Dexie Cloud */
+const esperarSesion = () =>
+  new Promise<void>(resolve => {
+    const sub = db.cloud.currentUser.subscribe(usuario => {
+      if (usuario.isLoggedIn) {
+        setTimeout(() => sub.unsubscribe());
+        resolve();
+      }
+    });
+  });
 
 /**
  * Rellena los campos que el sistema sí lee a partir de los nombres viejos
@@ -17,6 +29,13 @@ export const repararServicio = (s: any, origen?: any) => ({
 export const useInitializeData = () => {
   useEffect(() => {
     const initDB = async () => {
+      // 0. Nube: esperar sesión y bajar lo que ya exista antes de migrar o
+      // sembrar; si no, cada dispositivo nuevo subiría datos de ejemplo.
+      await esperarSesion();
+      await db.cloud.sync({ wait: true, purpose: 'pull' });
+      const copiados = await migrarDatosLocalesANube();
+      if (copiados > 0) console.log(`Migración a la nube: ${copiados} registros copiados`);
+
       // 1. Run Migration if needed
       await migrateLocalStorageToDexie();
 
@@ -124,6 +143,6 @@ export const useInitializeData = () => {
       }
     };
 
-    initDB();
+    initDB().catch(e => console.error('Error al inicializar datos:', e));
   }, []);
 };

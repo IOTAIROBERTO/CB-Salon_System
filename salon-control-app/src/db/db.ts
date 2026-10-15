@@ -1,4 +1,8 @@
 import Dexie, { Table } from 'dexie';
+import dexieCloud from 'dexie-cloud-addon';
+
+// URL pública de la base (dexie-cloud.json). La clave secreta vive en dexie-cloud.key, fuera de git.
+export const DEXIE_CLOUD_URL = 'https://zt3tyd7cy.dexie.cloud';
 import { CampaignType } from '../types/email';
 
 // Interfaces for new tables
@@ -210,52 +214,34 @@ export class SalonDatabase extends Dexie {
     empleadoEvents!: Table<EmpleadoEvent>;
 
     constructor() {
-        super('BeautySalonDB');
+        // Base nueva sincronizada con Dexie Cloud. La base local anterior
+        // ('BeautySalonDB') se conserva intacta y se copia una vez a la nube
+        // (ver utils/migrarANube.ts).
+        super('BeautySalonCloud', { addons: [dexieCloud] });
 
-        // Define Schema
+        // Dexie Cloud no admite claves autoincrementales (++id) en tablas
+        // sincronizadas: '@id' genera ids de texto únicos.
         this.version(1).stores({
-            clientes: 'id, nombre, email, telefono',
-            citas: 'id, clienteId, fecha, estado',
-            ventas: 'id, fecha, clienteId',
+            clientes: 'id, nombre, email, telefono, activo, fechaRegistro',
+            citas: 'id, clienteId, fecha, estado, empleadoId, googleEventId',
+            ventas: 'id, fecha, clienteId, empleadoId',
             servicios: 'id, nombre, categoria',
             inventario: 'id, nombre, categoria, proveedor',
-
-            gastos: '++id, fecha, categoria',
+            gastos: '@id, fecha, categoria',
             documentos: '++id, titulo, tipo, fechaCreacion',
             configuracion: 'id', // Singleton
-
+            empleados: 'id, nombre, activo, googleCalendarId',
             campanas: 'id, tipo, estado, fechaCreacion',
             plantillas: 'id, tipo, nombre',
-            automatizaciones: 'id, trigger, activa'
+            automatizaciones: 'id, trigger, activa',
+            empleadoEvents: '@id, empleadoId, tipo, fechaInicio, googleEventId'
         });
 
-        this.version(2).stores({
-            clientes: 'id, nombre, email, telefono, activo, fechaRegistro'
-        });
-
-        // Version 3: Add employees and relationships
-        this.version(3).stores({
-            empleados: 'id, nombre, activo',
-            citas: 'id, clienteId, fecha, estado, empleadoId',
-            ventas: 'id, fecha, clienteId, empleadoId'
-        });
-
-        // Version 4: Add employee events and birthday field
-        this.version(4).stores({
-            empleadoEvents: '++id, empleadoId, tipo, fechaInicio, fechaFin'
-        });
-
-        // Version 5: Google Calendar integration fields
-        this.version(5).stores({
-            empleados: 'id, nombre, activo, googleCalendarId',
-            citas: 'id, clienteId, fecha, estado, googleEventId'
-        });
-
-        // Version 6: Add googleEventId index to empleadoEvents
-        this.version(6).stores({
-            empleadoEvents: '++id, empleadoId, tipo, fechaInicio, googleEventId',
-            citas: 'id, clienteId, fecha, estado, googleEventId',
-            empleados: 'id, nombre, activo, googleCalendarId'
+        this.cloud.configure({
+            databaseUrl: DEXIE_CLOUD_URL,
+            requireAuth: true, // Pide iniciar sesión por email antes de abrir la base
+            // Documentos guarda archivos (Blob); se quedan solo en este dispositivo
+            unsyncedTables: ['documentos']
         });
     }
 }

@@ -20,12 +20,15 @@ import { useAutoBackup } from "./hooks/useAutoBackup";
 import { googleCalendarService } from "./services/googleCalendar";
 
 import { SettingsProvider } from "./contexts/SettingsContext";
+import { useObservable } from "dexie-react-hooks";
+import { db } from "./db/db";
 
 export default function App() {
   useInitializeData();
   useMarketingAutomations();
   useAutoBackup();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const usuario = useObservable(db.cloud.currentUser);
 
   // Inicialización y Carga de EmailJS
   useEffect(() => {
@@ -86,6 +89,17 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Sesión de Dexie Cloud */}
+                {usuario?.isLoggedIn && (
+                  <button
+                    onClick={() => db.cloud.logout().then(() => location.reload())}
+                    title={`Sesión: ${usuario.email}`}
+                    className="hidden lg:block ml-2 hover:bg-purple-700 px-2 py-2 rounded-md text-xs xl:text-sm font-medium"
+                  >
+                    Salir
+                  </button>
+                )}
+
                 {/* Boton hamburguesa movil */}
                 <div className="lg:hidden">
                   <button
@@ -119,6 +133,14 @@ export default function App() {
                     {link.label}
                   </Link>
                 ))}
+                {usuario?.isLoggedIn && (
+                  <button
+                    onClick={() => db.cloud.logout().then(() => location.reload())}
+                    className="block w-full text-left hover:bg-purple-800 px-3 py-2 rounded-md text-base font-medium"
+                  >
+                    Salir ({usuario.email})
+                  </button>
+                )}
               </div>
             </div>
           </nav>

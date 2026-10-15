@@ -14,7 +14,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "dexie": "^4.2.1",
+    "dexie": "^4.4.5",
+    "dexie-cloud-addon": "^4.4.15",
     "dexie-export-import": "^4.4.0",
     "dexie-react-hooks": "^4.2.0",
     "lucide-react": "^0.294.0",
