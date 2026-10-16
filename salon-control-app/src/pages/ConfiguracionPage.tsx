@@ -305,7 +305,7 @@ export default function ConfiguracionPage() {
           <div className="pt-6 border-t">
             <h4 className="font-bold text-gray-800 mb-2">Información sobre Cristina y Auxiliares</h4>
             <p className="text-sm text-gray-500">
-              Al conectar tu cuenta de Google, tus citas personales se sincronizarán con el calendario de **cristinaeborquez@gmail.com**.
+              Al conectar tu cuenta de Google, tus citas personales se sincronizarán con el calendario de <strong>cristinaeborquez@gmail.com</strong>.
               Para las auxiliares, puedes especificar un ID de calendario diferente en la sección de gestión de empleados.
             </p>
           </div>
