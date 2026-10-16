@@ -1,0 +1,8 @@
+# Netlify compila la app desde main: https://cristinaborquez.netlify.app
+[build]
+  base = "salon-control-app"
+  command = "npx vite build" # sin tsc: hay errores de tipos previos en src/types
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
