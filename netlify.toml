@@ -6,3 +6,13 @@
 
 [build.environment]
   NODE_VERSION = "20"
+
+# SAMEORIGIN y no DENY: la página Galería de la app muestra /galeria/ en un iframe.
+# ponytail: sin Content-Security-Policy; agregarla probando Google (apis/accounts),
+# Google Fonts y wss://*.dexie.cloud en el sitio publicado.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
