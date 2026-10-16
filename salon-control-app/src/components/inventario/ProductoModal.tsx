@@ -2,6 +2,9 @@ import { X } from 'lucide-react';
 import { Producto, ProductoFormData, ModalType } from '../../types/inventario';
 import { validateProductoForm, estadoPrecio, precioMinimo, MARGEN_MINIMO } from '../../utils/inventarioUtils';
 import { formatCurrency } from '../../utils/financialUtils';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db/db';
+import { proveedorPorNombre } from '../../utils/proveedores';
 
 interface ProductoModalProps {
   isOpen: boolean;
@@ -24,6 +27,7 @@ export default function ProductoModal({
   onUpdate,
   onClose 
 }: ProductoModalProps) {
+  const proveedores = useLiveQuery(() => db.proveedores.toArray()) || [];
   if (!isOpen || (modalType !== 'create' && modalType !== 'edit')) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -42,7 +46,9 @@ export default function ProductoModal({
       costo: formData.costo || undefined,
       stockMinimo: formData.stockMinimo,
       categoria: formData.categoria.trim(),
-      proveedor: formData.proveedor.trim()
+      proveedor: formData.proveedor.trim(),
+      // Si el nombre coincide con un proveedor dado de alta, queda ligado a él
+      proveedorId: proveedorPorNombre(proveedores, formData.proveedor)?.id
     };
 
     if (editingProducto && modalType === 'edit') {
@@ -53,7 +59,8 @@ export default function ProductoModal({
         costo: productoData.costo,
         stockMinimo: productoData.stockMinimo,
         categoria: productoData.categoria,
-        proveedor: productoData.proveedor
+        proveedor: productoData.proveedor,
+        proveedorId: productoData.proveedorId
       };
       onUpdate(editingProducto.id, updatedData);
     } else {
@@ -207,9 +214,13 @@ export default function ProductoModal({
                   type="text"
                   value={formData.proveedor}
                   onChange={(e) => updateFormData('proveedor', e.target.value)}
-                  placeholder="Nombre del proveedor (opcional)"
+                  list="lista-proveedores"
+                  placeholder="Elige uno dado de alta o escribe (opcional)"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                <datalist id="lista-proveedores">
+                  {proveedores.filter(p => p.activo).map(p => <option key={p.id} value={p.nombre} />)}
+                </datalist>
               </div>
             </div>
 

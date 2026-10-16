@@ -8,6 +8,7 @@ export interface Producto {
   categoria: string;
   fechaUltimaCompra?: string;
   proveedor?: string;
+  proveedorId?: string;
 }
 
 export interface ProductoFormData {

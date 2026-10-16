@@ -1,6 +1,8 @@
 import { X } from 'lucide-react';
 import { Cliente, ClienteFormData } from '../../types/clientes';
 import { validateClienteForm } from '../../utils/clientesUtils';
+import { db } from '../../db/db';
+import { normalizar, telefono10 } from '../../utils/texto';
 
 interface ClienteModalProps {
   isOpen: boolean;
@@ -25,7 +27,7 @@ export default function ClienteModal({
 }: ClienteModalProps) {
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const validationError = validateClienteForm(formData);
@@ -42,6 +44,15 @@ export default function ClienteModal({
       email: formData.email.trim(),
       telefono: formData.telefono.trim()
     };
+
+    // Aviso de ficha repetida (mismo nombre o teléfono): los niveles del
+    // Círculo y la app necesitan una sola ficha por clienta.
+    const tel = telefono10(clienteData.telefono);
+    const repetidas = await db.clientes.filter(c => c.id !== editingCliente?.id && c.activo !== false &&
+      (normalizar(c.nombre) === normalizar(clienteData.nombre) || (tel.length === 10 && telefono10(c.telefono) === tel))).toArray();
+    if (repetidas.length && !confirm(`Ya existe ${repetidas.map(c => c.nombre).join(', ')} con el mismo nombre o teléfono. ¿Guardar de todos modos?`)) {
+      return;
+    }
 
     if (editingCliente) {
       onUpdate(editingCliente.id, clienteData);

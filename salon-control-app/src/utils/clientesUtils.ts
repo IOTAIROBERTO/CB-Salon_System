@@ -11,6 +11,10 @@ export const validateClienteForm = (formData: ClienteFormData): string | null =>
     return 'La fecha de cumpleaños es obligatoria';
   }
 
+  if (formData.telefono && formData.telefono.replace(/\D/g, '').length < 10) {
+    return 'El teléfono debe tener al menos 10 dígitos, con lada';
+  }
+
   if (formData.email && !isValidEmail(formData.email)) {
     return 'El formato del email no es válido';
   }

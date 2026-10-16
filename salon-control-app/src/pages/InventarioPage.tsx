@@ -9,8 +9,21 @@ import ProductosTable from '../components/inventario/ProductosTable';
 import ProductoModal from '../components/inventario/ProductoModal';
 import StockModal from '../components/inventario/StockModal';
 import EmptyInventario from '../components/inventario/EmptyInventario';
+import ProveedoresTab from '../components/inventario/ProveedoresTab';
+import ComprasTab from '../components/inventario/ComprasTab';
+import CompraModal from '../components/inventario/CompraModal';
+import { useState } from 'react';
+
+const PESTANAS = [
+  { id: 'productos', label: 'Productos' },
+  { id: 'proveedores', label: 'Proveedores' },
+  { id: 'compras', label: 'Compras' }
+] as const;
 
 export default function InventarioPage() {
+  const [pestana, setPestana] = useState<(typeof PESTANAS)[number]['id']>('productos');
+  const [compra, setCompra] = useState<{ proveedorId?: string } | null>(null);
+
   // Custom hooks
   const {
     inventario,
@@ -52,8 +65,25 @@ export default function InventarioPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Inventario
           </h1>
-          <AddProductoButton onAdd={openCreateModal} />
+          {pestana === 'productos' && <AddProductoButton onAdd={openCreateModal} />}
         </div>
+
+        <div className="flex gap-6 border-b border-gray-200 mt-4" role="tablist">
+          {PESTANAS.map(t => (
+            <button key={t.id} role="tab" aria-selected={pestana === t.id} onClick={() => setPestana(t.id)}
+              className={`pb-2 -mb-px border-b-2 text-sm font-medium ${pestana === t.id ? 'border-purple-600 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {pestana === 'proveedores' && <ProveedoresTab onRegistrarCompra={proveedorId => setCompra({ proveedorId })} />}
+      {pestana === 'compras' && <ComprasTab onRegistrarCompra={() => setCompra({})} />}
+      {compra && <CompraModal proveedorId={compra.proveedorId} onClose={() => setCompra(null)} />}
+
+      {pestana === 'productos' && (<>
+      <div className="mb-6">
 
         {/* Estadísticas */}
         <div className="mt-4">
@@ -82,6 +112,7 @@ export default function InventarioPage() {
       ) : (
         <EmptyInventario onAddProducto={openCreateModal} />
       )}
+      </>)}
 
       {/* Modal de producto */}
       <ProductoModal

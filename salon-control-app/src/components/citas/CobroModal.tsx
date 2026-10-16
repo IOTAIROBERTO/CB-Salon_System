@@ -262,7 +262,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                   {showServiciosDropdown && (
                     <div className="absolute right-0 mt-1 w-64 bg-white border rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
                       {servicios
-                        .filter(s => s.id !== servicioSeleccionadoId)
+                        .filter(s => s.id !== servicioSeleccionadoId && s.categoria !== 'otros')
                         .map(servicio => (
                           <button
                             key={servicio.id}
@@ -287,7 +287,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                       onChange={(e) => cambiarServicioPrincipal(e.target.value)}
                       className="w-full border rounded px-2 py-1 text-sm bg-white"
                     >
-                      {servicios.map(servicio => (
+                      {servicios.filter(s => s.categoria !== 'otros' || s.id === servicioSeleccionadoId).map(servicio => (
                         <option key={servicio.id} value={servicio.id}>
                           {servicio.nombre}
                         </option>

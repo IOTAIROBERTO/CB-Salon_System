@@ -161,6 +161,41 @@ export interface Producto {
     categoria?: string;
     stockMinimo?: number;
     fechaUltimaCompra?: string;
+    proveedorId?: string; // Proveedor dado de alta (proveedor queda como nombre)
+}
+
+export interface Proveedor {
+    id: string;
+    nombre: string;
+    queVende?: string;
+    contacto?: string; // Persona con quien se trata
+    telefono?: string;
+    email?: string;
+    web?: string; // Sitio o Instagram
+    diasCredito?: number;
+    calificacion?: number; // 1 a 10
+    notas?: string;
+    activo: boolean;
+    fechaAlta: string;
+}
+
+export interface CompraItem {
+    productoId: string;
+    nombre: string;
+    cantidad: number;
+    costoUnitario: number;
+}
+
+/** Compra a un proveedor: sube el stock y, si se pide, queda como gasto */
+export interface Compra {
+    id: string;
+    proveedorId: string;
+    fecha: string;
+    folio?: string; // Factura o nota del proveedor
+    items: CompraItem[];
+    total: number;
+    gastoId?: string;
+    notas?: string;
 }
 
 // Marketing Interfaces
@@ -208,6 +243,8 @@ export class SalonDatabase extends Dexie {
     ventas!: Table<Venta>;
     servicios!: Table<Servicio>;
     inventario!: Table<Producto>;
+    proveedores!: Table<Proveedor>;
+    compras!: Table<Compra>;
 
     // New Tables
     documentos!: Table<SalonDocument>;
@@ -243,6 +280,10 @@ export class SalonDatabase extends Dexie {
             plantillas: 'id, tipo, nombre',
             automatizaciones: 'id, trigger, activa',
             empleadoEvents: '@id, empleadoId, tipo, fechaInicio, googleEventId'
+        });
+        this.version(2).stores({
+            proveedores: 'id, nombre, activo',
+            compras: 'id, proveedorId, fecha'
         });
 
         this.cloud.configure({
@@ -286,7 +327,8 @@ export class SalonDatabase extends Dexie {
 // Tablas sincronizadas con datos del negocio (no realms/members ni documentos).
 const TABLAS_DEL_SALON = new Set([
     'clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos', 'configuracion',
-    'empleados', 'campanas', 'plantillas', 'automatizaciones', 'empleadoEvents'
+    'empleados', 'campanas', 'plantillas', 'automatizaciones', 'empleadoEvents',
+    'proveedores', 'compras'
 ]);
 
 let realmSalonId: string | undefined;
