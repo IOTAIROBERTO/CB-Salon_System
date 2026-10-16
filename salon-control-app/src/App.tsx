@@ -96,7 +96,7 @@ function AppSalon() {
                 <div className="flex items-center gap-4">
                   <Link to="/citas" className="flex-shrink-0 flex items-center gap-3" title="Cristina Bórquez Beauty Salon">
                     <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-9 w-auto" />
-                    <span className="font-display text-xl sm:text-2xl leading-none tracking-wide">
+                    <span className="font-display text-xl sm:text-2xl leading-none tracking-wide xl:hidden 2xl:inline">
                       CB <em className="text-marca-dorado">Control</em>
                     </span>
                   </Link>
@@ -104,7 +104,7 @@ function AppSalon() {
 
                 {/* Navegacion Desktop */}
                 <div className="hidden xl:block">
-                  <div className="ml-4 flex items-baseline space-x-1 xl:space-x-2">
+                  <div className="ml-4 flex items-baseline space-x-1">
                     {navLinks.map((link) => (
                       <Link
                         key={link.to}

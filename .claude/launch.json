@@ -4,25 +4,8 @@
     {
       "name": "salon-control-app",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "--prefix",
-        "salon-control-app",
-        "run",
-        "dev"
-      ],
+      "runtimeArgs": ["--prefix", "salon-control-app", "run", "dev"],
       "port": 3000
-    },
-    {
-      "name": "qa-cb-control",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": [
-        "vite",
-        "C:/Users/Roberto/AppData/Local/Temp/claude/C--Users-Roberto-Documents-GitHub-CB-Salon-System/06f1bbbb-278b-4366-a100-a0c77aec7592/scratchpad/qa",
-        "--port",
-        "3001",
-        "--strictPort"
-      ],
-      "port": 3001
     }
   ]
 }
