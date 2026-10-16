@@ -16,10 +16,14 @@ import {
   Calculator,
   Gift,
   Cake,
+  FileSignature,
+  MapPin,
 } from "lucide-react";
+import { UBICACIONES } from "../../data/datosSalon";
 import { useState } from "react";
 import { Cita, Cliente, Servicio } from "../../types/citas";
 import { formatCurrency } from "../../utils/discountUtils";
+import { imprimirConsentimiento } from "../../utils/consentimiento";
 
 interface CitaCardProps {
   cita: Cita;
@@ -253,7 +257,10 @@ export default function CitaCard({
               {/* Servicio principal */}
               <div className="flex justify-between items-center">
                 <span className="text-gray-700">{servicio?.nombre || "Servicio"}:</span>
-                <span className="font-semibold">{formatCurrency(servicio?.precioSugerido || 0)}</span>
+                <span className="font-semibold">{formatCurrency(
+                  (cita.subtotalOriginal ?? ((cita.precioFinal ?? servicio?.precioSugerido ?? 0) - (cita.propina || 0))) -
+                  (cita.serviciosAdicionales || []).reduce((t, s) => t + (s.precio || 0), 0)
+                )}</span>
               </div>
               
               {/* Servicios adicionales */}
@@ -409,6 +416,22 @@ export default function CitaCard({
             </div>
           )}
 
+          {/* Trabajo fuera del salón */}
+          {cita.ubicacion && cita.ubicacion !== "salon" && (
+            <div className="flex items-center gap-1 text-sm font-medium text-amber-800">
+              <MapPin size={14} />
+              {UBICACIONES[cita.ubicacion]}
+            </div>
+          )}
+
+          {/* Qué se trabajó y por qué se cobró así */}
+          {cita.descripcionTrabajo && (
+            <div className="text-sm text-gray-600 whitespace-pre-line">
+              <span className="font-medium">Trabajo: </span>
+              {cita.descripcionTrabajo}
+            </div>
+          )}
+
           {/* Notas */}
           {cita.notas && (
             <div className="text-sm text-gray-600">
@@ -464,6 +487,21 @@ export default function CitaCard({
 
             {/* Editar / Eliminar */}
             <div className="flex gap-2 pt-2 border-t">
+              <button
+                onClick={() => imprimirConsentimiento({
+                  clienteNombre: clienteData?.nombre,
+                  telefono: clienteData?.telefono,
+                  cumple: clienteData?.cumple,
+                  servicio: [servicio?.nombre, ...(cita.serviciosAdicionales || []).map(s => s.nombre)].filter(Boolean).join(' + '),
+                  precio: cita.precioFinal ?? servicio?.precioSugerido,
+                  anticipo: cita.anticipoConfirmado ? cita.montoAnticipo : undefined,
+                  fecha: cita.fecha
+                })}
+                className="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded"
+                title="Imprimir consentimiento informado"
+              >
+                <FileSignature size={16} />
+              </button>
               <button
                 onClick={onOpenEdit}
                 className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"

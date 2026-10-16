@@ -1,3 +1,4 @@
+import { DATOS_SALON } from '../data/datosSalon';
 // src/hooks/useEmailConfiguration.ts
 import { useState, useCallback } from 'react';
 import { emailMarketingService } from '../services/emailMarketingService';
@@ -13,10 +14,10 @@ export const useEmailConfiguration = () => {
   const [salonInfo, setSalonInfo] = useState<SalonInfo>(() => {
     const saved = localStorage.getItem('salonInfo');
     return saved ? JSON.parse(saved) : {
-      nombre: 'Cristina Borquez Beauty Salon',
-      telefono: '+52 1 662 341 9038',
-      direccion: 'Saturnino Campoy y República de Panamá 83170 Hermosillo, Mexico',
-      email: 'cristinaeborquez@gmail.com'
+      nombre: DATOS_SALON.nombre,
+      telefono: DATOS_SALON.telefono,
+      direccion: DATOS_SALON.direccion,
+      email: DATOS_SALON.email
     };
   });
 

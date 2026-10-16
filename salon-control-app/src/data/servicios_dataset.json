@@ -308,6 +308,17 @@
     "descripcion": ""
   },
   {
+    "id": "s29",
+    "nombre": "Diseño de coronilla",
+    "categoria": "color",
+    "precioActualizado": 1500,
+    "anticipo": 450,
+    "precio2027": 1600,
+    "anticipo2027": 500,
+    "duracion": 150,
+    "descripcion": "Diseño de color solo en la zona de la coronilla. En septiembre de 2026 se cobró entre $1,300 y $1,600."
+  },
+  {
     "id": "s98",
     "nombre": "Anticipo (histórico)",
     "categoria": "otros",

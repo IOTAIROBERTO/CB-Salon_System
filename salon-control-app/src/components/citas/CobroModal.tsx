@@ -10,6 +10,11 @@ import {
 } from "../../utils/financialUtils";
 import { db } from "../../db/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import { registrarCanjes } from "../../db/circulo";
+import {
+  NIVELES, BENEFICIOS, gastoDoceMeses, nivelDe, beneficiosDisponibles,
+  beneficioEnColor, esServicioDeColor, type ClaveBeneficio
+} from "../../utils/lealtad";
 
 interface CobroModalProps {
   cita: Cita;
@@ -22,6 +27,7 @@ interface ServicioAdicional {
   servicioId: string;
   nombre: string;
   precio: number;
+  beneficio?: ClaveBeneficio; // cortesía del Círculo CB
 }
 
 export default function CobroModal({ cita, servicios, onClose, onCompletar }: CobroModalProps) {
@@ -36,6 +42,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   const [anticipoRecibido, setAnticipoRecibido] = useState(cita.montoAnticipo || 0);
   const [metodoPago, setMetodoPago] = useState("");
   const [notas, setNotas] = useState("");
+  const [descripcionTrabajo, setDescripcionTrabajo] = useState(cita.descripcionTrabajo || "");
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showServiciosDropdown, setShowServiciosDropdown] = useState(false);
 
@@ -57,6 +64,33 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   // Obtener empleados para el desglose de comisiones
   const empleadosArray = useLiveQuery(() => db.empleados.toArray()) || [];
   const empleadosAsignados = empleadosArray.filter(e => cita.empleadoIds?.includes(e.id));
+
+  // Círculo CB: nivel de la clienta y cortesías que puede recibir en este cobro
+  const clientesTodos = useLiveQuery(() => db.clientes.toArray()) || [];
+  const citasTodas = useLiveQuery(() => db.citas.toArray()) || [];
+  const ventasTodas = useLiveQuery(() => db.ventas.toArray()) || [];
+  const clienta = clientesTodos.find(c => c.id === cita.clienteId);
+  const nivel = nivelDe(gastoDoceMeses(cita.clienteId, citasTodas, ventasTodas));
+  const aplicados = serviciosAdicionales.filter(s => s.beneficio).map(s => s.beneficio!);
+  const sinAplicar = (lista: ClaveBeneficio[]) => {
+    const restantes = [...aplicados];
+    return lista.filter(k => { const i = restantes.indexOf(k); if (i >= 0) { restantes.splice(i, 1); return false; } return true; });
+  };
+  const cortesiaColor = esServicioDeColor(servicioSeleccionadoId, servicios as any) ? beneficioEnColor(nivel) : null;
+  const beneficiosCobro = clienta ? sinAplicar([
+    ...(cortesiaColor ? [cortesiaColor] : []),
+    ...beneficiosDisponibles(clienta, nivel, clientesTodos, citasTodas, servicios as any)
+  ]) : [];
+
+  const aplicarBeneficio = (clave: ClaveBeneficio) => {
+    const servicio = servicios.find(s => s.id === BENEFICIOS[clave].servicioId);
+    setServiciosAdicionales([...serviciosAdicionales, {
+      servicioId: BENEFICIOS[clave].servicioId,
+      nombre: `${servicio?.nombre || BENEFICIOS[clave].titulo} · cortesía Círculo CB`,
+      precio: 0,
+      beneficio: clave
+    }]);
+  };
 
   // Calcular desglose de comisiones
   const comisionInfo = calculateCommission(
@@ -104,12 +138,14 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
       propina: calculoFinal.propina,
       anticipoRecibido: anticipoRecibido,
       porcentajeOriginal: porcentajeSeleccionado,
-      subtotalConDescuento: calculoFinal.subtotalConDescuento
+      subtotalConDescuento: calculoFinal.subtotalConDescuento,
+      descripcionTrabajo
     };
 
     // Convertir a array si es lo que espera onCompletar (aunque parece que espera un objeto según el nombre de la prop en CobroModalProps)
     // Pero la firma dice serviciosAdicionales?: any[]
     onCompletar(cita.id, precioFinalCompleto, metodoPago, notas, [datosCompletos]);
+    registrarCanjes(cita.clienteId, aplicados, cita.id);
     onClose();
   };
 
@@ -192,6 +228,22 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Columna izquierda: Servicios y configuraciones */}
           <div className="space-y-4">
+            {/* Círculo CB */}
+            {clienta && (beneficiosCobro.length > 0 || aplicados.length > 0) && (
+              <div className="rounded-lg bg-marca-negro text-white p-4">
+                <div className="text-[11px] tracking-[0.24em] uppercase text-marca-dorado">Círculo CB · {NIVELES[nivel].nombre}</div>
+                {beneficiosCobro.map((k, i) => (
+                  <div key={k + i} className="flex items-center justify-between gap-2 mt-2 text-sm">
+                    <span>{BENEFICIOS[k].titulo}</span>
+                    <button type="button" onClick={() => aplicarBeneficio(k)}
+                      className="shrink-0 text-xs px-3 py-1 rounded-md bg-marca-dorado text-marca-negro font-medium hover:opacity-90">Aplicar</button>
+                  </div>
+                ))}
+                {aplicados.length > 0 && (
+                  <div className="text-xs text-gray-300 mt-2">Aplicado: {aplicados.map(k => BENEFICIOS[k].titulo).join(', ')}. Se registra al finalizar.</div>
+                )}
+              </div>
+            )}
             {/* Servicios */}
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -302,6 +354,19 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                 <option value="transferencia">Transferencia</option>
                 <option value="mixto">Mixto</option>
               </select>
+            </div>
+
+            {/* Qué se hizo y por qué se cobró así */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Descripción del trabajo
+              </label>
+              <textarea
+                value={descripcionTrabajo}
+                onChange={(e) => setDescripcionTrabajo(e.target.value)}
+                placeholder="Qué se trabajó y por qué se cobró así. Ej.: retoque de raíz 4 cm + matiz completo; se cobró extra por largo."
+                className="w-full border rounded px-3 py-2 h-20 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
             </div>
 
             {/* Notas adicionales */}

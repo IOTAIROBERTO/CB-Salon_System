@@ -3,6 +3,7 @@ import { useServicioModal } from '../hooks/useServicioModal';
 import AddServiceButton from '../components/catalogo/AddServiceButton';
 import ServiciosTable from '../components/catalogo/ServiciosTable';
 import ServicioModal from '../components/catalogo/ServicioModal';
+import CotizadorTraslado from '../components/catalogo/CotizadorTraslado';
 
 export default function CatalogoPreciosPage() {
   // Custom hooks para separar la lógica
@@ -32,6 +33,9 @@ export default function CatalogoPreciosPage() {
         </div>
         <AddServiceButton onAdd={openCreateModal} />
       </div>
+
+      {/* Servicios fuera de Hermosillo: servicio + traslado */}
+      <CotizadorTraslado servicios={servicios} />
 
       {/* Tabla de servicios */}
       <ServiciosTable

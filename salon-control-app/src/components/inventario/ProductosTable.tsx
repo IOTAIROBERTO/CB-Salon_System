@@ -1,6 +1,6 @@
 import { Edit, Trash2, Package } from 'lucide-react';
 import { Producto } from '../../types/inventario';
-import { getStockColor } from '../../utils/inventarioUtils';
+import { getStockColor, estadoPrecio, margenPorcentaje } from '../../utils/inventarioUtils';
 import { formatCurrency } from '../../utils/financialUtils';
 
 interface ProductosTableProps {
@@ -71,14 +71,26 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <span className="text-lg font-semibold text-gray-900">
-                      {formatCurrency(producto.precio)}
-                    </span>
-                    <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      Protegido
-                    </span>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {formatCurrency(producto.precio)}
                   </div>
+                  {(() => {
+                    const estado = estadoPrecio(producto);
+                    if (estado === 'sin-costo') {
+                      return <div className="text-xs text-gray-400 mt-1">Sin costo capturado</div>;
+                    }
+                    const margen = Math.round((margenPorcentaje(producto) ?? 0) * 100);
+                    const color = estado === 'perdida' ? 'bg-red-100 text-red-800'
+                      : estado === 'subir' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800';
+                    return (
+                      <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                        Costo {formatCurrency(producto.costo!)}
+                        <span className={`px-2 py-0.5 rounded-full font-medium ${color}`}>
+                          {estado === 'perdida' ? 'Pérdida' : `Margen ${margen}%`}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-lg font-semibold text-green-600">
                   {formatCurrency(producto.cantidad * producto.precio)}

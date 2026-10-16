@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { Producto, ProductoFormData, ModalType } from '../../types/inventario';
-import { validateProductoForm } from '../../utils/inventarioUtils';
+import { validateProductoForm, estadoPrecio, precioMinimo, MARGEN_MINIMO } from '../../utils/inventarioUtils';
+import { formatCurrency } from '../../utils/financialUtils';
 
 interface ProductoModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export default function ProductoModal({
       nombre: formData.nombre.trim(),
       cantidad: formData.cantidad,
       precio: formData.precio,
+      costo: formData.costo || undefined,
       stockMinimo: formData.stockMinimo,
       categoria: formData.categoria.trim(),
       proveedor: formData.proveedor.trim()
@@ -48,6 +50,7 @@ export default function ProductoModal({
       const updatedData = {
         nombre: productoData.nombre,
         precio: productoData.precio,
+        costo: productoData.costo,
         stockMinimo: productoData.stockMinimo,
         categoria: productoData.categoria,
         proveedor: productoData.proveedor
@@ -63,6 +66,7 @@ export default function ProductoModal({
   };
 
   const isEditing = modalType === 'edit';
+  const estado = estadoPrecio(formData);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -144,6 +148,39 @@ export default function ProductoModal({
                     required
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Costo para el salón
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    value={formData.costo || ''}
+                    onChange={(e) => updateFormData('costo', Number(e.target.value))}
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    min="0"
+                    step="0.01"
+                    placeholder="Lo que pagas al proveedor"
+                  />
+                </div>
+                {estado === 'perdida' && (
+                  <p className="text-xs text-red-700 mt-1 font-medium">
+                    Se vende con pérdida. Precio mínimo: {formatCurrency(precioMinimo(formData.costo))}
+                  </p>
+                )}
+                {estado === 'subir' && (
+                  <p className="text-xs text-orange-700 mt-1 font-medium">
+                    Deja menos del margen mínimo (costo × {MARGEN_MINIMO}). Precio mínimo: {formatCurrency(precioMinimo(formData.costo))}
+                  </p>
+                )}
+                {estado === 'ok' && (
+                  <p className="text-xs text-green-700 mt-1">
+                    Margen de {Math.round(((formData.precio - formData.costo) / formData.precio) * 100)}%
+                  </p>
+                )}
               </div>
 
               <div>

@@ -430,7 +430,7 @@ class EmailAutomationIntegratedService {
   private getSalonInfo() {
     const config = JSON.parse(localStorage.getItem('generalConfig') || '{}');
     return {
-      nombre: config.salonName || 'Beauty Salon Total Control',
+      nombre: config.salonName || 'Cristina Bórquez Beauty Salon',
       telefono: config.salonPhone || '+52 55 1234-5678',
       direccion: config.salonAddress || 'Calle Principal 123'
     };

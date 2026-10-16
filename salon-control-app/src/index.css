@@ -3,11 +3,11 @@
 @tailwind utilities;
 
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Jost', 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color-scheme: light;
-  color: #213547;
+  color: #111111;
   background-color: #ffffff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -60,6 +60,12 @@ input, select, textarea {
 
 /* Mejoras para accesibilidad */
 :focus-visible {
-  outline: 2px solid #646cff;
+  outline: 2px solid #C29B57;
   outline-offset: 2px;
+}
+
+/* Marca: títulos en Cormorant Garamond (Manual de marca) */
+h1, h2 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  letter-spacing: 0.005em;
 }

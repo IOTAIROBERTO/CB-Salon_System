@@ -70,12 +70,12 @@ class EmailService {
     const baseStyles = `
       <style>
         .email-container { max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; }
-        .header { background: #7c3aed; color: white; padding: 20px; text-align: center; }
+        .header { background: #111111; border-bottom: 2px solid #C29B57; color: white; padding: 20px; text-align: center; }
         .content { padding: 30px; background: #f9fafb; }
         .appointment-card { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb; }
-        .button { background: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; }
+        .button { background: #8A6A2F; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; }
         .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
-        .promo-card { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .promo-card { background: #111111; color: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
       </style>
     `;
 
@@ -96,7 +96,7 @@ class EmailService {
     };
 
     const generalConfig = JSON.parse(localStorage.getItem('generalConfig') || '{}');
-    const salonName = generalConfig.salonName || 'Beauty Salon Total Control';
+    const salonName = generalConfig.salonName || 'Cristina Bórquez Beauty Salon';
     const salonPhone = generalConfig.salonPhone || '+52 55 1234-5678';
 
     switch (type) {
@@ -232,7 +232,7 @@ class EmailService {
                     Aprovecha esta promoción limitada y luce espectacular
                   </p>
                   <div style="text-align: center; margin: 20px 0;">
-                    <a href="tel:${salonPhone}" style="background: white; color: #7c3aed; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                    <a href="tel:${salonPhone}" style="background: white; color: #8A6A2F; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
                       📞 Reservar ahora
                     </a>
                   </div>
@@ -271,7 +271,7 @@ class EmailService {
                     Disfruta de un descuento especial en cualquiera de nuestros servicios
                   </p>
                   <div style="text-align: center; margin: 20px 0;">
-                    <div style="background: white; color: #7c3aed; padding: 15px; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 24px;">
+                    <div style="background: white; color: #8A6A2F; padding: 15px; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 24px;">
                       20% OFF
                     </div>
                   </div>

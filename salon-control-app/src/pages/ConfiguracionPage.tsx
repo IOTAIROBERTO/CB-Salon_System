@@ -5,6 +5,7 @@ import { emailMarketingService } from '../services/emailMarketingService';
 import { whatsappService } from '../services/whatsappService';
 import { googleCalendarService } from '../services/googleCalendar';
 import RespaldosTab from '../components/configuracion/RespaldosTab';
+import EquipoTab from '../components/configuracion/EquipoTab';
 
 export default function ConfiguracionPage() {
   const { settings, updateSettings, loading } = useSettings();
@@ -93,11 +94,13 @@ export default function ConfiguracionPage() {
           <button onClick={() => setActiveTab('email')} className={`pb-2 border-b-2 ${activeTab === 'email' ? 'border-purple-600' : 'border-transparent'}`}>Email Marketing</button>
           <button onClick={() => setActiveTab('whatsapp')} className={`pb-2 border-b-2 ${activeTab === 'whatsapp' ? 'border-purple-600' : 'border-transparent'}`}>WhatsApp</button>
           <button onClick={() => setActiveTab('google')} className={`pb-2 border-b-2 ${activeTab === 'google' ? 'border-purple-600' : 'border-transparent'}`}>Google Calendar</button>
+          <button onClick={() => setActiveTab('equipo')} className={`pb-2 border-b-2 ${activeTab === 'equipo' ? 'border-purple-600' : 'border-transparent'}`}>Equipo</button>
           <button onClick={() => setActiveTab('respaldos')} className={`pb-2 border-b-2 ${activeTab === 'respaldos' ? 'border-purple-600' : 'border-transparent'}`}>Datos y respaldos</button>
         </nav>
       </div>
 
       {activeTab === 'respaldos' && <RespaldosTab />}
+      {activeTab === 'equipo' && <EquipoTab />}
 
       {activeTab === 'general' && (
         <div className="bg-white p-6 rounded-lg shadow space-y-4">

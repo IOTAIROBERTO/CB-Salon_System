@@ -4,6 +4,8 @@ import dexieCloud from 'dexie-cloud-addon';
 // URL pública de la base (dexie-cloud.json). La clave secreta vive en dexie-cloud.key, fuera de git.
 export const DEXIE_CLOUD_URL = 'https://zt3tyd7cy.dexie.cloud';
 import { CampaignType } from '../types/email';
+import type { Canje } from '../utils/lealtad';
+import type { Ubicacion } from '../data/datosSalon';
 
 // Interfaces for new tables
 export interface Expense {
@@ -82,6 +84,9 @@ export interface Cliente {
     posibleBaja?: boolean;
     activo?: boolean;
     fechaRegistro?: string;
+    // Círculo CB (programa de lealtad)
+    referidaPor?: string; // id de la clienta que la recomendó
+    canjes?: Canje[];
 }
 
 export interface Cita {
@@ -111,6 +116,8 @@ export interface Cita {
     saldoPendiente?: number;
     fechaCompletada?: string;
     googleEventId?: string;
+    descripcionTrabajo?: string; // qué se trabajó y por qué se cobró así
+    ubicacion?: Ubicacion;
 }
 
 export interface Venta {
@@ -149,6 +156,7 @@ export interface Producto {
     nombre: string;
     cantidad: number;
     precio: number;
+    costo?: number; // Costo al salón (para el margen de venta)
     proveedor?: string;
     categoria?: string;
     stockMinimo?: number;
@@ -240,10 +248,49 @@ export class SalonDatabase extends Dexie {
         this.cloud.configure({
             databaseUrl: DEXIE_CLOUD_URL,
             requireAuth: true, // Pide iniciar sesión por email antes de abrir la base
+            customLoginGui: true, // Diálogo propio en español (components/auth/LoginSalon)
             // Documentos guarda archivos (Blob); se quedan solo en este dispositivo
             unsyncedTables: ['documentos']
         });
+
+        // Todo registro nuevo sin realmId va al realm compartido del salón
+        // (si no, Dexie Cloud lo dejaría en el realm privado de quien lo crea
+        // y nadie más del equipo lo vería). Nivel 2: corre antes que el
+        // middleware de Dexie Cloud (nivel 1) que pone el realm privado.
+        this.use({
+            stack: 'dbcore',
+            name: 'realmSalon',
+            level: 2,
+            create: down => ({
+                ...down,
+                table: nombre => {
+                    const tabla = down.table(nombre);
+                    if (!TABLAS_DEL_SALON.has(nombre)) return tabla;
+                    return {
+                        ...tabla,
+                        mutate: req => {
+                            if (realmSalonId && (req.type === 'add' || req.type === 'put')) {
+                                for (const obj of req.values) {
+                                    if (!obj.realmId) obj.realmId = realmSalonId;
+                                }
+                            }
+                            return tabla.mutate(req);
+                        }
+                    };
+                }
+            })
+        });
     }
 }
+
+// Tablas sincronizadas con datos del negocio (no realms/members ni documentos).
+const TABLAS_DEL_SALON = new Set([
+    'clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos', 'configuracion',
+    'empleados', 'campanas', 'plantillas', 'automatizaciones', 'empleadoEvents'
+]);
+
+let realmSalonId: string | undefined;
+/** Fija el realm compartido donde se guardan los registros nuevos (ver db/salon.ts) */
+export const usarRealmSalon = (realmId: string) => { realmSalonId = realmId; };
 
 export const db = new SalonDatabase();

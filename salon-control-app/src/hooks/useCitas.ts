@@ -123,6 +123,7 @@ export default function useCitas() {
       propina: info?.propina || 0,
       saldoPendiente: 0,
       fechaCompletada: new Date().toISOString(),
+      ...(info?.descripcionTrabajo !== undefined && { descripcionTrabajo: info.descripcionTrabajo.trim() || undefined }),
     });
 
     await syncCitaToGoogle(citaId);

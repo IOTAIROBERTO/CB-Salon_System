@@ -1,3 +1,4 @@
+import { DATOS_SALON } from '../../data/datosSalon';
 // src/components/citas/CitaEmailButton.tsx
 // CONSOLIDADO: CitaEmailButton + EmailReminderIntegration
 import { useState } from 'react';
@@ -196,9 +197,9 @@ Beauty Salon`;
       day: 'numeric'
     });
 
-    return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f7fafc;">
+    return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #F6F1E9;">
   <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-    <h2 style="color: #667eea; margin-bottom: 20px;">${
+    <h2 style="color: #111111; font-family: Georgia, serif; font-weight: normal; margin-bottom: 20px; border-bottom: 1px solid #C29B57; padding-bottom: 12px;">${
       type === 'confirmacion' ? '✅ Confirmación de Cita' :
       type === 'recordatorio' ? '🔔 Recordatorio de Cita' :
       '📝 Cambio en tu Cita'
@@ -206,7 +207,7 @@ Beauty Salon`;
     
     <p style="color: #4a5568; font-size: 16px;">Hola <strong>${cliente.nombre}</strong>,</p>
     
-    <div style="background: #edf2f7; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <div style="background: #F6F1E9; padding: 20px; border-left: 2px solid #C29B57; margin: 20px 0;">
       <table style="width: 100%;">
         <tr>
           <td style="padding: 8px 0; color: #2d3748; font-weight: bold;">Servicio:</td>
@@ -232,7 +233,8 @@ Beauty Salon`;
     </p>
     
     <p style="color: #4a5568; margin-top: 20px;">¡Te esperamos!</p>
-    <p style="color: #667eea; font-weight: bold;">Beauty Salon</p>
+    <p style="color: #8A6A2F; font-weight: bold;">${DATOS_SALON.nombre}</p>
+    <p style="color: #6B665F; font-size: 13px;">${DATOS_SALON.direccion} · WhatsApp ${DATOS_SALON.telefono}</p>
   </div>
 </div>`;
   };

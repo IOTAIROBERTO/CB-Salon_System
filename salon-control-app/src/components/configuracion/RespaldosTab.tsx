@@ -103,9 +103,9 @@ export default function RespaldosTab() {
             <div>
                 <h3 className="font-semibold text-lg">Respaldo de datos</h3>
                 <p className="text-sm text-gray-600 mt-1">
-                    Toda la información vive dentro de este navegador. Si se limpian los datos
-                    del sitio o falla el equipo, se pierde sin copia. Elige una carpeta y la app
-                    guarda un respaldo diario sola; si esa carpeta es de Drive, OneDrive o
+                    Los datos se sincronizan con la nube del salón (Dexie Cloud). El respaldo es
+                    una copia extra, fuera de esa nube, por si algo sale mal. Elige una carpeta y la
+                    app guarda un respaldo diario sola; si esa carpeta es de Drive, OneDrive o
                     Dropbox, la copia además sale de esta computadora.
                 </p>
             </div>

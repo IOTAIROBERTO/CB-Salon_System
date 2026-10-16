@@ -1,3 +1,4 @@
+import { DATOS_SALON } from '../data/datosSalon';
 import { parseFechaLocal, fechaLocalISO } from '../utils/dateValidation';
 // services/whatsappService.ts
 
@@ -32,10 +33,10 @@ class WhatsAppService {
   private twilioConfig: TwilioConfig;
   private whatsappBusinessConfig: WhatsAppBusinessConfig;
   private salonInfo = {
-    nombre: 'Cristina Borquez Beauty Salon',
-    telefono: '+52 1 662 341 9038',
-    direccion: 'Saturnino Campoy y República de Panamá 83170 Hermosillo, Mexico',
-    email: 'cristinaeborquez@gmail.com'
+    nombre: DATOS_SALON.nombre,
+    telefono: DATOS_SALON.telefono,
+    direccion: DATOS_SALON.direccion,
+    email: DATOS_SALON.email
   };
 
   constructor() {
