@@ -42,6 +42,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   const [anticipoRecibido, setAnticipoRecibido] = useState(cita.montoAnticipo || 0);
   const [metodoPago, setMetodoPago] = useState("");
   const [notas, setNotas] = useState("");
+  const [descripcionTrabajo, setDescripcionTrabajo] = useState(cita.descripcionTrabajo || "");
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showServiciosDropdown, setShowServiciosDropdown] = useState(false);
 
@@ -137,7 +138,8 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
       propina: calculoFinal.propina,
       anticipoRecibido: anticipoRecibido,
       porcentajeOriginal: porcentajeSeleccionado,
-      subtotalConDescuento: calculoFinal.subtotalConDescuento
+      subtotalConDescuento: calculoFinal.subtotalConDescuento,
+      descripcionTrabajo
     };
 
     // Convertir a array si es lo que espera onCompletar (aunque parece que espera un objeto según el nombre de la prop en CobroModalProps)
@@ -352,6 +354,19 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                 <option value="transferencia">Transferencia</option>
                 <option value="mixto">Mixto</option>
               </select>
+            </div>
+
+            {/* Qué se hizo y por qué se cobró así */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Descripción del trabajo
+              </label>
+              <textarea
+                value={descripcionTrabajo}
+                onChange={(e) => setDescripcionTrabajo(e.target.value)}
+                placeholder="Qué se trabajó y por qué se cobró así. Ej.: retoque de raíz 4 cm + matiz completo; se cobró extra por largo."
+                className="w-full border rounded px-3 py-2 h-20 focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
             </div>
 
             {/* Notas adicionales */}

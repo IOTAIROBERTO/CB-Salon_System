@@ -17,7 +17,9 @@ import {
   Gift,
   Cake,
   FileSignature,
+  MapPin,
 } from "lucide-react";
+import { UBICACIONES } from "../../data/datosSalon";
 import { useState } from "react";
 import { Cita, Cliente, Servicio } from "../../types/citas";
 import { formatCurrency } from "../../utils/discountUtils";
@@ -411,6 +413,22 @@ export default function CitaCard({
                   </strong>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Trabajo fuera del salón */}
+          {cita.ubicacion && cita.ubicacion !== "salon" && (
+            <div className="flex items-center gap-1 text-sm font-medium text-amber-800">
+              <MapPin size={14} />
+              {UBICACIONES[cita.ubicacion]}
+            </div>
+          )}
+
+          {/* Qué se trabajó y por qué se cobró así */}
+          {cita.descripcionTrabajo && (
+            <div className="text-sm text-gray-600 whitespace-pre-line">
+              <span className="font-medium">Trabajo: </span>
+              {cita.descripcionTrabajo}
             </div>
           )}
 

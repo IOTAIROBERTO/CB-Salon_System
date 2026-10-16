@@ -8,6 +8,7 @@ import {
   fechaLocalISO
 } from "../../utils/dateValidation";
 import TimeSelector from "./TimeSelector";
+import { UBICACIONES, Ubicacion } from "../../data/datosSalon";
 
 import { db } from "../../db/db";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -30,6 +31,8 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
     fecha: citaEdit?.fecha || "",
     hora: citaEdit?.hora || "",
     notas: citaEdit?.notas || "",
+    descripcionTrabajo: citaEdit?.descripcionTrabajo || "",
+    ubicacion: (citaEdit?.ubicacion || "salon") as Ubicacion,
     estado: citaEdit?.estado || "pendiente",
   });
 
@@ -144,6 +147,34 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Dónde y qué se trabaja */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              ¿Dónde se hace el trabajo?
+            </label>
+            <select
+              value={formData.ubicacion}
+              onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value as Ubicacion })}
+              className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              {Object.entries(UBICACIONES).map(([clave, nombre]) => (
+                <option key={clave} value={clave}>{nombre}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Descripción del trabajo
+            </label>
+            <textarea
+              value={formData.descripcionTrabajo}
+              onChange={(e) => setFormData({ ...formData, descripcionTrabajo: e.target.value })}
+              placeholder="Qué se va a trabajar y por qué ese precio. Ej.: raíz 3 cm + matiz, cabello largo y grueso, 2 tubos de tinte."
+              className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 h-20 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+            />
           </div>
 
           <div>

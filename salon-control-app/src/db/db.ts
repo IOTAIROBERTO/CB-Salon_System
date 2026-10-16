@@ -5,6 +5,7 @@ import dexieCloud from 'dexie-cloud-addon';
 export const DEXIE_CLOUD_URL = 'https://zt3tyd7cy.dexie.cloud';
 import { CampaignType } from '../types/email';
 import type { Canje } from '../utils/lealtad';
+import type { Ubicacion } from '../data/datosSalon';
 
 // Interfaces for new tables
 export interface Expense {
@@ -115,6 +116,8 @@ export interface Cita {
     saldoPendiente?: number;
     fechaCompletada?: string;
     googleEventId?: string;
+    descripcionTrabajo?: string; // qué se trabajó y por qué se cobró así
+    ubicacion?: Ubicacion;
 }
 
 export interface Venta {

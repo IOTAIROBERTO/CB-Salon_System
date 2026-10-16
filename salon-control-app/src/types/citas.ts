@@ -1,4 +1,5 @@
 // src/types/citas.ts - Versión actualizada
+import type { Ubicacion } from '../data/datosSalon';
 
 export interface Cliente {
   id: string;
@@ -49,6 +50,8 @@ export interface Cita {
   propina?: number; // Propina agregada por el cliente
   saldoPendiente?: number;
   fechaCompletada?: string;
+  descripcionTrabajo?: string; // qué se trabajó y por qué se cobró así
+  ubicacion?: Ubicacion; // sin valor = en el salón
 }
 
 export interface ModalState {

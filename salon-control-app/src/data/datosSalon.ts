@@ -9,3 +9,14 @@ export const DATOS_SALON = {
   email: 'cristinaeborquez@gmail.com',
   instagram: '@cristinaborquez.beauty'
 };
+
+// Dónde se hace el trabajo de una cita. Sin valor = en el salón.
+export const UBICACIONES = {
+  salon: 'Hermosillo · en el salón',
+  fuera: 'Fuera de Hermosillo',
+  mexico: 'México en general',
+  tucson: 'Tucson',
+  phoenix: 'Phoenix',
+  eua: 'EUA en general'
+} as const;
+export type Ubicacion = keyof typeof UBICACIONES;

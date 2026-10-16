@@ -1,6 +1,5 @@
-Fotos de Wikimedia Commons (el resto de las fotos las aportó el salón)
+Fotos de Wikimedia Commons, todas CC0 o dominio público: no requieren crédito en el menú.
+El resto de las fotos las aportó el salón.
 
-agua.jpg: Derek Jensen (Tysto) — Public domain — https://commons.wikimedia.org/wiki/File:Glass-of-water.jpg
-cafe_negro.jpg: Ross Parmly rparmly — CC0 — https://commons.wikimedia.org/wiki/File:Black_coffee_cup_(Unsplash).jpg
-waffle.jpg: Famartin — CC BY-SA 4.0 — https://commons.wikimedia.org/wiki/File:2022-02-08_19_10_03_Eggo_waffle_after_heating_with_syrup_in_the_Franklin_Farm_section_of_Oak_Hill,_Fairfax_County,_Virginia.jpg
+waffle.jpg: Waffle with Syrup (Unsplash) — CC0 — https://commons.wikimedia.org/wiki/File:Waffle_with_Syrup_(Unsplash).jpg
 oreo.jpg: Evan-Amos — Public domain — https://commons.wikimedia.org/wiki/File:Oreo-Two-Cookies.jpg

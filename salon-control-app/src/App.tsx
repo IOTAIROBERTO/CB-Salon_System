@@ -15,6 +15,7 @@ import ConfiguracionPage from "./pages/ConfiguracionPage";
 import EmpleadosPage from "./pages/EmpleadosPage";
 import CalendarioPage from "./pages/CalendarioPage";
 import CirculoPage from "./pages/CirculoPage";
+import GaleriaPage from "./pages/GaleriaPage";
 import { useInitializeData } from "./hooks/useInitializeData";
 import { useMarketingAutomations } from "./hooks/useMarketingAutomations";
 import { useAutoBackup } from "./hooks/useAutoBackup";
@@ -70,6 +71,7 @@ function AppSalon() {
     { to: "/empleados", label: "Empleados" },
     { to: "/gastos", label: "Gastos" },
     { to: "/documentos", label: "Documentos" },
+    { to: "/galeria", label: "Galería" },
     { to: "/reportes", label: "Reportes" },
     { to: "/configuracion", label: "Configuración" }
   ].filter(link => rol === "duena" || !SOLO_DUENA.has(link.to));
@@ -188,6 +190,7 @@ function AppSalon() {
                   <Route path="/empleados" element={<EmpleadosPage />} />
                   <Route path="/gastos" element={<GastosPage />} />
                   <Route path="/documentos" element={<DocumentosPage />} />
+                  <Route path="/galeria" element={<GaleriaPage />} />
                   {rol === "duena" && <Route path="/reportes" element={<ReportesPage />} />}
                   {rol === "duena" && <Route path="/configuracion" element={<ConfiguracionPage />} />}
 
