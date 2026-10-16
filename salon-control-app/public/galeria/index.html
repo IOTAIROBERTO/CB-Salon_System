@@ -117,10 +117,11 @@ footer h2 em{color:var(--dorado);font-style:italic}
   <p class="cuenta" id="cuenta" aria-live="polite"></p>
 </main>
 <footer>
+  <!-- target="_blank": dentro del iframe de CB Control, wa.me se niega a abrir en el recuadro -->
   <h2>Agenda tu <em>cita</em></h2>
-  <a class="boton" href="https://wa.me/526621614688?text=Hola%2C%20vi%20la%20galer%C3%ADa%20y%20quiero%20agendar%20una%20cita">WhatsApp 662 161 4688</a>
-  <p><a href="https://www.google.com/maps/search/?api=1&query=Plaza+Galilea+Av.+Saturnino+Campoy+869+Hermosillo">Plaza Galilea, Av. Saturnino Campoy 869, Col. Álvaro Obregón, Hermosillo, Son.</a></p>
-  <p><a href="https://www.instagram.com/cristinaborquez.beauty/">@cristinaborquez.beauty</a></p>
+  <a target="_blank" rel="noopener" class="boton" href="https://wa.me/526621614688?text=Hola%2C%20vi%20la%20galer%C3%ADa%20y%20quiero%20agendar%20una%20cita">WhatsApp 662 161 4688</a>
+  <p><a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Plaza+Galilea+Av.+Saturnino+Campoy+869+Hermosillo">Plaza Galilea, Av. Saturnino Campoy 869, Col. Álvaro Obregón, Hermosillo, Son.</a></p>
+  <p><a target="_blank" rel="noopener" href="https://www.instagram.com/cristinaborquez.beauty/">@cristinaborquez.beauty</a></p>
 </footer>
 <script>
 var car = document.getElementById('carrusel'), cuenta = document.getElementById('cuenta');
