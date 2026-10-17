@@ -118,6 +118,28 @@ export default function ServicioModal({
               </p>
             </div>
 
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Duración (min)</label>
+                <input type="number" min="5" step="5" value={formData.duracion || ''} onChange={(e) => updateFormData('duracion', Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Proceso (min)</label>
+                <input type="number" min="0" step="5" value={formData.tiempoProceso || ''} onChange={(e) => updateFormData('tiempoProceso', Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="0" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cierre (min)</label>
+                <input type="number" min="0" step="5" value={formData.tiempoCierre || ''} onChange={(e) => updateFormData('tiempoCierre', Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="0" />
+              </div>
+              <p className="col-span-3 text-xs text-gray-500">
+                Para la agenda: {Math.max((formData.duracion || 60) - (formData.tiempoProceso || 0) - (formData.tiempoCierre || 0), 0)} min aplicando,
+                {' '}{formData.tiempoProceso || 0} de proceso (quien atiende queda libre para otra clienta) y {formData.tiempoCierre || 0} de enjuague, secado o peinado.
+              </p>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Comisión Especial (%)

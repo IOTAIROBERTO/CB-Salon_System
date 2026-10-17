@@ -4,10 +4,13 @@ import { db } from '../db/db';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, Scissors, RefreshCw } from 'lucide-react';
 import { googleCalendarService, type EventoGoogle } from '../services/googleCalendar';
 import { fechaLocalISO } from '../utils/dateValidation';
+import AgendaDia from '../components/citas/AgendaDia';
 
 export default function CalendarioPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
+    const [viewMode, setViewMode] = useState<'month' | 'dia'>('month');
+    const [dia, setDia] = useState(fechaLocalISO());
+    const moverDia = (n: number) => { const d = new Date(`${dia}T12:00:00`); d.setDate(d.getDate() + n); setDia(fechaLocalISO(d)); };
 
     const citas = useLiveQuery(() => db.citas.toArray());
     const events = useLiveQuery(() => db.empleadoEvents.toArray());
@@ -141,24 +144,28 @@ export default function CalendarioPage() {
                             Mes
                         </button>
                         <button
-                            disabled // Próximamente
-                            className="px-3 py-1 rounded-md text-sm text-gray-400 cursor-not-allowed"
+                            onClick={() => setViewMode('dia')}
+                            className={`px-3 py-1 rounded-md text-sm transition-all ${viewMode === 'dia' ? 'bg-white shadow-sm text-purple-600 font-bold' : 'text-gray-500'}`}
                         >
-                            Semana
+                            Día
                         </button>
                     </div>
 
                     <div className="flex items-center gap-2 border-l pl-4">
-                        <button onClick={handlePrevMonth} className="p-2 hover:bg-gray-100 rounded-lg"><ChevronLeft size={20} /></button>
+                        <button onClick={() => viewMode === 'dia' ? moverDia(-1) : handlePrevMonth()} className="p-2 hover:bg-gray-100 rounded-lg" aria-label="Anterior"><ChevronLeft size={20} /></button>
                         <h2 className="text-lg font-bold text-gray-800 min-w-[150px] text-center">
-                            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+                            {viewMode === 'dia'
+                                ? new Date(`${dia}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
+                                : `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
                         </h2>
-                        <button onClick={handleNextMonth} className="p-2 hover:bg-gray-100 rounded-lg"><ChevronRight size={20} /></button>
+                        <button onClick={() => viewMode === 'dia' ? moverDia(1) : handleNextMonth()} className="p-2 hover:bg-gray-100 rounded-lg" aria-label="Siguiente"><ChevronRight size={20} /></button>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {viewMode === 'dia' && <AgendaDia fecha={dia} />}
+
+            {viewMode === 'month' && <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="grid grid-cols-7 bg-gray-50 border-b">
                     {dayNames.map(day => (
                         <div key={day} className="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -175,7 +182,9 @@ export default function CalendarioPage() {
                         return (
                             <div
                                 key={idx}
-                                className={`border-r border-b p-2 transition-colors hover:bg-gray-50/50 relative ${!item.day ? 'bg-gray-50/30' : ''} ${isToday ? 'bg-purple-50/30' : ''}`}
+                                onClick={() => { if (item.fullDate) { setDia(item.fullDate); setViewMode('dia'); } }}
+                                title={item.fullDate ? 'Ver la agenda del día' : undefined}
+                                className={`border-r border-b p-2 transition-colors hover:bg-gray-50/50 relative ${item.fullDate ? 'cursor-pointer' : ''} ${!item.day ? 'bg-gray-50/30' : ''} ${isToday ? 'bg-purple-50/30' : ''}`}
                             >
                                 {item.day && (
                                     <span className={`text-sm font-bold ${isToday ? 'bg-purple-600 text-white w-6 h-6 flex items-center justify-center rounded-full' : 'text-gray-400'}`}>
@@ -223,7 +232,7 @@ export default function CalendarioPage() {
                         );
                     })}
                 </div>
-            </div>
+            </div>}
 
             {errorGoogle && <p className="text-sm text-red-600">{errorGoogle}</p>}
             {credsGoogle === false && (

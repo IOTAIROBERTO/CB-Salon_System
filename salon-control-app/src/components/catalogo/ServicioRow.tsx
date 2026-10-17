@@ -17,7 +17,14 @@ export default function ServicioRow({ servicio, onEdit, onDelete }: ServicioRowP
 
   return (
     <tr className="border-t hover:bg-gray-50">
-      <td className="p-4 font-medium">{servicio.nombre}</td>
+      <td className="p-4 font-medium">
+        {servicio.nombre}
+        {servicio.duracion ? (
+          <div className="text-xs text-gray-500 font-normal">
+            {servicio.duracion} min{servicio.tiempoProceso ? ` · ${servicio.tiempoProceso} de proceso` : ''}
+          </div>
+        ) : null}
+      </td>
       <td className="p-4 text-green-600 font-semibold">
         {formatPrice(servicio.precioSugerido)}
       </td>

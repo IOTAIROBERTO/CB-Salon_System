@@ -6,6 +6,7 @@ export const DEXIE_CLOUD_URL = 'https://zt3tyd7cy.dexie.cloud';
 import { CampaignType } from '../types/email';
 import type { Canje } from '../utils/lealtad';
 import type { Ubicacion } from '../data/datosSalon';
+import type { ConfigAgenda } from '../utils/agenda';
 
 // Interfaces for new tables
 export interface Expense {
@@ -29,6 +30,8 @@ export interface Empleado {
     fechaContratacion: string;
     cumple?: string; // YYYY-MM-DD
     googleCalendarId?: string; // Specific calendar ID for this employee
+    tomaCitas?: boolean; // Aparece en la agenda con horarios propios
+    categoriasAgenda?: string[]; // Categorías de servicio que atiende (vacío = todas)
 }
 
 export interface EmpleadoEvent {
@@ -72,6 +75,7 @@ export interface AppSettings {
     respaldoUltimo?: string;
     // Qué lista de precios está activa: la de 2026 o la de enero de 2027.
     listaPrecios?: '2026' | '2027';
+    agenda?: ConfigAgenda; // Horario, margen, bloqueos (utils/agenda)
 }
 
 export interface Cliente {
@@ -118,6 +122,7 @@ export interface Cita {
     googleEventId?: string;
     descripcionTrabajo?: string; // qué se trabajó y por qué se cobró así
     ubicacion?: Ubicacion;
+    atiendeId?: string; // Quién la atiende en la agenda ('cristina' o id de empleado)
 }
 
 export interface Venta {
@@ -141,6 +146,8 @@ export interface Servicio {
     precioSugerido: number;
     anticipoSugerido: number;
     duracion: number;
+    tiempoProceso?: number; // Minutos de espera (tinte actuando): quien atiende queda libre
+    tiempoCierre?: number; // Minutos activos al final (enjuague, secado, peinado)
     descripcion?: string;
     comision?: number;
     categoria?: string;

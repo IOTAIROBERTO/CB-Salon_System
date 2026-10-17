@@ -52,6 +52,7 @@ export interface Cita {
   fechaCompletada?: string;
   descripcionTrabajo?: string; // qué se trabajó y por qué se cobró así
   ubicacion?: Ubicacion; // sin valor = en el salón
+  atiendeId?: string; // quién la atiende ('cristina' o id de empleado)
 }
 
 export interface ModalState {

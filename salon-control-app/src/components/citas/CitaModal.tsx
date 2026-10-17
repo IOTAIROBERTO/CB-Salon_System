@@ -9,6 +9,8 @@ import {
 } from "../../utils/dateValidation";
 import TimeSelector from "./TimeSelector";
 import { UBICACIONES, Ubicacion } from "../../data/datosSalon";
+import HorariosLibres, { AvisosAgenda } from "./HorariosLibres";
+import { useAgenda } from "../../hooks/useAgenda";
 
 import { db } from "../../db/db";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -23,6 +25,7 @@ interface CitaModalProps {
 
 export default function CitaModal({ clientes, servicios, onClose, onSave, citaEdit }: CitaModalProps) {
   const empleados = useLiveQuery(() => db.empleados.toArray())?.filter(e => e.activo) || [];
+  const { personas } = useAgenda();
 
   const [formData, setFormData] = useState({
     clienteId: citaEdit?.clienteId || "",
@@ -33,6 +36,7 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
     notas: citaEdit?.notas || "",
     descripcionTrabajo: citaEdit?.descripcionTrabajo || "",
     ubicacion: (citaEdit?.ubicacion || "salon") as Ubicacion,
+    atiendeId: citaEdit?.atiendeId || "cristina",
     estado: citaEdit?.estado || "pendiente",
   });
 
@@ -227,13 +231,28 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
             )}
           </div>
 
-          {/* NUEVO: Selector visual de hora */}
+          {/* Quién atiende y horarios libres según la duración del servicio */}
+          {personas.length > 1 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">¿Quién atiende?</label>
+              <select value={formData.atiendeId} onChange={(e) => setFormData({ ...formData, atiendeId: e.target.value })}
+                className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                {personas.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              </select>
+            </div>
+          )}
+          <HorariosLibres fecha={formData.fecha} servicioId={formData.servicioId} atiendeId={personas.length > 1 ? formData.atiendeId : undefined}
+            ignorarCitaId={citaEdit?.id} horaElegida={formData.hora}
+            onElegir={(hora, personaId) => setFormData({ ...formData, hora, atiendeId: personaId })} />
+
+          {/* Hora manual (por si se acordó otra con la clienta) */}
           <TimeSelector
             value={formData.hora}
             onChange={(time) => setFormData({ ...formData, hora: time })}
             minTime={getMinTime()}
-            label="Hora de la cita *"
+            label="Otra hora (manual) *"
           />
+          <AvisosAgenda cita={{ id: citaEdit?.id, fecha: formData.fecha, hora: formData.hora, servicioId: formData.servicioId, atiendeId: formData.atiendeId, serviciosAdicionales: citaEdit?.serviciosAdicionales }} />
 
           {/* Mensaje de error de validación */}
           {errorFechaHora && (

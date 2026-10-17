@@ -5,7 +5,10 @@ const INITIAL_FORM_DATA: ServicioFormData = {
   nombre: '',
   precioSugerido: 0,
   anticipoSugerido: 0,
-  comision: 0
+  comision: 0,
+  duracion: 60,
+  tiempoProceso: 0,
+  tiempoCierre: 0
 };
 
 export const useServicioModal = () => {
@@ -24,7 +27,10 @@ export const useServicioModal = () => {
       nombre: servicio.nombre,
       precioSugerido: servicio.precioSugerido,
       anticipoSugerido: servicio.anticipoSugerido,
-      comision: servicio.comision || 0
+      comision: servicio.comision || 0,
+      duracion: servicio.duracion || 60,
+      tiempoProceso: servicio.tiempoProceso || 0,
+      tiempoCierre: servicio.tiempoCierre || 0
     });
     setEditingServicio(servicio);
     setIsModalOpen(true);

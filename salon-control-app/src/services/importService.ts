@@ -54,7 +54,12 @@ const guardarLista = async (lista: '2026' | '2027') => {
 
 /** Carga o actualiza los servicios del catálogo con la lista indicada. */
 export const importarCatalogo = async (lista: '2026' | '2027' = '2026'): Promise<number> => {
-    const servicios = (catalogo as any[]).map(s => servicioDesdeJson(s, lista));
+    // Conserva los tiempos de agenda capturados en Catálogo (no vienen en el archivo)
+    const actuales = new Map((await db.servicios.toArray()).map((s: any) => [s.id, s]));
+    const servicios = (catalogo as any[]).map(s => {
+        const a = actuales.get(s.id);
+        return { ...servicioDesdeJson(s, lista), ...(a && { duracion: a.duracion ?? s.duracion, tiempoProceso: a.tiempoProceso, tiempoCierre: a.tiempoCierre }) };
+    });
     await db.servicios.bulkPut(servicios as any);
     await guardarLista(lista);
     return servicios.length;

@@ -10,6 +10,10 @@ export const validateServicioForm = (formData: ServicioFormData): string | null 
     return 'El precio sugerido debe ser mayor a 0';
   }
 
+  if ((formData.tiempoProceso || 0) + (formData.tiempoCierre || 0) > (formData.duracion || 60)) {
+    return 'El proceso más el cierre no pueden pasar de la duración total';
+  }
+
   if (formData.anticipoSugerido < 0) {
     return 'El anticipo no puede ser negativo';
   }

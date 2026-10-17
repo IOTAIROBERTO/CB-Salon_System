@@ -9,6 +9,11 @@ import {
   formatearHoraLegible,
   parseFechaLocal
 } from "../../utils/dateValidation";
+import HorariosLibres, { AvisosAgenda } from "./HorariosLibres";
+import { useAgenda, nombrePersona } from "../../hooks/useAgenda";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "../../db/db";
+import { enlaceWhatsApp } from "../../utils/lealtad";
 
 interface ReagendarModalProps {
   cita: Cita;
@@ -19,6 +24,9 @@ interface ReagendarModalProps {
 export default function ReagendarModal({ cita, onClose, onSave }: ReagendarModalProps) {
   const [fecha, setFecha] = useState(cita.fecha);
   const [hora, setHora] = useState(cita.hora);
+  const [atiendeId, setAtiendeId] = useState(cita.atiendeId || "cristina");
+  const { personas } = useAgenda();
+  const cliente = useLiveQuery(() => db.clientes.get(cita.clienteId), [cita.clienteId]);
   const [errorFechaHora, setErrorFechaHora] = useState<string | null>(null);
 
   // Validar fecha y hora cada vez que cambien
@@ -43,7 +51,8 @@ export default function ReagendarModal({ cita, onClose, onSave }: ReagendarModal
     const citaActualizada = {
       ...cita,
       fecha,
-      hora
+      hora,
+      atiendeId
     };
     
     onSave(citaActualizada);
@@ -51,11 +60,12 @@ export default function ReagendarModal({ cita, onClose, onSave }: ReagendarModal
   };
 
   const isValid = fecha && hora && !errorFechaHora;
-  const fechaHoraCambiaron = fecha !== cita.fecha || hora !== cita.hora;
+  const fechaHoraCambiaron = fecha !== cita.fecha || hora !== cita.hora || atiendeId !== (cita.atiendeId || "cristina");
+  const whatsapp = enlaceWhatsApp(cliente?.telefono, `Hola ${cliente?.nombre?.split(" ")[0] || ""}, te escribimos de Cristina Bórquez Beauty Salon. ¿Te parece si movemos tu cita al ${formatearFechaLegible(fecha)} a las ${formatearHoraLegible(hora)}?`);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-label="Reagendar cita">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-2">
@@ -104,6 +114,19 @@ export default function ReagendarModal({ cita, onClose, onSave }: ReagendarModal
               </p>
             </div>
             
+            {personas.length > 1 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">¿Quién atiende?</label>
+                <select value={atiendeId} onChange={(e) => setAtiendeId(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+                  {personas.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                </select>
+              </div>
+            )}
+
+            <HorariosLibres fecha={fecha} servicioId={cita.servicioId} adicionales={(cita.serviciosAdicionales || []).map(a => a.servicioId)}
+              atiendeId={personas.length > 1 ? atiendeId : undefined} ignorarCitaId={cita.id} horaElegida={hora}
+              onElegir={(h, p) => { setHora(h); setAtiendeId(p); }} />
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Nueva Hora *
@@ -128,6 +151,8 @@ export default function ReagendarModal({ cita, onClose, onSave }: ReagendarModal
               )}
             </div>
 
+            <AvisosAgenda cita={{ ...cita, fecha, hora, atiendeId }} />
+
             {/* Mensaje de error de validación */}
             {errorFechaHora && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
@@ -150,7 +175,13 @@ export default function ReagendarModal({ cita, onClose, onSave }: ReagendarModal
                   <p>
                     <span className="font-medium">Hora:</span> {formatearHoraLegible(hora)}
                   </p>
+                  {personas.length > 1 && <p><span className="font-medium">Atiende:</span> {nombrePersona(personas, atiendeId)}</p>}
                 </div>
+                {whatsapp && (
+                  <a href={whatsapp} target="_blank" rel="noreferrer" className="inline-block mt-2 text-sm font-medium text-blue-800 underline">
+                    Proponer este horario a la clienta por WhatsApp
+                  </a>
+                )}
               </div>
             )}
 
