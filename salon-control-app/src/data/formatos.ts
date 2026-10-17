@@ -22,8 +22,7 @@ export const FORMATOS: Formato[] = [
   { archivo: 'notas-curso-rayada.pdf', titulo: 'Notas de curso (rayada)', descripcion: 'Hoja de notas con la marca para cursos y capacitaciones.', grupo: 'Cursos' },
   { archivo: 'notas-curso-puntos.pdf', titulo: 'Notas de curso (puntos)', descripcion: 'Cuadrícula de puntos para esquemas y secciones.', grupo: 'Cursos' },
   { archivo: 'ficha-tecnica-color.pdf', titulo: 'Ficha técnica de color', descripcion: 'Diagnóstico, secciones y fórmulas para práctica o servicio.', grupo: 'Cursos' },
-  { archivo: 'lista-de-precios-2026.pdf', titulo: 'Lista de precios 2026', descripcion: 'Para exhibir en el salón hasta el 31 de diciembre de 2026.', grupo: 'Precios' },
-  { archivo: 'lista-de-precios-2027.pdf', titulo: 'Lista de precios 2027', descripcion: 'Para exhibir desde el 2 de enero de 2027.', grupo: 'Precios' }
+  { archivo: 'lista-de-precios-2027.pdf', titulo: 'Lista de precios vigente', descripcion: 'Precios 2027, vigentes desde octubre de 2026. Para exhibir en el salón.', grupo: 'Precios' }
 ];
 
 export const urlFormato = (archivo: string) => new URL(`./formatos/${archivo}`, document.baseURI).href;

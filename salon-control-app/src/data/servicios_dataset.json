@@ -286,6 +286,28 @@
     "descripcion": ""
   },
   {
+    "id": "s30",
+    "nombre": "Maquillaje de Novia, Foráneo",
+    "categoria": "maquillaje",
+    "precioActualizado": 4500,
+    "anticipo": 1350,
+    "precio2027": 4850,
+    "anticipo2027": 1450,
+    "duracion": 120,
+    "descripcion": "Maquillaje y peinado de novia fuera de Hermosillo. El traslado se cotiza aparte según el destino."
+  },
+  {
+    "id": "s31",
+    "nombre": "Maquillaje Novia y Mamá, Foráneo",
+    "categoria": "maquillaje",
+    "precioActualizado": 9700,
+    "anticipo": 2900,
+    "precio2027": 10500,
+    "anticipo2027": 3150,
+    "duracion": 180,
+    "descripcion": "Novia y mamá de la novia fuera de Hermosillo. El traslado se cotiza aparte según el destino."
+  },
+  {
     "id": "s27",
     "nombre": "Gel color, liso",
     "categoria": "uñas",
@@ -317,27 +339,5 @@
     "anticipo2027": 500,
     "duracion": 150,
     "descripcion": "Diseño de color solo en la zona de la coronilla. En septiembre de 2026 se cobró entre $1,300 y $1,600."
-  },
-  {
-    "id": "s98",
-    "nombre": "Anticipo (histórico)",
-    "categoria": "otros",
-    "precioActualizado": 0,
-    "anticipo": 0,
-    "precio2027": 0,
-    "anticipo2027": 0,
-    "duracion": 15,
-    "descripcion": "Solo para el histórico: los anticipos que el Excel anotaba como si fueran un servicio."
-  },
-  {
-    "id": "s99",
-    "nombre": "Otro servicio",
-    "categoria": "otros",
-    "precioActualizado": 0,
-    "anticipo": 0,
-    "precio2027": 0,
-    "anticipo2027": 0,
-    "duracion": 60,
-    "descripcion": "Para cobros que no entran en el catálogo. También recoge el histórico sin clasificar."
   }
 ]
