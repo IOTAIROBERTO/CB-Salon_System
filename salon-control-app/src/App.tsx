@@ -94,7 +94,7 @@ function AppSalon() {
               <div className="flex justify-between items-center h-16">
                 {/* Logo/Titulo y Widget */}
                 <div className="flex items-center gap-4">
-                  <Link to="/citas" className="flex-shrink-0 flex items-center gap-3" title="Cristina Bórquez Beauty Salon">
+                  <Link to="/citas" className="flex-shrink-0 flex items-center gap-3" title="Cristina Borquez Beauty Salon">
                     <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-9 w-auto" />
                     <span className="font-display text-xl sm:text-2xl leading-none tracking-wide xl:hidden 2xl:inline">
                       CB <em className="text-marca-dorado">Control</em>

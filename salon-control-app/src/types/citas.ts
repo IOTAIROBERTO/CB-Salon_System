@@ -1,5 +1,4 @@
 // src/types/citas.ts - Versión actualizada
-import type { Ubicacion } from '../data/datosSalon';
 
 export interface Cliente {
   id: string;
@@ -21,6 +20,7 @@ export interface Servicio {
   categoria?: string;
   activo: boolean;
   comision?: number;
+  archivado?: boolean; // Fuera del catálogo (uñas, «otros»)
 }
 
 export interface Cita {
@@ -51,7 +51,7 @@ export interface Cita {
   saldoPendiente?: number;
   fechaCompletada?: string;
   descripcionTrabajo?: string; // qué se trabajó y por qué se cobró así
-  ubicacion?: Ubicacion; // sin valor = en el salón
+  ubicacion?: string; // sin valor o 'salon' = en el salón; si no, id de zona (utils/zonas)
   atiendeId?: string; // quién la atiende ('cristina' o id de empleado)
 }
 

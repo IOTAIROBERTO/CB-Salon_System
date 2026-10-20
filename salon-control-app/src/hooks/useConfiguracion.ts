@@ -1,5 +1,6 @@
 // src/hooks/useConfiguracion.ts
 import { useState, useEffect, useCallback } from 'react';
+import { DATOS_SALON } from '../data/datosSalon';
 
 export interface ConfiguracionEmpresa {
   nombre: string;
@@ -17,19 +18,19 @@ export interface ConfiguracionEmpresa {
 }
 
 const CONFIGURACION_DEFAULT: ConfiguracionEmpresa = {
-  nombre: 'Cristina Bórquez Beauty Salon',
-  telefono: '+52 55 1234-5678',
-  direccion: 'Calle Principal 123, Col. Centro',
-  email: 'contacto@beautysalon.com',
+  nombre: DATOS_SALON.nombre,
+  telefono: DATOS_SALON.telefono,
+  direccion: DATOS_SALON.direccion,
+  email: DATOS_SALON.email,
   logo: null,
   horarios: {
-    lunes: { abierto: true, inicio: '09:00', fin: '18:00' },
-    martes: { abierto: true, inicio: '09:00', fin: '18:00' },
-    miercoles: { abierto: true, inicio: '09:00', fin: '18:00' },
-    jueves: { abierto: true, inicio: '09:00', fin: '18:00' },
-    viernes: { abierto: true, inicio: '09:00', fin: '18:00' },
-    sabado: { abierto: true, inicio: '09:00', fin: '17:00' },
-    domingo: { abierto: false, inicio: '10:00', fin: '16:00' }
+    lunes: { abierto: true, inicio: '10:00', fin: '19:00' },
+    martes: { abierto: true, inicio: '10:00', fin: '19:00' },
+    miercoles: { abierto: true, inicio: '10:00', fin: '19:00' },
+    jueves: { abierto: true, inicio: '10:00', fin: '19:00' },
+    viernes: { abierto: true, inicio: '10:00', fin: '19:00' },
+    sabado: { abierto: true, inicio: '10:00', fin: '19:00' },
+    domingo: { abierto: false, inicio: '10:00', fin: '19:00' }
   }
 };
 

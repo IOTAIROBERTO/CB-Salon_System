@@ -21,7 +21,7 @@ export default function LogoHero({
   textClassName = '' 
 }: LogoHeroProps) {
   const [configuracion, setConfiguracion] = useState<ConfiguracionEmpresa>({
-    nombre: 'Cristina Bórquez Beauty Salon',
+    nombre: 'Cristina Borquez Beauty Salon',
     logo: null
   });
 
@@ -31,7 +31,7 @@ export default function LogoHero({
       try {
         const config = JSON.parse(configGuardada);
         setConfiguracion({
-          nombre: config?.nombre || 'Cristina Bórquez Beauty Salon',
+          nombre: config?.nombre || 'Cristina Borquez Beauty Salon',
           logo: config?.logo || null
         });
       } catch (error) {
@@ -48,7 +48,7 @@ export default function LogoHero({
         try {
           const config = JSON.parse(configGuardada);
           setConfiguracion({
-            nombre: config?.nombre || 'Cristina Bórquez Beauty Salon',
+            nombre: config?.nombre || 'Cristina Borquez Beauty Salon',
             logo: config?.logo || null
           });
         } catch (error) {

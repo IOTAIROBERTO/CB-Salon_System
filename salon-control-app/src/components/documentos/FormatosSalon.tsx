@@ -1,7 +1,7 @@
 import { FileText, Printer } from 'lucide-react';
 import { FORMATOS, urlFormato, type GrupoFormato } from '../../data/formatos';
 
-const GRUPOS: GrupoFormato[] = ['Clientas y legal', 'Operación', 'Cursos', 'Precios'];
+const GRUPOS: GrupoFormato[] = ['Clientas y legal', 'Operación', 'Equipo', 'Precios'];
 
 /** Formatos imprimibles con la marca (PDF en public/formatos) */
 export default function FormatosSalon() {

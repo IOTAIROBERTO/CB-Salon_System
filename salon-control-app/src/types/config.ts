@@ -25,7 +25,7 @@ export interface ConfiguracionEmpresa {
 }
 
 export const CONFIGURACION_DEFAULT: ConfiguracionEmpresa = {
-  nombre: 'Cristina Bórquez Beauty Salon',
+  nombre: 'Cristina Borquez Beauty Salon',
   colores: {
     primario: 'purple',
     secundario: 'blue', 

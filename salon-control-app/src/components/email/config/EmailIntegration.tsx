@@ -144,7 +144,7 @@ export default function EmailIntegration({ onClose }: EmailIntegrationProps) {
           html_message: `<h2>Prueba de Configuración</h2>
 <p>Hola <strong>Cliente de Prueba</strong>,</p>
 <p>Este es un email de prueba para verificar que la configuración está funcionando correctamente.</p>
-<p><strong>Cristina Bórquez Beauty Salon</strong></p>`
+<p><strong>Cristina Borquez Beauty Salon</strong></p>`
         };
 
         const result = await window.emailjs.send(

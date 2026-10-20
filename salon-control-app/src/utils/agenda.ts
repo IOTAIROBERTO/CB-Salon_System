@@ -25,11 +25,13 @@ export interface Persona { id: string; nombre: string; categorias?: string[] }
 export const DUENA = 'cristina';
 
 const abierto = (abre: string, cierra: string): HorarioDia => ({ abre, cierra });
+// Lunes a sábado de 10 a 19 (respuestas de octubre 2026). El domingo no se
+// ofrece: se abre solo con citas que agenda el salón a mano.
 export const AGENDA_INICIAL: ConfigAgenda = {
   horario: {
     '0': null,
     '1': abierto('10:00', '19:00'), '2': abierto('10:00', '19:00'), '3': abierto('10:00', '19:00'),
-    '4': abierto('10:00', '19:00'), '5': abierto('10:00', '19:00'), '6': abierto('10:00', '17:00')
+    '4': abierto('10:00', '19:00'), '5': abierto('10:00', '19:00'), '6': abierto('10:00', '19:00')
   },
   margen: 15, intervalo: 30, anticipacionHoras: 3, maxDias: 60, bloqueos: []
 };

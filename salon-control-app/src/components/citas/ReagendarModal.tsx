@@ -61,7 +61,7 @@ export default function ReagendarModal({ cita, onClose, onSave }: ReagendarModal
 
   const isValid = fecha && hora && !errorFechaHora;
   const fechaHoraCambiaron = fecha !== cita.fecha || hora !== cita.hora || atiendeId !== (cita.atiendeId || "cristina");
-  const whatsapp = enlaceWhatsApp(cliente?.telefono, `Hola ${cliente?.nombre?.split(" ")[0] || ""}, te escribimos de Cristina Bórquez Beauty Salon. ¿Te parece si movemos tu cita al ${formatearFechaLegible(fecha)} a las ${formatearHoraLegible(hora)}?`);
+  const whatsapp = enlaceWhatsApp(cliente?.telefono, `Hola ${cliente?.nombre?.split(" ")[0] || ""}, te escribimos de Cristina Borquez Beauty Salon. ¿Te parece si movemos tu cita al ${formatearFechaLegible(fecha)} a las ${formatearHoraLegible(hora)}?`);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

@@ -1,0 +1,331 @@
+{
+ "2026": {
+  "nota": "Lista que se cobró en 2026. Corrección y extracción eran precio «desde».",
+  "renglones": [
+   {
+    "nombre": "Corte de cabello",
+    "categoria": "Corte",
+    "precio": 450,
+    "anticipo": 150
+   },
+   {
+    "nombre": "Flequillo o despunte",
+    "categoria": "Corte",
+    "precio": 200,
+    "anticipo": 0
+   },
+   {
+    "nombre": "Ampolleta de hidratación intensiva",
+    "categoria": "Tratamiento",
+    "precio": 150,
+    "anticipo": 0
+   },
+   {
+    "nombre": "Corte + ampolleta de hidratación",
+    "categoria": "Corte",
+    "precio": 600,
+    "anticipo": 200
+   },
+   {
+    "nombre": "Spa capilar",
+    "categoria": "Tratamiento",
+    "precio": 400,
+    "anticipo": 100
+   },
+   {
+    "nombre": "Mascarilla en cabina",
+    "categoria": "Tratamiento",
+    "precio": 450,
+    "anticipo": 0
+   },
+   {
+    "nombre": "Retoque de raíz",
+    "categoria": "Color",
+    "precio": 500,
+    "anticipo": 150
+   },
+   {
+    "nombre": "Tinte completo",
+    "categoria": "Color",
+    "precio": 850,
+    "anticipo": 250
+   },
+   {
+    "nombre": "Tinte global, cabello largo",
+    "categoria": "Color",
+    "precio": 1200,
+    "anticipo": 350
+   },
+   {
+    "nombre": "Matiz, corto",
+    "categoria": "Color",
+    "precio": 550,
+    "anticipo": 150
+   },
+   {
+    "nombre": "Matiz, hombros",
+    "categoria": "Color",
+    "precio": 750,
+    "anticipo": 250
+   },
+   {
+    "nombre": "Matiz, media espalda",
+    "categoria": "Color",
+    "precio": 900,
+    "anticipo": 250
+   },
+   {
+    "nombre": "Matiz, cintura",
+    "categoria": "Color",
+    "precio": 1050,
+    "anticipo": 300
+   },
+   {
+    "nombre": "Babylights, de corto a hombros",
+    "categoria": "Color",
+    "precio": 2100,
+    "anticipo": 650
+   },
+   {
+    "nombre": "Babylights, de hombros a media espalda",
+    "categoria": "Color",
+    "precio": 2700,
+    "anticipo": 800
+   },
+   {
+    "nombre": "Babylights, de media espalda a cintura",
+    "categoria": "Color",
+    "precio": 3100,
+    "anticipo": 950
+   },
+   {
+    "nombre": "Diseño de color",
+    "categoria": "Color",
+    "precio": 2400,
+    "anticipo": 700
+   },
+   {
+    "nombre": "Balayage",
+    "categoria": "Color",
+    "precio": 2800,
+    "anticipo": 850
+   },
+   {
+    "nombre": "Corrección de color",
+    "categoria": "Color",
+    "precio": 1600,
+    "anticipo": 500
+   },
+   {
+    "nombre": "Extracción de color",
+    "categoria": "Color",
+    "precio": 2500,
+    "anticipo": 750
+   },
+   {
+    "nombre": "Ondas",
+    "categoria": "Peinado",
+    "precio": 350,
+    "anticipo": 100
+   },
+   {
+    "nombre": "Peinado o recogido",
+    "categoria": "Peinado",
+    "precio": 500,
+    "anticipo": 150
+   },
+   {
+    "nombre": "Maquillaje",
+    "categoria": "Maquillaje",
+    "precio": 1350,
+    "anticipo": 400
+   },
+   {
+    "nombre": "Maquillaje y peinado",
+    "categoria": "Maquillaje",
+    "precio": 1500,
+    "anticipo": 450
+   },
+   {
+    "nombre": "Novia, en Hermosillo",
+    "categoria": "Maquillaje",
+    "precio": 4500,
+    "anticipo": 1350
+   },
+   {
+    "nombre": "Novia y mamá de la novia",
+    "categoria": "Maquillaje",
+    "precio": 9700,
+    "anticipo": 2900
+   },
+   {
+    "nombre": "Gel color, liso",
+    "categoria": "Uñas",
+    "precio": 180,
+    "anticipo": 0
+   },
+   {
+    "nombre": "Gel color, con efectos",
+    "categoria": "Uñas",
+    "precio": 200,
+    "anticipo": 0
+   },
+   {
+    "nombre": "Diseño de coronilla",
+    "categoria": "Color",
+    "precio": 1500,
+    "anticipo": 450
+   }
+  ]
+ },
+ "2025": {
+  "nota": "Menú de servicios de septiembre de 2025. Babylights y balayage incluían tratamiento aplicado y corte o despunte; garantía de 7 días.",
+  "renglones": [
+   {
+    "nombre": "Corte de cabello",
+    "precio": 450,
+    "anticipo": 150
+   },
+   {
+    "nombre": "Ampolleta hidratación intensiva",
+    "precio": 150,
+    "anticipo": 0
+   },
+   {
+    "nombre": "Corte + ampolleta hidratación intensiva",
+    "precio": 600,
+    "anticipo": 150
+   },
+   {
+    "nombre": "Spa reconstrucción / hidratación",
+    "precio": 500,
+    "anticipo": 150
+   },
+   {
+    "nombre": "Matiz corto",
+    "precio": 550,
+    "anticipo": 150
+   },
+   {
+    "nombre": "Matiz hombros",
+    "precio": 750,
+    "anticipo": 200
+   },
+   {
+    "nombre": "Matiz media espalda",
+    "precio": 950,
+    "anticipo": 250
+   },
+   {
+    "nombre": "Matiz cintura",
+    "precio": 1150,
+    "anticipo": 300
+   },
+   {
+    "nombre": "Matiz + corte + hidratación (corto)",
+    "precio": 1500,
+    "anticipo": 300
+   },
+   {
+    "nombre": "Matiz + corte + hidratación (hombros)",
+    "precio": 1700,
+    "anticipo": 300
+   },
+   {
+    "nombre": "Matiz + corte + hidratación (media espalda)",
+    "precio": 1900,
+    "anticipo": 350
+   },
+   {
+    "nombre": "Matiz + corte + hidratación (cintura)",
+    "precio": 2100,
+    "anticipo": 350
+   },
+   {
+    "nombre": "Diseño de color",
+    "precio": "Valoración",
+    "anticipo": 150
+   },
+   {
+    "nombre": "Ondas",
+    "precio": 350,
+    "anticipo": 150
+   },
+   {
+    "nombre": "Ondas con volumen",
+    "precio": 450,
+    "anticipo": 150
+   },
+   {
+    "nombre": "Medio recogido",
+    "precio": 500,
+    "anticipo": 150
+   },
+   {
+    "nombre": "Recogido o coleta",
+    "precio": 650,
+    "anticipo": 150
+   },
+   {
+    "nombre": "Maquillaje social",
+    "precio": 900,
+    "anticipo": 250
+   },
+   {
+    "nombre": "Uñas gel color liso",
+    "precio": 180,
+    "anticipo": 0
+   },
+   {
+    "nombre": "Uñas gel color con efectos",
+    "precio": 200,
+    "anticipo": 0
+   },
+   {
+    "nombre": "Babylights/balayage de corto a hombros",
+    "precio": "2,000 a 2,500",
+    "anticipo": 350
+   },
+   {
+    "nombre": "Babylights/balayage de hombros a media espalda",
+    "precio": "2,600 a 2,900",
+    "anticipo": 350
+   },
+   {
+    "nombre": "Babylights/balayage de media espalda a cintura/glúteo",
+    "precio": "3,000 a 4,000",
+    "anticipo": 350
+   },
+   {
+    "nombre": "Extracción de color",
+    "precio": "1,500 a 3,000",
+    "anticipo": 350
+   },
+   {
+    "nombre": "Novia en Hermosillo (con kit de retoque)",
+    "precio": 4500,
+    "anticipo": 1350
+   },
+   {
+    "nombre": "Novia en Hermosillo con retoque en recepción",
+    "precio": 5300,
+    "anticipo": 1590
+   },
+   {
+    "nombre": "Novia y mamá de la novia (con retoque en recepción)",
+    "precio": 9700,
+    "anticipo": 2910
+   },
+   {
+    "nombre": "Novia fuera de Hermosillo (con kit de retoque)",
+    "precio": 10000,
+    "anticipo": 3000
+   },
+   {
+    "nombre": "Novia fuera de Hermosillo con retoque en recepción",
+    "precio": 11000,
+    "anticipo": 3300
+   }
+  ]
+ }
+}

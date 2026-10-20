@@ -4,6 +4,7 @@ import { buscarRealmSalon, buscarInvitacion, hayDatosPrivados, crearRealmSalon, 
 import { migrateLocalStorageToDexie } from '../utils/migrateData';
 import serviciosData from '../data/servicios_dataset.json';
 import { migrarDatosLocalesANube, hayBaseLocalAnterior } from '../utils/migrarANube';
+import { ponerCatalogoAlDia, ponerDatosAlDia, servicioBase } from '../db/catalogo';
 
 /** Resuelve cuando hay una sesión iniciada en Dexie Cloud */
 const esperarSesion = () =>
@@ -22,8 +23,8 @@ const esperarSesion = () =>
  */
 export const repararServicio = (s: any, origen?: any) => ({
   ...s,
-  precioSugerido: s.precioSugerido ?? s.precio ?? origen?.precioActualizado ?? 0,
-  anticipoSugerido: s.anticipoSugerido ?? origen?.anticipo ?? 0,
+  precioSugerido: s.precioSugerido ?? s.precio ?? origen?.precio2027 ?? 0,
+  anticipoSugerido: s.anticipoSugerido ?? origen?.anticipo2027 ?? 0,
   duracion: s.duracion ?? origen?.duracion ?? 60
 });
 
@@ -83,27 +84,11 @@ const initDB = async () => {
 
   // 2. Seed Initial Data (only if DB is empty after migration)
 
-  // Services
+  // Servicios: catálogo base con la lista activa (2027) en una cuenta nueva;
+  // en una existente, reparación de precios viejos y puesta al día de octubre 2026.
   const servicesCount = await db.servicios.count();
   if (servicesCount === 0) {
-    const serviciosMapped = serviciosData.map((s: any) => ({
-      id: s.id,
-      nombre: s.nombre,
-      // El resto del sistema lee precioSugerido/anticipoSugerido; el JSON
-      // los trae como precioActualizado/anticipo.
-      precioSugerido: s.precioActualizado,
-      anticipoSugerido: s.anticipo ?? 0,
-      // Las dos listas viajan con el servicio para poder cambiar de una a
-      // otra desde Configuración sin volver a importar.
-      precio2026: s.precioActualizado,
-      anticipo2026: s.anticipo ?? 0,
-      precio2027: s.precio2027,
-      anticipo2027: s.anticipo2027,
-      categoria: s.categoria,
-      duracion: s.duracion,
-      descripcion: s.descripcion
-    }));
-    await db.servicios.bulkPut(serviciosMapped);
+    await db.servicios.bulkPut(serviciosData.map(servicioBase) as any);
   } else {
     // Reparación: versiones anteriores sembraron el precio en `precio`, un
     // campo que nadie lee, dejando el catálogo en $0. Se rellena una sola
@@ -120,6 +105,8 @@ const initDB = async () => {
       console.log(`Catálogo reparado: ${sinPrecio.length} servicios sin precioSugerido`);
     }
   }
+  if (await ponerCatalogoAlDia()) console.log('Catálogo al día: lista 2027 activa, uñas archivadas');
+  await ponerDatosAlDia();
 
   // Sin clientas ni productos de ejemplo: en una cuenta nueva aparecían
   // registros falsos (Ana López, L'Oreal…) mezclados con los reales.

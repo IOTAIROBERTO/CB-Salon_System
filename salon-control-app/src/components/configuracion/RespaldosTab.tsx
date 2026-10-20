@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Database, Download, FolderOpen, HardDriveDownload, RotateCcw, ShieldCheck, Tag } from 'lucide-react';
 import {
-    cambiarLista,
+    agregarFaltantes,
     historicoCargado,
-    importarCatalogo,
     importarHistorico,
-    leerArchivoHistorico,
-    listaActiva
+    leerArchivoHistorico
 } from '../../services/importService';
 import {
     descargarRespaldo,
@@ -30,7 +28,6 @@ export default function RespaldosTab() {
     const [porRestaurar, setPorRestaurar] = useState<{ archivo: File; datos: Respaldo } | null>(null);
     const inputArchivo = useRef<HTMLInputElement>(null);
     const inputHistorico = useRef<HTMLInputElement>(null);
-    const [lista, setLista] = useState<'2026' | '2027'>('2026');
     const [historico, setHistorico] = useState(0);
 
     const refrescar = async () => {
@@ -38,7 +35,6 @@ export default function RespaldosTab() {
         setCarpeta(estado.carpeta?.name || '');
         setPermiso(estado.permiso);
         setUltimo(estado.ultimo);
-        setLista(await listaActiva());
         setHistorico(await historicoCargado());
     };
 
@@ -128,14 +124,14 @@ export default function RespaldosTab() {
                 <div className="flex flex-wrap gap-2">
                     <button
                         onClick={() => conError(async () => {
-                            const n = await importarCatalogo(lista);
+                            const n = await agregarFaltantes();
                             await refrescar();
-                            avisar(`Catálogo cargado: ${n} servicios con la lista ${lista}`);
+                            avisar(n ? `${n} servicios del catálogo base agregados` : 'El catálogo ya tiene todos los servicios base');
                         })}
                         disabled={ocupado}
                         className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-700 disabled:opacity-50"
                     >
-                        <Tag size={18} /> Cargar catálogo de servicios
+                        <Tag size={18} /> Agregar servicios que falten
                     </button>
 
                     <button
@@ -177,38 +173,7 @@ export default function RespaldosTab() {
                     </p>
                 )}
 
-                {/* Lista de precios */}
-                <div className="pt-4 border-t space-y-2">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div>
-                            <p className="text-sm font-medium">
-                                Lista de precios activa: <span className="text-purple-700">{lista}</span>
-                            </p>
-                            <p className="text-xs text-gray-500">
-                                {lista === '2026'
-                                    ? 'Los precios que cobras hoy. La lista de enero 2027 ya está cargada, sin activar.'
-                                    : 'Los precios de enero 2027, un 8% arriba de los de 2026.'}
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => conError(async () => {
-                                const destino = lista === '2026' ? '2027' : '2026';
-                                if (!confirm(
-                                    destino === '2027'
-                                        ? 'Se aplicarán los precios de enero 2027 a todo el catálogo. ¿Continuar?'
-                                        : 'Se regresará el catálogo a los precios de 2026. ¿Continuar?'
-                                )) return;
-                                const n = await cambiarLista(destino);
-                                await refrescar();
-                                avisar(`${n} servicios ahora usan la lista ${destino}`);
-                            })}
-                            disabled={ocupado}
-                            className="border-2 border-gray-200 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
-                        >
-                            {lista === '2026' ? 'Aplicar lista de enero 2027' : 'Volver a la lista 2026'}
-                        </button>
-                    </div>
-                </div>
+                <p className="text-xs text-gray-500">Las listas de precios por año se manejan en Catálogo.</p>
             </div>
 
             {/* Estado */}

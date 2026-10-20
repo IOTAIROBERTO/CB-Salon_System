@@ -19,11 +19,22 @@ import {
   FileSignature,
   MapPin,
 } from "lucide-react";
-import { UBICACIONES } from "../../data/datosSalon";
+import { zonasDe, nombreUbicacion, SALON } from "../../utils/zonas";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "../../db/db";
 import { useState } from "react";
 import { Cita, Cliente, Servicio } from "../../types/citas";
 import { formatCurrency } from "../../utils/discountUtils";
 import { imprimirConsentimiento } from "../../utils/consentimiento";
+import { notaReserva } from "../../utils/reserva";
+import { enlaceWhatsApp } from "../../utils/lealtad";
+import { MessageCircle } from "lucide-react";
+
+/** Nombre de la zona (componente aparte: CitaCard tiene un return antes de sus hooks) */
+const NombreUbicacion = ({ ubicacion }: { ubicacion: string }) => {
+  const settings = useLiveQuery(() => db.configuracion.get("settings"));
+  return <>{nombreUbicacion(ubicacion, zonasDe(settings as any))}</>;
+};
 
 interface CitaCardProps {
   cita: Cita;
@@ -420,7 +431,7 @@ export default function CitaCard({
           {cita.ubicacion && cita.ubicacion !== "salon" && (
             <div className="flex items-center gap-1 text-sm font-medium text-amber-800">
               <MapPin size={14} />
-              {UBICACIONES[cita.ubicacion]}
+              <NombreUbicacion ubicacion={cita.ubicacion} />
             </div>
           )}
 
@@ -487,6 +498,27 @@ export default function CitaCard({
 
             {/* Editar / Eliminar */}
             <div className="flex gap-2 pt-2 border-t">
+              <button
+                onClick={async () => {
+                  const fuera = cita.ubicacion && cita.ubicacion !== SALON;
+                  const lugar = fuera ? nombreUbicacion(cita.ubicacion!, zonasDe(await db.configuracion.get("settings") as any)) : undefined;
+                  const enlace = enlaceWhatsApp(clienteData?.telefono, notaReserva({
+                    nombre: clienteData?.nombre || '',
+                    servicio: [servicio?.nombre, ...(cita.serviciosAdicionales || []).map(s => s.nombre)].filter(Boolean).join(' + '),
+                    fecha: cita.fecha,
+                    hora: cita.hora,
+                    precio: servicio?.precioSugerido,
+                    anticipo: cita.montoAnticipo,
+                    anticipoPagado: cita.anticipoConfirmado,
+                    lugar
+                  }));
+                  if (enlace) window.open(enlace, '_blank', 'noopener'); else alert('La clienta no tiene un teléfono de 10 dígitos.');
+                }}
+                className="text-green-700 hover:text-green-900 p-1 hover:bg-green-50 rounded"
+                title="Mandar nota de reserva por WhatsApp"
+              >
+                <MessageCircle size={16} />
+              </button>
               <button
                 onClick={() => imprimirConsentimiento({
                   clienteNombre: clienteData?.nombre,

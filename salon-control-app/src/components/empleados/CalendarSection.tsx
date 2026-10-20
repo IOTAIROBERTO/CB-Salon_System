@@ -134,6 +134,19 @@ export default function CalendarSection({ empleadoId, onClose }: CalendarSection
                                 onChange={e => setFormData({ ...formData, fechaFin: e.target.value })}
                             />
                         </div>
+                        {formData.tipo === 'apoyo' && (
+                            <div className="col-span-2">
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Horas trabajadas por día (para el pago)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    className="w-full p-2 border rounded-lg text-sm"
+                                    value={formData.horas ?? ''}
+                                    onChange={e => setFormData({ ...formData, horas: Number(e.target.value) || undefined })}
+                                />
+                            </div>
+                        )}
                         <div className="col-span-2">
                             <label className="block text-xs font-medium text-gray-500 mb-1">Descripción / Notas</label>
                             <input
@@ -182,7 +195,7 @@ export default function CalendarSection({ empleadoId, onClose }: CalendarSection
                                         {event.tipo.replace('_', ' ')}
                                     </div>
                                     <div className="text-xs text-gray-500">
-                                        {formatDate(event.fechaInicio)} {event.fechaInicio !== event.fechaFin && ` al ${formatDate(event.fechaFin)}`}
+                                        {formatDate(event.fechaInicio)} {event.fechaInicio !== event.fechaFin && ` al ${formatDate(event.fechaFin)}`}{event.horas ? ` · ${event.horas} h por día` : ''}
                                     </div>
                                     {event.descripcion && (
                                         <div className="text-xs text-gray-400 italic mt-0.5">{event.descripcion}</div>

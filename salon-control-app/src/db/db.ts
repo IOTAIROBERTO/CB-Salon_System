@@ -5,8 +5,10 @@ import dexieCloud from 'dexie-cloud-addon';
 export const DEXIE_CLOUD_URL = 'https://zt3tyd7cy.dexie.cloud';
 import { CampaignType } from '../types/email';
 import type { Canje } from '../utils/lealtad';
-import type { Ubicacion } from '../data/datosSalon';
 import type { ConfigAgenda } from '../utils/agenda';
+import type { Zona } from '../utils/zonas';
+import type { ListasPrecios } from '../utils/precios';
+import type { ParametrosCirculo } from '../utils/lealtad';
 
 // Interfaces for new tables
 export interface Expense {
@@ -32,6 +34,8 @@ export interface Empleado {
     googleCalendarId?: string; // Specific calendar ID for this employee
     tomaCitas?: boolean; // Aparece en la agenda con horarios propios
     categoriasAgenda?: string[]; // Categorías de servicio que atiende (vacío = todas)
+    pagoPorHora?: number; // Pago por hora de apoyo (utils/pagos)
+    bonos?: Record<string, number>; // Bono por cita apoyada, por categoría de servicio
 }
 
 export interface EmpleadoEvent {
@@ -42,6 +46,7 @@ export interface EmpleadoEvent {
     fechaFin: string;
     descripcion?: string;
     googleEventId?: string;
+    horas?: number; // Horas trabajadas en un día de apoyo (para el pago)
 }
 
 export interface SalonDocument {
@@ -73,8 +78,11 @@ export interface AppSettings {
     // tal cual, IndexedDB lo clona) y fecha ISO del último respaldo escrito.
     respaldoCarpeta?: FileSystemDirectoryHandle;
     respaldoUltimo?: string;
-    // Qué lista de precios está activa: la de 2026 o la de enero de 2027.
+    // ponytail: campo viejo (lista 2026/2027); lo reemplaza listasPrecios.
     listaPrecios?: '2026' | '2027';
+    listasPrecios?: ListasPrecios; // Año activo y listas históricas bloqueadas (utils/precios)
+    zonas?: Zona[]; // Ciudades fuera de Hermosillo (utils/zonas)
+    circulo?: Partial<ParametrosCirculo>; // Ajustes del Círculo CB (utils/lealtad)
     agenda?: ConfigAgenda; // Horario, margen, bloqueos (utils/agenda)
 }
 
@@ -121,7 +129,7 @@ export interface Cita {
     fechaCompletada?: string;
     googleEventId?: string;
     descripcionTrabajo?: string; // qué se trabajó y por qué se cobró así
-    ubicacion?: Ubicacion;
+    ubicacion?: string; // 'salon' o id de zona (utils/zonas); claves viejas: tucson, phoenix…
     atiendeId?: string; // Quién la atiende en la agenda ('cristina' o id de empleado)
 }
 
@@ -151,7 +159,8 @@ export interface Servicio {
     descripcion?: string;
     comision?: number;
     categoria?: string;
-    // Precios de las dos listas, para cambiar de una a otra sin reimportar.
+    archivado?: boolean; // Fuera del catálogo (uñas, «otros»); se conserva por las citas viejas
+    // ponytail: precios por lista del esquema anterior; la lista activa es precioSugerido.
     precio2026?: number;
     anticipo2026?: number;
     precio2027?: number;
@@ -205,6 +214,18 @@ export interface Compra {
     notas?: string;
 }
 
+/** Consentimiento firmado: la foto del formato en papel o la aceptación en la app */
+export interface Consentimiento {
+    id: string;
+    clienteId: string;
+    citaId?: string;
+    fecha: string; // ISO
+    imagen?: string; // JPG reducido (data URL) del formato firmado
+    fotos: boolean; // ¿Se le pueden tomar fotos de antes y después?
+    redes: 'con_rostro' | 'sin_rostro' | 'no'; // ¿Se pueden publicar en redes?
+    notas?: string;
+}
+
 // Marketing Interfaces
 export interface EmailCampaign {
     id: string;
@@ -252,6 +273,7 @@ export class SalonDatabase extends Dexie {
     inventario!: Table<Producto>;
     proveedores!: Table<Proveedor>;
     compras!: Table<Compra>;
+    consentimientos!: Table<Consentimiento>;
 
     // New Tables
     documentos!: Table<SalonDocument>;
@@ -291,6 +313,9 @@ export class SalonDatabase extends Dexie {
         this.version(2).stores({
             proveedores: 'id, nombre, activo',
             compras: 'id, proveedorId, fecha'
+        });
+        this.version(3).stores({
+            consentimientos: 'id, clienteId, fecha'
         });
 
         this.cloud.configure({
@@ -335,7 +360,7 @@ export class SalonDatabase extends Dexie {
 const TABLAS_DEL_SALON = new Set([
     'clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos', 'configuracion',
     'empleados', 'campanas', 'plantillas', 'automatizaciones', 'empleadoEvents',
-    'proveedores', 'compras'
+    'proveedores', 'compras', 'consentimientos'
 ]);
 
 let realmSalonId: string | undefined;

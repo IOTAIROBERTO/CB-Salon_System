@@ -8,7 +8,6 @@
 // importa desde un archivo que tú eliges, y ese archivo vive fuera del
 // repositorio.
 import { db } from '../db/db';
-import catalogo from '../data/servicios_dataset.json';
 
 export interface ResultadoImport {
     [tabla: string]: number;
@@ -25,64 +24,8 @@ export interface ArchivoHistorico {
     gastos: any[];
 }
 
-const servicioDesdeJson = (s: any, lista: '2026' | '2027') => ({
-    id: s.id,
-    nombre: s.nombre,
-    categoria: s.categoria,
-    duracion: s.duracion,
-    descripcion: s.descripcion || undefined,
-    precioSugerido: lista === '2027' ? s.precio2027 : s.precioActualizado,
-    anticipoSugerido: lista === '2027' ? s.anticipo2027 : s.anticipo,
-    // Las dos listas viajan con el servicio para poder cambiar de una a otra
-    // sin volver a importar.
-    precio2026: s.precioActualizado,
-    anticipo2026: s.anticipo,
-    precio2027: s.precio2027,
-    anticipo2027: s.anticipo2027
-});
-
-/** Qué lista de precios está activa hoy. */
-export const listaActiva = async (): Promise<'2026' | '2027'> => {
-    const settings: any = await db.configuracion.get('settings');
-    return settings?.listaPrecios === '2027' ? '2027' : '2026';
-};
-
-const guardarLista = async (lista: '2026' | '2027') => {
-    const settings = await db.configuracion.get('settings');
-    await db.configuracion.put({ ...(settings as any), id: 'settings', listaPrecios: lista });
-};
-
-/** Carga o actualiza los servicios del catálogo con la lista indicada. */
-export const importarCatalogo = async (lista: '2026' | '2027' = '2026'): Promise<number> => {
-    // Conserva los tiempos de agenda capturados en Catálogo (no vienen en el archivo)
-    const actuales = new Map((await db.servicios.toArray()).map((s: any) => [s.id, s]));
-    const servicios = (catalogo as any[]).map(s => {
-        const a = actuales.get(s.id);
-        return { ...servicioDesdeJson(s, lista), ...(a && { duracion: a.duracion ?? s.duracion, tiempoProceso: a.tiempoProceso, tiempoCierre: a.tiempoCierre }) };
-    });
-    await db.servicios.bulkPut(servicios as any);
-    await guardarLista(lista);
-    return servicios.length;
-};
-
-/**
- * Cambia el precio de los servicios a la otra lista sin tocar los que hayas
- * creado a mano ni los que hayas editado fuera del catálogo del Excel.
- */
-export const cambiarLista = async (lista: '2026' | '2027'): Promise<number> => {
-    const enCatalogo = await db.servicios.toArray();
-    const cambiados = enCatalogo
-        .filter((s: any) => s.precio2027 !== undefined && s.precio2026 !== undefined)
-        .map((s: any) => ({
-            ...s,
-            precioSugerido: lista === '2027' ? s.precio2027 : s.precio2026,
-            anticipoSugerido: lista === '2027' ? s.anticipo2027 : s.anticipo2026
-        }));
-
-    if (cambiados.length > 0) await db.servicios.bulkPut(cambiados);
-    await guardarLista(lista);
-    return cambiados.length;
-};
+// El catálogo y las listas de precios viven en db/catalogo.ts.
+export { agregarFaltantes } from '../db/catalogo';
 
 /** Abre y valida el archivo del histórico. */
 export const leerArchivoHistorico = async (archivo: File): Promise<ArchivoHistorico> => {

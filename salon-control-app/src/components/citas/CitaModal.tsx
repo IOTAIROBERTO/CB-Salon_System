@@ -8,7 +8,7 @@ import {
   fechaLocalISO
 } from "../../utils/dateValidation";
 import TimeSelector from "./TimeSelector";
-import { UBICACIONES, Ubicacion } from "../../data/datosSalon";
+import { zonasDe, SALON, NOMBRE_SALON } from "../../utils/zonas";
 import HorariosLibres, { AvisosAgenda } from "./HorariosLibres";
 import { useAgenda } from "../../hooks/useAgenda";
 
@@ -26,6 +26,8 @@ interface CitaModalProps {
 export default function CitaModal({ clientes, servicios, onClose, onSave, citaEdit }: CitaModalProps) {
   const empleados = useLiveQuery(() => db.empleados.toArray())?.filter(e => e.activo) || [];
   const { personas } = useAgenda();
+  const settings = useLiveQuery(() => db.configuracion.get("settings"));
+  const zonas = zonasDe(settings as any);
 
   const [formData, setFormData] = useState({
     clienteId: citaEdit?.clienteId || "",
@@ -35,7 +37,7 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
     hora: citaEdit?.hora || "",
     notas: citaEdit?.notas || "",
     descripcionTrabajo: citaEdit?.descripcionTrabajo || "",
-    ubicacion: (citaEdit?.ubicacion || "salon") as Ubicacion,
+    ubicacion: citaEdit?.ubicacion || SALON,
     atiendeId: citaEdit?.atiendeId || "cristina",
     estado: citaEdit?.estado || "pendiente",
   });
@@ -145,7 +147,7 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
               className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
               <option value="">Seleccionar servicio</option>
-              {servicios.filter((s) => s.categoria !== 'otros' || s.id === formData.servicioId).map((s) => (
+              {servicios.filter((s) => (!s.archivado && s.categoria !== 'otros') || s.id === formData.servicioId).map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nombre} - ${s.precioSugerido}
                 </option>
@@ -160,12 +162,20 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
             </label>
             <select
               value={formData.ubicacion}
-              onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value as Ubicacion })}
+              onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
               className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
-              {Object.entries(UBICACIONES).map(([clave, nombre]) => (
-                <option key={clave} value={clave}>{nombre}</option>
+              <option value={SALON}>{NOMBRE_SALON}</option>
+              {[...new Set(zonas.map(z => z.region))].map(region => (
+                <optgroup key={region} label={region || "Fuera de Hermosillo"}>
+                  {zonas.filter(z => z.region === region && (z.activa || z.id === formData.ubicacion)).map(z => (
+                    <option key={z.id} value={z.id}>{z.nombre}</option>
+                  ))}
+                </optgroup>
               ))}
+              {formData.ubicacion !== SALON && !zonas.some(z => z.id === formData.ubicacion) && (
+                <option value={formData.ubicacion}>{formData.ubicacion}</option>
+              )}
             </select>
           </div>
 

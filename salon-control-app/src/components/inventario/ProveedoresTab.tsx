@@ -108,7 +108,7 @@ function DetalleProveedor({ proveedor: p, onClose, onEditar, onRegistrarCompra }
   const suyos = inventario.filter(x => x.proveedorId === p.id).sort((a, b) => a.nombre.localeCompare(b.nombre));
   const otros = inventario.filter(x => x.proveedorId !== p.id).sort((a, b) => a.nombre.localeCompare(b.nombre));
   const top = masComprados(compras, p.id, haceUnAnio()).slice(0, 8);
-  const wa = enlaceWhatsApp(p.telefono, `Hola ${p.contacto || ''}, le escribo de Cristina Bórquez Beauty Salon.`);
+  const wa = enlaceWhatsApp(p.telefono, `Hola ${p.contacto || ''}, le escribo de Cristina Borquez Beauty Salon.`);
 
   const eliminar = async () => {
     if (suyos.length || compras.length) {

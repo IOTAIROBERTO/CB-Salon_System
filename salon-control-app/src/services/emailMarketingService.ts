@@ -459,7 +459,7 @@ class EmailMarketingService {
       NOMBRE: cliente.nombre,
       EMAIL: cliente.email || '',
       TELEFONO: cliente.telefono || '',
-      SALON_NOMBRE: 'Cristina Bórquez Beauty Salon' // Could load from settings too
+      SALON_NOMBRE: 'Cristina Borquez Beauty Salon' // Could load from settings too
     };
   }
 

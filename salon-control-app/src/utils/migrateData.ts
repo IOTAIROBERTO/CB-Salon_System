@@ -106,7 +106,7 @@ export const migrateLocalStorageToDexie = async () => {
 
             await db.configuracion.put({
                 id: 'settings',
-                nombreSalon: salonInfo.nombre || appSettings.nombreSalon || 'Cristina Bórquez Beauty Salon',
+                nombreSalon: salonInfo.nombre || appSettings.nombreSalon || 'Cristina Borquez Beauty Salon',
                 direccion: salonInfo.direccion || appSettings.direccion || '',
                 telefono: salonInfo.telefono || appSettings.telefono || '',
                 email: salonInfo.email || appSettings.email || '',

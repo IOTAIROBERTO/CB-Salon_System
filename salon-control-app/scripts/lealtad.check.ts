@@ -1,33 +1,45 @@
-// Verificación del Círculo CB. Correr con: node scripts/lealtad.check.ts
+// Verificación del Círculo CB por puntos: npx esbuild scripts/lealtad.check.ts --bundle --platform=node --log-level=warning | node
 import assert from 'node:assert/strict';
-import { gastoDoceMeses, nivelDe, siguienteNivel, beneficiosDisponibles, enlaceWhatsApp } from '../src/utils/lealtad.ts';
+import { estadoCirculo, nivelPorPuntos, siguienteNivel, beneficiosDisponibles, enlaceWhatsApp, codigoClienta, PARAMETROS_CIRCULO } from '../src/utils/lealtad';
 
-const hoy = new Date('2026-10-15T12:00:00');
 const servicios = [{ id: 's10', categoria: 'color' }, { id: 's01', categoria: 'corte' }];
-const citas = [
-  { clienteId: 'a', servicioId: 's10', estado: 'completada', fecha: '2026-09-01', precioFinal: 3000, propina: 200 },
-  { clienteId: 'a', servicioId: 's10', estado: 'completada', fecha: '2025-09-01', precioFinal: 9000 }, // hace más de un año
-  { clienteId: 'a', servicioId: 's10', estado: 'cancelada', fecha: '2026-09-02', precioFinal: 5000 },
-  { clienteId: 'b', servicioId: 's10', estado: 'completada', fecha: '2026-08-01', precioFinal: 2700 }
-];
-const ventas = [{ clienteId: 'a', fecha: '2026-10-01', total: 2500 }];
-
-// Gasto: 3000 − 200 de propina + 2500 de producto; no cuenta lo viejo ni lo cancelado
-assert.equal(gastoDoceMeses('a', citas, ventas, hoy), 5300);
-assert.equal(nivelDe(4999), 'marfil');
-assert.equal(nivelDe(5000), 'dorado');
-assert.equal(nivelDe(12000), 'onix');
-assert.deepEqual(siguienteNivel(5300), { nivel: 'onix', falta: 6700 });
-assert.equal(siguienteNivel(15000), null);
-
-// Cumpleaños en octubre + amiga «b» con color pagado; Ónix suma el matiz anual
-const a = { id: 'a', cumple: '1990-10-03' };
+const a = { id: 'a', cumple: '1990-02-03' };
 const b = { id: 'b', referidaPor: 'a' };
-assert.deepEqual(beneficiosDisponibles(a, 'onix', [a, b], citas, servicios, hoy), ['cumple', 'matizAnual', 'referido']);
-// Ya canjeados este año / a la fecha: no se repiten
-const aCanjeo = { ...a, canjes: [{ clave: 'cumple' as const, fecha: '2026-10-05T10:00:00Z' }, { clave: 'referido' as const, fecha: '2026-10-05T10:00:00Z' }] };
-assert.deepEqual(beneficiosDisponibles(aCanjeo, 'dorado', [aCanjeo, b], citas, servicios, hoy), []);
+const citas = [
+  { clienteId: 'a', servicioId: 's01', estado: 'completada', fecha: '2026-12-20', precioFinal: 9000 },   // antes del arranque: no cuenta
+  { clienteId: 'a', servicioId: 's10', estado: 'completada', fecha: '2027-01-10', precioFinal: 3000, propina: 200 }, // 280 + bienvenida
+  { clienteId: 'a', servicioId: 's10', estado: 'cancelada', fecha: '2027-01-12', precioFinal: 5000 },
+  { clienteId: 'a', servicioId: 's01', estado: 'completada', fecha: '2027-02-15', precioFinal: 500, origen: 'app' }, // 50 + app + cumpleaños
+  { clienteId: 'b', servicioId: 's10', estado: 'completada', fecha: '2027-02-20', precioFinal: 2600 }    // amiga con color
+];
+const ventas = [
+  { clienteId: 'a', fecha: '2027-01-11T10:00:00Z', total: 250, productos: [{}] }, // 25 × 2 = 50
+  { clienteId: 'a', fecha: '2027-01-11T10:00:00Z', total: 3000 }                 // venta espejo de cita: no suma
+];
 
+// Enero y febrero con visitas; marzo y abril sin visita: pierde 10 % al cierre de cada uno
+const e = estadoCirculo(a, citas, ventas, [a, b], servicios, PARAMETROS_CIRCULO, new Date('2027-05-02T12:00:00'));
+const antes = 100 + 280 + 50 + 50 + 50 + 100 + 150; // 780
+assert.equal(e.movimientos.filter(m => m.puntos > 0).reduce((t, m) => t + m.puntos, 0), antes);
+assert.deepEqual(e.movimientos.filter(m => m.puntos < 0).map(m => m.puntos), [-78, -70]);
+assert.equal(e.puntos, 780 - 78 - 70);
+assert.equal(e.nivel, 'dorado');
+
+// Sin actividad desde el arranque: sin tarjeta activa, cero puntos
+assert.deepEqual(estadoCirculo({ id: 'z' }, citas, ventas, [], servicios).puntos, 0);
+
+assert.equal(nivelPorPuntos(599), 'marfil');
+assert.equal(nivelPorPuntos(600), 'dorado');
+assert.equal(nivelPorPuntos(1500), 'onix');
+assert.deepEqual(siguienteNivel(632), { nivel: 'onix', falta: 868 });
+
+// Beneficios por nivel (cumpleaños en su mes, matiz anual de Ónix, amiga con color)
+const hoy = new Date('2027-02-25T12:00:00');
+assert.deepEqual(beneficiosDisponibles(a, 'onix', [a, b], citas, servicios, hoy), ['cumple', 'matizAnual', 'referido']);
+
+assert.match(codigoClienta('cli_123'), /^CB[0-9A-Z]{6}$/);
+assert.equal(codigoClienta('cli_123'), codigoClienta('cli_123'));
+assert.notEqual(codigoClienta('cli_123'), codigoClienta('cli_124'));
 assert.equal(enlaceWhatsApp('662 161 4688', 'hola'), 'https://wa.me/526621614688?text=hola');
 assert.equal(enlaceWhatsApp('abc', 'hola'), null);
 console.log('lealtad: ok');

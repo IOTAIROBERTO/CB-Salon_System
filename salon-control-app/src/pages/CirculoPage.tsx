@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { MessageCircle, Search } from 'lucide-react';
+import { CreditCard, MessageCircle, Search, SlidersHorizontal } from 'lucide-react';
 import { db } from '../db/db';
 import { registrarCanjes, asignarRecomendacion } from '../db/circulo';
 import {
-  NIVELES, BENEFICIOS, gastoDoceMeses, nivelDe, siguienteNivel, beneficiosDisponibles,
-  beneficioEnColor, enlaceWhatsApp, type Nivel, type ClaveBeneficio
+  NOMBRE_NIVEL, BENEFICIOS, estadoCirculo, siguienteNivel, beneficiosDisponibles, beneficioEnColor,
+  enlaceWhatsApp, codigoClienta, parametrosDe, PARAMETROS_CIRCULO, type Nivel, type ClaveBeneficio, type ParametrosCirculo
 } from '../utils/lealtad';
-import { formatCurrency } from '../utils/financialUtils';
+import { imprimirTarjeta } from '../utils/tarjetaCirculo';
+import { normalizar } from '../utils/texto';
 
 const ESTILO_NIVEL: Record<Nivel, string> = {
   onix: 'bg-marca-negro text-marca-dorado',
@@ -17,32 +18,42 @@ const ESTILO_NIVEL: Record<Nivel, string> = {
 
 export const InsigniaNivel = ({ nivel }: { nivel: Nivel }) => (
   <span className={`inline-block text-[11px] tracking-[0.14em] uppercase px-2.5 py-0.5 rounded-full font-medium ${ESTILO_NIVEL[nivel]}`}>
-    {NIVELES[nivel].nombre}
+    {NOMBRE_NIVEL[nivel]}
   </span>
 );
+
+const REGLAS: [keyof ParametrosCirculo, string][] = [
+  ['bienvenida', 'Bienvenida al activar'], ['porDiezServicio', 'Puntos por cada $10 en servicios'], ['porDiezProducto', 'Puntos por cada $10 en producto'],
+  ['reservaEnLinea', 'Reserva en línea'], ['cumpleanos', 'Visita en su cumpleaños'], ['referida', 'Amiga recomendada (con color)'],
+  ['inactividadPorcentaje', '% que se pierde por mes sin visita'], ['dorado', 'Puntos para Dorado'], ['onix', 'Puntos para Ónix']
+];
 
 export default function CirculoPage() {
   const clientes = useLiveQuery(() => db.clientes.toArray()) || [];
   const citas = useLiveQuery(() => db.citas.toArray()) || [];
   const ventas = useLiveQuery(() => db.ventas.toArray()) || [];
   const servicios = useLiveQuery(() => db.servicios.toArray()) || [];
+  const settings = useLiveQuery(() => db.configuracion.get('settings'));
+  const p = parametrosDe(settings as any);
   const [filtro, setFiltro] = useState<Nivel | 'todas'>('todas');
   const [busqueda, setBusqueda] = useState('');
   const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null);
+  const [reglas, setReglas] = useState<ParametrosCirculo | null>(null);
+  const arrancado = new Date().toISOString().slice(0, 10) >= p.inicio;
 
   const filas = useMemo(() => clientes
     .filter(c => c.activo !== false)
     .map(c => {
-      const gasto = gastoDoceMeses(c.id, citas, ventas);
-      const nivel = nivelDe(gasto);
-      return { cliente: c, gasto, nivel, sig: siguienteNivel(gasto), disponibles: beneficiosDisponibles(c, nivel, clientes, citas, servicios) };
+      const e = estadoCirculo(c, citas, ventas, clientes, servicios, p);
+      return { cliente: c, codigo: codigoClienta(c.id), ...e, sig: siguienteNivel(e.puntos, p), disponibles: beneficiosDisponibles(c, e.nivel, clientes, citas, servicios) };
     })
-    .sort((a, b) => b.gasto - a.gasto), [clientes, citas, ventas, servicios]);
+    .sort((a, b) => b.puntos - a.puntos || a.cliente.nombre.localeCompare(b.cliente.nombre)), [clientes, citas, ventas, servicios, p]);
 
+  const q = normalizar(busqueda.trim());
   const visibles = filas.filter(f =>
     (filtro === 'todas' || f.nivel === filtro) &&
-    f.cliente.nombre.toLowerCase().includes(busqueda.toLowerCase()));
-  const seleccionada = filas.find(f => f.cliente.id === seleccionadaId) || null;
+    (!q || normalizar(f.cliente.nombre).includes(q) || f.codigo.toLowerCase() === q));
+  const seleccionada = filas.find(f => f.cliente.id === seleccionadaId) || (visibles.length === 1 && q ? visibles[0] : null);
   const porNivel = (n: Nivel) => filas.filter(f => f.nivel === n).length;
 
   const canjear = async (clienteId: string, clave: ClaveBeneficio) => {
@@ -50,25 +61,63 @@ export default function CirculoPage() {
     await registrarCanjes(clienteId, [clave]);
   };
 
+  const guardarReglas = async () => {
+    if (!reglas) return;
+    const actual = await db.configuracion.get('settings');
+    await db.configuracion.put({ ...(actual as any), id: 'settings', circulo: reglas });
+    setReglas(null);
+  };
+
   const mensaje = (f: (typeof filas)[number]) =>
-    `¡Hola, ${f.cliente.nombre.split(' ')[0]}! Eres parte del Círculo CB 🤍 Estás en nivel ${NIVELES[f.nivel].nombre}` +
-    (f.sig ? `; te faltan ${formatCurrency(f.sig.falta)} para ${NIVELES[f.sig.nivel].nombre}.` : '.') +
+    `¡Hola, ${f.cliente.nombre.split(' ')[0]}! Eres parte del Círculo CB 🤍 Tienes ${f.puntos.toLocaleString('es-MX')} puntos, nivel ${NOMBRE_NIVEL[f.nivel]}` +
+    (f.sig ? `; te faltan ${f.sig.falta.toLocaleString('es-MX')} para ${NOMBRE_NIVEL[f.sig.nivel]}.` : '.') +
     (f.disponibles.length ? ` Tienes disponible: ${f.disponibles.map(k => BENEFICIOS[k].titulo).join(', ')}.` : '') +
     ' — Cristina';
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
       <div className="space-y-5 min-w-0">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Círculo CB</h1>
-          <p className="text-gray-600 mt-1">Programa de lealtad · nivel por lo gastado en los últimos 12 meses (servicios sin propina y producto).</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Círculo CB</h1>
+            <p className="text-gray-600 mt-1">Programa de lealtad por puntos: visitas, producto y bonos; cada mes sin visita resta puntos.</p>
+          </div>
+          <button onClick={() => setReglas(reglas ? null : { ...p })} className="text-sm border rounded-lg px-3 py-2 flex items-center gap-2 hover:bg-gray-50">
+            <SlidersHorizontal size={16} /> Reglas
+          </button>
         </div>
+
+        {!arrancado && (
+          <div className="bg-marca-marfil border border-marca-champan rounded-lg p-3 text-sm text-gray-700">
+            El Círculo CB arranca el {new Date(`${p.inicio}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}: todas empiezan en Marfil con cero puntos.
+            Ya puedes imprimir tarjetas y ajustar las reglas.
+          </div>
+        )}
+
+        {reglas && (
+          <div className="bg-white border rounded-lg p-4 space-y-3">
+            <div className="grid sm:grid-cols-3 gap-3 text-sm">
+              <label className="text-gray-600">Inicio del programa
+                <input type="date" value={reglas.inicio} onChange={e => setReglas({ ...reglas, inicio: e.target.value })} className="w-full border rounded px-2 py-1 mt-1" />
+              </label>
+              {REGLAS.map(([k, etiqueta]) => (
+                <label key={k} className="text-gray-600">{etiqueta}
+                  <input type="number" min="0" value={reglas[k] as number} onChange={e => setReglas({ ...reglas, [k]: Number(e.target.value) })} className="w-full border rounded px-2 py-1 mt-1" />
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setReglas({ ...PARAMETROS_CIRCULO })} className="text-sm text-gray-600 px-3 py-1 rounded hover:bg-gray-100">Valores sugeridos</button>
+              <button onClick={guardarReglas} className="text-sm bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700">Guardar reglas</button>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            [filas.length, 'Clientas en el círculo'],
+            [filas.filter(f => f.activa).length, 'Tarjetas activas'],
             [`${porNivel('dorado')} · ${porNivel('onix')}`, 'En Dorado · Ónix'],
-            [filas.filter(f => f.sig && f.sig.falta <= 1000).length, 'A $1,000 o menos de subir'],
+            [filas.filter(f => f.sig && f.sig.falta <= 100).length, 'A 100 puntos o menos de subir'],
             [filas.reduce((t, f) => t + f.disponibles.length, 0), 'Beneficios por canjear']
           ].map(([v, l]) => (
             <div key={String(l)} className="bg-white border border-gray-200 rounded-lg p-4">
@@ -81,7 +130,7 @@ export default function CirculoPage() {
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar clienta…"
+            <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por nombre o código (lector de tarjeta)…"
               className="w-full pl-9 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
           </div>
           <select value={filtro} onChange={e => setFiltro(e.target.value as Nivel | 'todas')} className="border rounded-lg px-3 py-2">
@@ -95,22 +144,22 @@ export default function CirculoPage() {
         <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-left text-[11px] uppercase tracking-wider text-gray-500">
-              <tr><th className="p-3">Clienta</th><th className="p-3">Nivel</th><th className="p-3">Gasto 12 meses</th><th className="p-3">Al siguiente nivel</th><th className="p-3">Por canjear</th></tr>
+              <tr><th className="p-3">Clienta</th><th className="p-3">Nivel</th><th className="p-3">Puntos</th><th className="p-3">Al siguiente nivel</th><th className="p-3">Por canjear</th></tr>
             </thead>
             <tbody>
               {visibles.map(f => (
                 <tr key={f.cliente.id} onClick={() => setSeleccionadaId(f.cliente.id)}
-                  className={`border-t cursor-pointer hover:bg-gray-50 ${seleccionadaId === f.cliente.id ? 'bg-purple-50' : ''}`}>
-                  <td className="p-3 font-medium text-gray-900">{f.cliente.nombre}</td>
+                  className={`border-t cursor-pointer hover:bg-gray-50 ${seleccionada?.cliente.id === f.cliente.id ? 'bg-purple-50' : ''}`}>
+                  <td className="p-3 font-medium text-gray-900">{f.cliente.nombre}<div className="text-[11px] text-gray-400 font-normal">{f.codigo}</div></td>
                   <td className="p-3"><InsigniaNivel nivel={f.nivel} /></td>
-                  <td className="p-3">{formatCurrency(f.gasto)}</td>
+                  <td className="p-3">{f.puntos.toLocaleString('es-MX')}</td>
                   <td className="p-3">
                     {f.sig ? (
                       <div className="w-36">
                         <div className="h-1.5 bg-gray-100 rounded overflow-hidden">
-                          <div className="h-full bg-marca-dorado" style={{ width: `${Math.round((f.gasto / NIVELES[f.sig.nivel].desde) * 100)}%` }} />
+                          <div className="h-full bg-marca-dorado" style={{ width: `${Math.round((f.puntos / (f.sig.nivel === 'onix' ? p.onix : p.dorado)) * 100)}%` }} />
                         </div>
-                        <div className="text-[11px] text-gray-500 mt-1">Faltan {formatCurrency(f.sig.falta)}</div>
+                        <div className="text-[11px] text-gray-500 mt-1">Faltan {f.sig.falta.toLocaleString('es-MX')} puntos</div>
                       </div>
                     ) : <span className="text-gray-500">Nivel máximo</span>}
                   </td>
@@ -122,7 +171,7 @@ export default function CirculoPage() {
           </table>
         </div>
         <p className="text-xs text-gray-500">
-          Marfil al registrarse · Dorado desde {formatCurrency(NIVELES.dorado.desde)} · Ónix desde {formatCurrency(NIVELES.onix.desde)}.
+          Marfil al activar la tarjeta · Dorado desde {p.dorado.toLocaleString('es-MX')} puntos · Ónix desde {p.onix.toLocaleString('es-MX')}.
           Las cortesías de cada color (ampolleta o mascarilla) se aplican desde el cobro de la cita.
         </p>
       </div>
@@ -130,23 +179,27 @@ export default function CirculoPage() {
       {/* Ficha de la clienta */}
       <aside className="bg-white border border-gray-200 rounded-lg p-5 h-fit xl:sticky xl:top-4">
         {!seleccionada ? (
-          <p className="text-sm text-gray-500">Elige una clienta para ver su tarjeta, beneficios e historial.</p>
+          <p className="text-sm text-gray-500">Elige una clienta o lee su tarjeta para ver sus puntos, beneficios y movimientos.</p>
         ) : (
           <div className="space-y-4">
             <div className="bg-marca-negro text-white rounded-xl p-5 relative overflow-hidden">
               <img src="./marca/CB_monograma_dorado.svg" alt="" className="absolute -right-6 -bottom-8 h-40 opacity-10" />
-              <div className="text-[11px] tracking-[0.28em] uppercase text-marca-dorado">Círculo CB · {NIVELES[seleccionada.nivel].nombre}</div>
+              <div className="text-[11px] tracking-[0.28em] uppercase text-marca-dorado">Círculo CB · {NOMBRE_NIVEL[seleccionada.nivel]}</div>
               <div className="font-display text-3xl mt-2">{seleccionada.cliente.nombre}</div>
-              <div className="text-xs text-gray-300 mt-1">{formatCurrency(seleccionada.gasto)} en 12 meses</div>
+              <div className="text-xs text-gray-300 mt-1">{seleccionada.puntos.toLocaleString('es-MX')} puntos · {seleccionada.codigo}</div>
               {seleccionada.sig && (
                 <>
                   <div className="h-1.5 bg-white/20 rounded mt-4 overflow-hidden w-40">
-                    <div className="h-full bg-marca-dorado" style={{ width: `${Math.round((seleccionada.gasto / NIVELES[seleccionada.sig.nivel].desde) * 100)}%` }} />
+                    <div className="h-full bg-marca-dorado" style={{ width: `${Math.round((seleccionada.puntos / (seleccionada.sig.nivel === 'onix' ? p.onix : p.dorado)) * 100)}%` }} />
                   </div>
-                  <div className="text-[11px] text-gray-300 mt-1">Faltan {formatCurrency(seleccionada.sig.falta)} para {NIVELES[seleccionada.sig.nivel].nombre}</div>
+                  <div className="text-[11px] text-gray-300 mt-1">Faltan {seleccionada.sig.falta.toLocaleString('es-MX')} para {NOMBRE_NIVEL[seleccionada.sig.nivel]}</div>
                 </>
               )}
             </div>
+            <button onClick={() => imprimirTarjeta(seleccionada.cliente.nombre, seleccionada.codigo)}
+              className="flex items-center justify-center gap-2 w-full border border-gray-300 rounded-lg py-2 text-sm hover:bg-gray-50">
+              <CreditCard size={16} /> Imprimir tarjeta con QR
+            </button>
 
             <div>
               <div className="text-[11px] uppercase tracking-[0.2em] text-purple-600 mb-1">Beneficios</div>
@@ -168,7 +221,7 @@ export default function CirculoPage() {
                   <span className="text-xs text-purple-600 shrink-0">Activo</span>
                 </div>
               )}
-              <div className="py-2 border-t text-sm text-gray-500">Trae a una amiga: matiz corto cuando ella paga su primer color.</div>
+              <div className="py-2 border-t text-sm text-gray-500">Trae a una amiga: {p.referida} puntos y matiz corto cuando ella paga su primer color.</div>
             </div>
 
             <label className="block text-sm">
@@ -186,10 +239,21 @@ export default function CirculoPage() {
               return url ? (
                 <a href={url} target="_blank" rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full border border-gray-300 rounded-lg py-2 text-sm hover:bg-gray-50">
-                  <MessageCircle size={16} /> Enviarle su nivel por WhatsApp
+                  <MessageCircle size={16} /> Enviarle sus puntos por WhatsApp
                 </a>
               ) : <p className="text-xs text-gray-500">Sin teléfono válido para WhatsApp.</p>;
             })()}
+
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.2em] text-purple-600 mb-1">Movimientos de puntos</div>
+              {seleccionada.movimientos.slice().reverse().slice(0, 12).map((m, i) => (
+                <div key={i} className="flex justify-between py-1.5 border-t text-sm text-gray-600">
+                  <span>{new Date(`${m.fecha}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })} · {m.concepto}</span>
+                  <span className={m.puntos < 0 ? 'text-red-600' : 'text-green-700'}>{m.puntos > 0 ? '+' : ''}{m.puntos}</span>
+                </div>
+              ))}
+              {!seleccionada.movimientos.length && <p className="text-sm text-gray-400">Sin movimientos desde el arranque del programa.</p>}
+            </div>
 
             <div>
               <div className="text-[11px] uppercase tracking-[0.2em] text-purple-600 mb-1">Historial de canjes</div>

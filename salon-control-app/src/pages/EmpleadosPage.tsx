@@ -6,6 +6,11 @@ import { calculateCommission, formatCurrency } from '../utils/financialUtils';
 import { formatDate } from '../utils/clientesUtils';
 import { sinVentasEspejo } from '../utils/ventasUtils';
 import CalendarSection from '../components/empleados/CalendarSection';
+import PagosEquipo from '../components/empleados/PagosEquipo';
+import { MINIMO_POR_HORA } from '../utils/pagos';
+
+// Bono por cita apoyada: categorías del catálogo
+const CATEGORIAS_BONO: [string, string][] = [['color', 'Color'], ['maquillaje', 'Maquillaje y novias'], ['peinado', 'Peinado'], ['tratamiento', 'Tratamiento'], ['corte', 'Corte']];
 import { fechaLocalISO, parseFechaLocal } from '../utils/dateValidation';
 
 export default function EmpleadosPage() {
@@ -33,7 +38,9 @@ export default function EmpleadosPage() {
         activo: true,
         fechaContratacion: fechaLocalISO(),
         cumple: '',
-        googleCalendarId: ''
+        googleCalendarId: '',
+        pagoPorHora: 60,
+        bonos: {}
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -54,7 +61,9 @@ export default function EmpleadosPage() {
             activo: true,
             fechaContratacion: fechaLocalISO(),
             cumple: '',
-            googleCalendarId: ''
+            googleCalendarId: '',
+            pagoPorHora: 60,
+            bonos: {}
         });
         setSelectedEmpleadoId(null);
         setActiveTab('info');
@@ -146,7 +155,7 @@ export default function EmpleadosPage() {
                     <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                         <Users className="text-purple-600" /> Gestión de Personal
                     </h1>
-                    <p className="text-gray-500">Control de empleados, comisiones y rendimiento</p>
+                    <p className="text-gray-500">Equipo, pago por horas, bonos y comisiones</p>
                 </div>
                 <button
                     onClick={() => { resetForm(); setShowModal(true); }}
@@ -210,9 +219,10 @@ export default function EmpleadosPage() {
                 </div>
 
                 <div className="space-y-4">
+                    <PagosEquipo empleados={empleados || []} desde={dateRange.inicio} hasta={dateRange.fin} />
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                         <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            <DollarSign className="text-green-500" /> Resumen de Comisiones
+                            <DollarSign className="text-green-500" /> Periodo y comisiones
                         </h2>
 
                         <div className="space-y-3 mb-6">
@@ -299,7 +309,7 @@ export default function EmpleadosPage() {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Especialidad</label>
                                         <input
                                             type="text"
-                                            placeholder="Peluquería, Uñas..."
+                                            placeholder="Apoyo en color, lavado..."
                                             className="w-full p-2.5 border rounded-xl"
                                             value={formData.especialidad}
                                             onChange={e => setFormData({ ...formData, especialidad: e.target.value })}
@@ -334,6 +344,35 @@ export default function EmpleadosPage() {
                                             value={formData.porcentajeComision}
                                             onChange={e => setFormData({ ...formData, porcentajeComision: Number(e.target.value) })}
                                         />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Pago por hora</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            className="w-full p-2.5 border rounded-xl"
+                                            value={formData.pagoPorHora ?? ''}
+                                            onChange={e => setFormData({ ...formData, pagoPorHora: Number(e.target.value) || undefined })}
+                                        />
+                                        {!!formData.pagoPorHora && formData.pagoPorHora < MINIMO_POR_HORA && (
+                                            <p className="text-xs text-red-600 mt-1">Debajo del salario mínimo (${MINIMO_POR_HORA} la hora)</p>
+                                        )}
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Bono por cita apoyada</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {CATEGORIAS_BONO.map(([cat, nombre]) => (
+                                                <label key={cat} className="text-xs text-gray-600">{nombre}
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        className="w-full p-2 border rounded-lg text-sm"
+                                                        value={formData.bonos?.[cat] ?? ''}
+                                                        onChange={e => setFormData({ ...formData, bonos: { ...formData.bonos, [cat]: Number(e.target.value) || 0 } })}
+                                                    />
+                                                </label>
+                                            ))}
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Cumpleaños</label>

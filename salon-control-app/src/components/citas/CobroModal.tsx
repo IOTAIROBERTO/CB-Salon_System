@@ -12,7 +12,7 @@ import { db } from "../../db/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { registrarCanjes } from "../../db/circulo";
 import {
-  NIVELES, BENEFICIOS, gastoDoceMeses, nivelDe, beneficiosDisponibles,
+  NOMBRE_NIVEL, BENEFICIOS, estadoCirculo, parametrosDe, beneficiosDisponibles,
   beneficioEnColor, esServicioDeColor, type ClaveBeneficio
 } from "../../utils/lealtad";
 
@@ -70,7 +70,8 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   const citasTodas = useLiveQuery(() => db.citas.toArray()) || [];
   const ventasTodas = useLiveQuery(() => db.ventas.toArray()) || [];
   const clienta = clientesTodos.find(c => c.id === cita.clienteId);
-  const nivel = nivelDe(gastoDoceMeses(cita.clienteId, citasTodas, ventasTodas));
+  const settingsCirculo = useLiveQuery(() => db.configuracion.get('settings'));
+  const nivel = clienta ? estadoCirculo(clienta, citasTodas, ventasTodas, clientesTodos, servicios as any, parametrosDe(settingsCirculo as any)).nivel : 'marfil';
   const aplicados = serviciosAdicionales.filter(s => s.beneficio).map(s => s.beneficio!);
   const sinAplicar = (lista: ClaveBeneficio[]) => {
     const restantes = [...aplicados];
@@ -231,7 +232,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
             {/* Círculo CB */}
             {clienta && (beneficiosCobro.length > 0 || aplicados.length > 0) && (
               <div className="rounded-lg bg-marca-negro text-white p-4">
-                <div className="text-[11px] tracking-[0.24em] uppercase text-marca-dorado">Círculo CB · {NIVELES[nivel].nombre}</div>
+                <div className="text-[11px] tracking-[0.24em] uppercase text-marca-dorado">Círculo CB · {NOMBRE_NIVEL[nivel]}</div>
                 {beneficiosCobro.map((k, i) => (
                   <div key={k + i} className="flex items-center justify-between gap-2 mt-2 text-sm">
                     <span>{BENEFICIOS[k].titulo}</span>
@@ -262,7 +263,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                   {showServiciosDropdown && (
                     <div className="absolute right-0 mt-1 w-64 bg-white border rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
                       {servicios
-                        .filter(s => s.id !== servicioSeleccionadoId && s.categoria !== 'otros')
+                        .filter(s => s.id !== servicioSeleccionadoId && !s.archivado && s.categoria !== 'otros')
                         .map(servicio => (
                           <button
                             key={servicio.id}
@@ -287,7 +288,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                       onChange={(e) => cambiarServicioPrincipal(e.target.value)}
                       className="w-full border rounded px-2 py-1 text-sm bg-white"
                     >
-                      {servicios.filter(s => s.categoria !== 'otros' || s.id === servicioSeleccionadoId).map(servicio => (
+                      {servicios.filter(s => (!s.archivado && s.categoria !== 'otros') || s.id === servicioSeleccionadoId).map(servicio => (
                         <option key={servicio.id} value={servicio.id}>
                           {servicio.nombre}
                         </option>

@@ -1,0 +1,83 @@
+import { useRef, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Camera, FileSignature, Trash2 } from 'lucide-react';
+import { db, type Consentimiento } from '../../db/db';
+import { resizeImage, validateImageFile } from '../../utils/imageUtils';
+
+const REDES: Record<Consentimiento['redes'], string> = {
+  con_rostro: 'Sí, con rostro', sin_rostro: 'Sí, sin rostro', no: 'No'
+};
+
+/** Consentimientos firmados de la clienta: foto del formato y permisos de fotos */
+export default function ConsentimientosCliente({ clienteId }: { clienteId: string }) {
+  const lista = useLiveQuery(() => db.consentimientos.where('clienteId').equals(clienteId).reverse().sortBy('fecha'), [clienteId]) || [];
+  const [fotos, setFotos] = useState(true);
+  const [redes, setRedes] = useState<Consentimiento['redes']>('sin_rostro');
+  const [imagen, setImagen] = useState<string>();
+  const [guardando, setGuardando] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+
+  const elegir = async (archivo?: File) => {
+    if (!archivo) return;
+    const v = validateImageFile(archivo);
+    if (!v.isValid) { alert(v.error); return; }
+    // Legible para releer el formato, ligero para sincronizar (~200 KB)
+    setImagen(await resizeImage(archivo, { maxWidth: 1400, maxHeight: 1400, quality: 0.6 }));
+  };
+
+  const guardar = async () => {
+    setGuardando(true);
+    try {
+      await db.consentimientos.add({ id: `con_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, clienteId, fecha: new Date().toISOString(), imagen, fotos, redes });
+      setImagen(undefined);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const ver = (src: string) => {
+    const w = window.open('', '_blank');
+    if (!w || !src.startsWith('data:image/')) return;
+    w.document.title = 'Consentimiento';
+    const img = w.document.createElement('img');
+    img.src = src;
+    img.style.maxWidth = '100%';
+    w.document.body.appendChild(img);
+  };
+
+  return (
+    <div className="border-t pt-4 space-y-3">
+      <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2"><FileSignature size={16} /> Consentimientos</h4>
+      {lista.length === 0 && <p className="text-xs text-gray-500">Sin consentimiento guardado. Sin permiso, sus fotos no se publican.</p>}
+      {lista.map(c => (
+        <div key={c.id} className="flex items-center justify-between gap-2 text-xs bg-gray-50 rounded p-2">
+          <span>
+            {new Date(c.fecha).toLocaleDateString('es-MX')} · Fotos: {c.fotos ? 'Sí' : 'No'} · Redes: {REDES[c.redes]}
+          </span>
+          <span className="flex gap-1">
+            {c.imagen && <button type="button" onClick={() => ver(c.imagen!)} className="text-purple-700 hover:underline">Ver formato</button>}
+            <button type="button" onClick={() => confirm('¿Borrar este consentimiento?') && db.consentimientos.delete(c.id)} className="text-red-600 p-1" title="Borrar"><Trash2 size={12} /></button>
+          </span>
+        </div>
+      ))}
+
+      <div className="bg-purple-50 rounded-lg p-3 space-y-2 text-sm">
+        <p className="font-medium text-gray-800">Registrar consentimiento firmado</p>
+        <label className="flex items-center gap-2"><input type="checkbox" checked={fotos} onChange={e => setFotos(e.target.checked)} /> Autoriza fotos del antes y el después</label>
+        <label className="block">Publicar en redes:
+          <select value={redes} onChange={e => setRedes(e.target.value as Consentimiento['redes'])} className="ml-2 border rounded px-2 py-1">
+            {Object.entries(REDES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </label>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button type="button" onClick={() => input.current?.click()} className="border border-purple-300 rounded px-3 py-1 flex items-center gap-1 hover:bg-white">
+            <Camera size={14} /> {imagen ? 'Cambiar foto del formato' : 'Foto del formato firmado'}
+          </button>
+          <input ref={input} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { elegir(e.target.files?.[0]); e.target.value = ''; }} />
+          {imagen && <img src={imagen} alt="Formato" className="h-12 rounded border" />}
+          <button type="button" onClick={guardar} disabled={guardando} className="ml-auto bg-purple-600 text-white rounded px-3 py-1 hover:bg-purple-700 disabled:opacity-50">Guardar</button>
+        </div>
+      </div>
+    </div>
+  );
+}

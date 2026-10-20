@@ -3,6 +3,7 @@ import { Cliente, ClienteFormData } from '../../types/clientes';
 import { validateClienteForm } from '../../utils/clientesUtils';
 import { db } from '../../db/db';
 import { normalizar, telefono10 } from '../../utils/texto';
+import ConsentimientosCliente from './ConsentimientosCliente';
 
 interface ClienteModalProps {
   isOpen: boolean;
@@ -195,6 +196,8 @@ export default function ClienteModal({
                   Los clientes inactivos no aparecen en la selección de citas
                 </p>
               </div>
+
+              {isEditing && <ConsentimientosCliente clienteId={editingCliente!.id} />}
 
               {/* Información importante */}
               {!isEditing && (

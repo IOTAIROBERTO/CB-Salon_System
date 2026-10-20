@@ -1,6 +1,6 @@
 // Consentimiento informado imprimible, prellenado con la cita.
 // Mismo contenido que el formato oficial (CB_CONTROL/02_Legal_y_Clientas).
-import { DATOS_SALON } from '../data/datosSalon';
+import { DATOS_SALON, POLITICAS } from '../data/datosSalon';
 import { formatCurrency } from './financialUtils';
 import { parseFechaLocal } from './dateValidation';
 
@@ -29,14 +29,15 @@ const CHECKS = [
   'Prueba de sensibilidad realizada (fecha: ____________ )'
 ];
 const CONDICIONES: [string, string][] = [
-  ['Anticipo', 'El anticipo aparta tu lugar y se descuenta del total. Si cambias tu cita con al menos 24 horas de aviso, se respeta para la nueva fecha. Si cancelas con menos de 24 horas o no te presentas, el anticipo cubre el tiempo reservado.'],
+  ['Anticipo', `${POLITICAS.anticipo} ${POLITICAS.cambios}`],
   ['Precio final', 'Si durante el servicio se necesita más producto o tiempo del previsto (por largo, densidad o colores anteriores), se te informa el ajuste y se continúa solo con tu aceptación.'],
-  ['Garantía', 'Tienes 7 días naturales para avisarnos si algo del resultado no está bien; el ajuste no tiene costo. No incluye peinado ni secado, cambios de tono pedidos después del servicio, ni daños por no seguir los cuidados indicados.'],
+  ['Garantía', `${POLITICAS.garantia} Tampoco cubre peinado ni secado, ni daños por no seguir los cuidados indicados.`],
   ['Información de salud', 'Declaro que la información que di es verdadera y completa. Entiendo que ocultar alergias o condiciones de salud puede provocar reacciones que la estilista no puede prever.']
 ];
 const AUTORIZACIONES = [
   'Consiento expresamente que mis datos de salud de este formato se usen solo para prestarme el servicio de forma segura (Aviso de privacidad disponible en el salón y por WhatsApp).',
-  'Autorizo que se tomen y publiquen fotos o videos de mi cabello en redes sociales del salón: ☐ Con mi rostro ☐ Sin mi rostro ☐ No autorizo',
+  '¿Podemos tomarte fotos del antes y el después de tu servicio? ☐ Sí ☐ No',
+  '¿Podemos publicar tus fotos del antes y el después en las redes sociales del salón? ☐ Sí, con mi rostro ☐ Sí, sin mi rostro ☐ No',
   'Acepto recibir recordatorios de cita, felicitación de cumpleaños y promociones por WhatsApp o correo. Puedo pedir que se detengan en cualquier momento.'
 ];
 
@@ -59,10 +60,10 @@ h3{font-weight:500;font-size:7.5pt;letter-spacing:.22em;text-transform:uppercase
 .checks{display:grid;grid-template-columns:1fr 1fr;gap:1mm 8mm}
 .ck,.aut{display:flex;gap:2mm;font-size:8.2pt}.ck i,.aut i{flex:none;width:3.2mm;height:3.2mm;border:1px solid #111;margin-top:.6mm}
 .aut{margin-bottom:1.2mm}
-.linea{border-bottom:1px solid #D9D0C1;height:5.6mm}.intro{font-size:8pt;color:#6B665F;margin-bottom:1.2mm}
+.linea{border-bottom:1px solid #D9D0C1;height:4.9mm}.intro{font-size:8pt;color:#6B665F;margin-bottom:1.2mm}
 .cond{display:grid;grid-template-columns:24mm 1fr;gap:1.2mm 4mm;font-size:8.2pt}.cond b{font-weight:500}
-.firmas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8mm;margin-top:8mm;font-size:7.6pt;text-align:center;color:#6B665F}
-.firmas div{border-top:1px solid #111;padding-top:1.5mm}.pie{margin-top:4mm;font-size:7pt;color:#6B665F;text-align:center}
+.firmas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8mm;margin-top:6mm;font-size:7.6pt;text-align:center;color:#6B665F}
+.firmas div{border-top:1px solid #111;padding-top:1.5mm}.pie{margin-top:2.5mm;font-size:7pt;color:#6B665F;text-align:center}
 </style></head><body>
 <div class="cab"><img src="${logoUrl}" alt="${esc(DATOS_SALON.nombre)}"><div><h1>Consentimiento informado<br>de servicio</h1><div class="f">Fecha ${esc(fechaLarga(d.fecha)) || '____________'} &nbsp; Folio ________</div></div></div>
 <h3>Datos de la clienta</h3><div class="campos">

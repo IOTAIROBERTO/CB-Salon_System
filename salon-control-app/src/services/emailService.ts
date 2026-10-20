@@ -96,7 +96,7 @@ class EmailService {
     };
 
     const generalConfig = JSON.parse(localStorage.getItem('generalConfig') || '{}');
-    const salonName = generalConfig.salonName || 'Cristina Bórquez Beauty Salon';
+    const salonName = generalConfig.salonName || 'Cristina Borquez Beauty Salon';
     const salonPhone = generalConfig.salonPhone || '+52 55 1234-5678';
 
     switch (type) {

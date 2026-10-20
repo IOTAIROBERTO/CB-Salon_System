@@ -38,7 +38,7 @@ export interface EventoGoogle {
 }
 
 import { db } from '../db/db';
-import { UBICACIONES, type Ubicacion } from '../data/datosSalon';
+import { nombreUbicacion, ZONAS_INICIALES } from '../utils/zonas';
 
 const ALCANCE = 'https://www.googleapis.com/auth/calendar.events';
 const DISCOVERY = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
@@ -252,7 +252,7 @@ Tel: ${cliente.telefono}
 Servicio: ${servicio.nombre}
 Precio: $${cita.precioFinal || servicio.precioSugerido}
 Estado: ${cita.estado}
-${cita.ubicacion && cita.ubicacion !== 'salon' ? `Lugar: ${UBICACIONES[cita.ubicacion as Ubicacion]}` : ''}
+${cita.ubicacion && cita.ubicacion !== 'salon' ? `Lugar: ${nombreUbicacion(cita.ubicacion, ZONAS_INICIALES)}` : ''}
 ${cita.descripcionTrabajo ? `Trabajo: ${cita.descripcionTrabajo}` : ''}
 ${cita.notas ? `Notas: ${cita.notas}` : ''}
 Enviado desde CB Control
