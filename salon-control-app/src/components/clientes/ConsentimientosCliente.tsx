@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Camera, FileSignature, Trash2 } from 'lucide-react';
 import { db, type Consentimiento } from '../../db/db';
+import { useRolSalon } from '../../db/salon';
 import { resizeImage, validateImageFile } from '../../utils/imageUtils';
 
 const REDES: Record<Consentimiento['redes'], string> = {
@@ -16,6 +17,7 @@ export default function ConsentimientosCliente({ clienteId }: { clienteId: strin
   const [imagen, setImagen] = useState<string>();
   const [guardando, setGuardando] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const esDuena = useRolSalon() === 'duena';
 
   const elegir = async (archivo?: File) => {
     if (!archivo) return;
@@ -56,7 +58,7 @@ export default function ConsentimientosCliente({ clienteId }: { clienteId: strin
           </span>
           <span className="flex gap-1">
             {c.imagen && <button type="button" onClick={() => ver(c.imagen!)} className="text-purple-700 hover:underline">Ver formato</button>}
-            <button type="button" onClick={() => confirm('¿Borrar este consentimiento?') && db.consentimientos.delete(c.id)} className="text-red-600 p-1" title="Borrar"><Trash2 size={12} /></button>
+            {esDuena && <button type="button" onClick={() => confirm('¿Borrar este consentimiento?') && db.consentimientos.delete(c.id)} className="text-red-600 p-1" title="Borrar"><Trash2 size={12} /></button>}
           </span>
         </div>
       ))}

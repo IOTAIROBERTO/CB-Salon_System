@@ -16,13 +16,15 @@ export const NOMBRE_ROL: Record<RolSalon, string> = { duena: 'Dueña', empleada:
 // 'empleada' también están importados en Dexie Cloud (npx dexie-cloud import),
 // pero el servidor no los aplicó en las pruebas; por eso se copian también
 // al miembro, que sí se respeta. La empleada no puede tocar configuracion
-// ni el equipo (members).
+// ni el equipo (members), ni el pago por hora y los días de apoyo (empleados,
+// empleadoEvents: solo lectura); los consentimientos los agrega pero no los
+// cambia ni los borra.
 const PERMISOS: Record<RolSalon, DBPermissionSet> = {
   duena: { manage: '*' },
   empleada: {
-    manage: ['clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos', 'empleados',
-             'campanas', 'plantillas', 'automatizaciones', 'empleadoEvents', 'proveedores', 'compras',
-             'consentimientos']
+    manage: ['clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos',
+             'campanas', 'plantillas', 'automatizaciones', 'proveedores', 'compras'],
+    add: ['consentimientos']
   }
 };
 
