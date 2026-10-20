@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { db, usarRealmSalon } from '../db/db';
-import { buscarRealmSalon, buscarInvitacion, hayDatosPrivados, crearRealmSalon, moverPrivadosAlSalon, rolEnSalon } from '../db/salon';
+import { buscarRealmSalon, buscarInvitacion, hayDatosPrivados, crearRealmSalon, moverPrivadosAlSalon, rolEnSalon, alinearPermisos } from '../db/salon';
 import { migrateLocalStorageToDexie } from '../utils/migrateData';
 import serviciosData from '../data/servicios_dataset.json';
 import { migrarDatosLocalesANube, hayBaseLocalAnterior } from '../utils/migrarANube';
@@ -60,6 +60,7 @@ const prepararSalon = async (): Promise<EstadoSalon> => {
   // Mover, migrar y sembrar solo la dueña: la empleada recibe todo por sync.
   if (realm && (await rolEnSalon(realm)) !== 'duena') return 'listo';
   await moverPrivadosAlSalon(realmId);
+  await alinearPermisos(realmId);
   await initDB();
   return 'listo';
 };

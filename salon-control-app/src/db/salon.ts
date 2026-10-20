@@ -94,6 +94,19 @@ export const moverPrivadosAlSalon = async (realmId: string) => {
   });
 };
 
+/** Pone a cada miembro los permisos vigentes de su rol (la dueña lo corre en
+ * cada arranque): así un cambio en PERMISOS también llega a quien ya estaba
+ * invitado. ponytail: Dexie Cloud deja al dueño de cada objeto editarlo
+ * siempre, así que una empleada aún podría borrar un consentimiento que ella
+ * misma agregó; cerrarlo del todo pide guardarlos con owner de la dueña. */
+export const alinearPermisos = async (realmId: string) => {
+  const miembros = await db.members.filter(m => m.realmId === realmId).toArray();
+  for (const m of miembros) {
+    const rol: RolSalon = m.roles?.includes('duena') ? 'duena' : 'empleada';
+    if (JSON.stringify(m.permissions) !== JSON.stringify(PERMISOS[rol])) await db.members.update(m.id!, { permissions: PERMISOS[rol] } as any);
+  }
+};
+
 /** Invita por email; Dexie Cloud le manda el correo de invitación */
 export const invitarAlSalon = async (realmId: string, email: string, rol: RolSalon) => {
   const limpio = email.trim().toLowerCase();
