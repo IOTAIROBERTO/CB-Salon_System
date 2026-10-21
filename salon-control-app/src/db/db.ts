@@ -239,6 +239,7 @@ export interface MovimientoSaldo {
     concepto: string;
     folio?: string;
     citaId?: string;
+    origen?: 'club'; // saldo que salió de canjear puntos: para productos, color, maquillaje o corte
 }
 
 export interface Consentimiento {

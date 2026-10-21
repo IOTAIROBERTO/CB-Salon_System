@@ -14,8 +14,7 @@ import { registrarCanjes } from "../../db/circulo";
 import { usarSaldo } from "../../db/saldo";
 import { saldoDe, saldoUsable } from "../../utils/saldo";
 import {
-  NOMBRE_NIVEL, NOMBRE_CIRCULO, BENEFICIOS, estadoCirculo, parametrosDe, beneficiosDisponibles,
-  beneficioEnColor, esServicioDeColor, type ClaveBeneficio
+  NOMBRE_NIVEL, NOMBRE_CIRCULO, BENEFICIOS, estadoCirculo, parametrosDe, beneficiosDisponibles, type ClaveBeneficio
 } from "../../utils/lealtad";
 
 interface CobroModalProps {
@@ -86,11 +85,9 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
     const restantes = [...aplicados];
     return lista.filter(k => { const i = restantes.indexOf(k); if (i >= 0) { restantes.splice(i, 1); return false; } return true; });
   };
-  const cortesiaColor = esServicioDeColor(servicioSeleccionadoId, servicios as any) ? beneficioEnColor(nivel) : null;
-  const beneficiosCobro = clienta ? sinAplicar([
-    ...(cortesiaColor ? [cortesiaColor] : []),
-    ...beneficiosDisponibles(clienta, nivel, clientesTodos, citasTodas, servicios as any)
-  ]) : [];
+  const beneficiosCobro = clienta
+    ? sinAplicar(beneficiosDisponibles(clienta, nivel, clientesTodos, citasTodas, servicios as any, new Date(), parametrosDe(settingsCirculo as any)))
+    : [];
 
   const aplicarBeneficio = (clave: ClaveBeneficio) => {
     const servicio = servicios.find(s => s.id === BENEFICIOS[clave].servicioId);
@@ -357,6 +354,10 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Usar saldo a favor (disponible {formatCurrency(saldoDisponible)})
                 </label>
+                {/* ponytail: la regla del saldo del Club se avisa, no se bloquea; separar saldos si se abusa */}
+                {movimientosSaldo.some(m => m.origen === 'club') && (
+                  <p className="text-xs text-gray-500 mb-1">El saldo que viene del {NOMBRE_CIRCULO} es para productos, color, maquillaje o corte.</p>
+                )}
                 <div className="flex gap-2">
                   <input type="number" min="0" max={maxSaldo} value={saldoAplicado || ''} onChange={(e) => setConSaldo(Math.max(0, Number(e.target.value) || 0))}
                     className="flex-1 border rounded px-3 py-2" placeholder="$0" />

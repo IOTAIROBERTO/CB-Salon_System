@@ -6,6 +6,7 @@ import { validateVentaForm, calculateVentaTotal, generateVentaId } from '../../u
 import ProductSelector from './ProductSelector';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
+import { estadoCirculo, parametrosDe, descuentoProducto, NOMBRE_CIRCULO } from '../../utils/lealtad';
 
 interface VentaModalProps {
   isOpen: boolean;
@@ -30,6 +31,15 @@ export default function VentaModal({
 }: VentaModalProps) {
   // Hooks antes del return condicional (regla de hooks de React)
   const empleados = useLiveQuery(() => db.empleados.toArray())?.filter(e => e.activo) || [];
+  // Descuento en productos que la clienta ya desbloqueó en el Club (5, 10 o 15%)
+  const descuentoClub = useLiveQuery(async () => {
+    if (!ventaData.clienteId) return 0;
+    const [cliente, citas, ventas, todas, servicios, settings] = await Promise.all([db.clientes.get(ventaData.clienteId), db.citas.toArray(),
+      db.ventas.toArray(), db.clientes.toArray(), db.servicios.toArray(), db.configuracion.get('settings')]);
+    if (!cliente) return 0;
+    const p = parametrosDe(settings as any);
+    return descuentoProducto(estadoCirculo(cliente, citas, ventas, todas, servicios, p).puntos, p);
+  }, [ventaData.clienteId]) || 0;
 
   if (!isOpen) return null;
 
@@ -42,7 +52,7 @@ export default function VentaModal({
       return;
     }
 
-    const total = calculateVentaTotal(ventaData.items, inventario);
+    const total = Math.round(calculateVentaTotal(ventaData.items, inventario) * (1 - descuentoClub / 100));
 
     const nuevaVenta: Venta = {
       id: generateVentaId(),
@@ -51,7 +61,7 @@ export default function VentaModal({
       items: ventaData.items,
       total,
       fecha: new Date().toISOString(),
-      notas: ventaData.notas
+      notas: [ventaData.notas, descuentoClub ? `Descuento ${NOMBRE_CIRCULO} ${descuentoClub}%` : ''].filter(Boolean).join(' · ')
     };
 
     try {
@@ -62,7 +72,8 @@ export default function VentaModal({
     }
   };
 
-  const total = calculateVentaTotal(ventaData.items, inventario);
+  const subtotal = calculateVentaTotal(ventaData.items, inventario);
+  const total = Math.round(subtotal * (1 - descuentoClub / 100));
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -130,6 +141,12 @@ export default function VentaModal({
               {/* Resumen de total */}
               {ventaData.items.length > 0 && (
                 <div className="bg-gray-50 p-3 rounded-lg">
+                  {descuentoClub > 0 && (
+                    <div className="flex justify-between items-center text-sm text-green-700 mb-1">
+                      <span>Descuento {NOMBRE_CIRCULO} ({descuentoClub}%)</span>
+                      <span>−{formatCurrency(subtotal - total)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-gray-700">Total:</span>
                     <span className="font-bold text-lg text-purple-600">

@@ -2,10 +2,12 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { CreditCard, MessageCircle, Search, SlidersHorizontal } from 'lucide-react';
 import { db } from '../db/db';
-import { registrarCanjes, asignarRecomendacion } from '../db/circulo';
+import { registrarCanjes, asignarRecomendacion, canjearPuntos } from '../db/circulo';
+import { useRolSalon } from '../db/salon';
 import {
-  NOMBRE_NIVEL, NOMBRE_CIRCULO, BENEFICIOS, estadoCirculo, siguienteNivel, beneficiosDisponibles, beneficioEnColor,
-  enlaceWhatsApp, codigoClienta, parametrosDe, PARAMETROS_CIRCULO, type Nivel, type ClaveBeneficio, type ParametrosCirculo
+  NOMBRE_NIVEL, NOMBRE_CIRCULO, BENEFICIOS, estadoCirculo, siguienteNivel, beneficiosDisponibles, descuentoProducto, siguienteDescuento,
+  multiplicador, montoCanje, rachaConstancia, tituloCanje, enlaceWhatsApp, codigoClienta, parametrosDe, PARAMETROS_CIRCULO,
+  type Nivel, type ClaveBeneficio, type ParametrosCirculo
 } from '../utils/lealtad';
 import { imprimirTarjeta } from '../utils/tarjetaCirculo';
 import { normalizar } from '../utils/texto';
@@ -25,7 +27,9 @@ export const InsigniaNivel = ({ nivel }: { nivel: Nivel }) => (
 const REGLAS: [keyof ParametrosCirculo, string][] = [
   ['bienvenida', 'Bienvenida al activar'], ['pesosPorPuntoServicio', 'Pesos en servicios por punto'], ['pesosPorPuntoProducto', 'Pesos en producto por punto'],
   ['reservaEnLinea', 'Reserva en línea'], ['cumpleanos', 'Visita en su cumpleaños'], ['referida', 'Amiga recomendada (con color)'],
-  ['inactividadPorcentaje', '% que se pierde por mes sin visita'], ['mesesDeGracia', 'Meses sin visita que no castigan'], ['dorado', 'Puntos para Dorado'], ['onix', 'Puntos para Ónix']
+  ['inactividadPorcentaje', '% que se pierde por mes sin visita'], ['mesesDeGracia', 'Meses sin visita que no castigan'], ['dorado', 'Puntos para Dorado'], ['onix', 'Puntos para Ónix'],
+  ['multiplicadorDorado', 'Multiplicador en Dorado'], ['multiplicadorOnix', 'Multiplicador en Ónix'], ['pesosPorPuntoCanje', 'Pesos de saldo por punto canjeado'],
+  ['canjeMinimo', 'Puntos mínimos para canjear'], ['constanciaVisitas', 'Visitas seguidas para corte de cortesía'], ['constanciaDias', 'Días máximos entre visitas (constancia)']
 ];
 
 export default function CirculoPage() {
@@ -39,13 +43,15 @@ export default function CirculoPage() {
   const [busqueda, setBusqueda] = useState('');
   const [seleccionadaId, setSeleccionadaId] = useState<string | null>(null);
   const [reglas, setReglas] = useState<ParametrosCirculo | null>(null);
+  const [aCanjear, setACanjear] = useState('');
+  const esDuena = useRolSalon() === 'duena';
   const arrancado = new Date().toISOString().slice(0, 10) >= p.inicio;
 
   const filas = useMemo(() => clientes
     .filter(c => c.activo !== false)
     .map(c => {
       const e = estadoCirculo(c, citas, ventas, clientes, servicios, p);
-      return { cliente: c, codigo: codigoClienta(c.id), ...e, sig: siguienteNivel(e.puntos, p), disponibles: beneficiosDisponibles(c, e.nivel, clientes, citas, servicios) };
+      return { cliente: c, codigo: codigoClienta(c.id), ...e, sig: siguienteNivel(e.puntos, p), disponibles: beneficiosDisponibles(c, e.nivel, clientes, citas, servicios, new Date(), p), descuento: descuentoProducto(e.puntos, p) };
     })
     .sort((a, b) => b.puntos - a.puntos || a.cliente.nombre.localeCompare(b.cliente.nombre)), [clientes, citas, ventas, servicios, p]);
 
@@ -61,6 +67,15 @@ export default function CirculoPage() {
     await registrarCanjes(clienteId, [clave]);
   };
 
+  const canjearSaldo = async (clienteId: string, disponibles: number) => {
+    const puntos = Math.floor(Number(aCanjear));
+    if (!(puntos >= p.canjeMinimo)) return alert(`El canje mínimo es de ${p.canjeMinimo} puntos.`);
+    if (puntos > disponibles) return alert(`Solo tiene ${disponibles} puntos.`);
+    if (!confirm(`¿Cambiar ${puntos} puntos por $${montoCanje(puntos, p)} de saldo a favor?`)) return;
+    await canjearPuntos(clienteId, puntos, p);
+    setACanjear('');
+  };
+
   const guardarReglas = async () => {
     if (!reglas) return;
     const actual = await db.configuracion.get('settings');
@@ -71,6 +86,7 @@ export default function CirculoPage() {
   const mensaje = (f: (typeof filas)[number]) =>
     `¡Hola, ${f.cliente.nombre.split(' ')[0]}! Eres parte del ${NOMBRE_CIRCULO} 🤍 Tienes ${f.puntos.toLocaleString('es-MX')} puntos, nivel ${NOMBRE_NIVEL[f.nivel]}` +
     (f.sig ? `; te faltan ${f.sig.falta.toLocaleString('es-MX')} para ${NOMBRE_NIVEL[f.sig.nivel]}.` : '.') +
+    (f.descuento ? ` Tienes ${f.descuento}% de descuento en productos para el cabello y cepillos.` : '') +
     (f.disponibles.length ? ` Tienes disponible: ${f.disponibles.map(k => BENEFICIOS[k].titulo).join(', ')}.` : '') +
     ' — Cristina';
 
@@ -209,19 +225,30 @@ export default function CirculoPage() {
                   <button onClick={() => canjear(seleccionada.cliente.id, k)} className="shrink-0 text-xs px-3 py-1.5 rounded-md bg-purple-600 text-white hover:bg-purple-700">Canjear</button>
                 </div>
               ))}
-              {beneficioEnColor(seleccionada.nivel) && (
-                <div className="flex justify-between gap-2 py-2 border-t text-sm">
-                  <span>{BENEFICIOS[beneficioEnColor(seleccionada.nivel)!].titulo} con cada color</span>
-                  <span className="text-xs text-purple-600 shrink-0">En el cobro</span>
+              <div className="flex justify-between gap-2 py-2 border-t text-sm">
+                <span>Descuento en productos para el cabello y cepillos</span>
+                <span className="text-xs text-purple-600 shrink-0">{seleccionada.descuento ? `${seleccionada.descuento}%` : '—'}</span>
+              </div>
+              {(() => { const sd = siguienteDescuento(seleccionada.puntos, p); return sd && (
+                <div className="py-1 text-xs text-gray-500">Con {sd.puntos.toLocaleString('es-MX')} puntos se desbloquea {sd.pct}% (le faltan {(sd.puntos - seleccionada.puntos).toLocaleString('es-MX')}).</div>
+              ); })()}
+              <div className="flex justify-between gap-2 py-2 border-t text-sm">
+                <span>Puntos por cada compra</span>
+                <span className="text-xs text-purple-600 shrink-0">×{multiplicador(seleccionada.nivel, p)}</span>
+              </div>
+              <div className="flex justify-between gap-2 py-2 border-t text-sm">
+                <span>Constancia: {Math.min(rachaConstancia(seleccionada.cliente, citas, p), p.constanciaVisitas)} de {p.constanciaVisitas} visitas seguidas para un corte de cortesía</span>
+              </div>
+              <div className="py-2 border-t text-sm text-gray-500">Trae a una amiga: {p.referida} puntos cuando ella paga su primer color.</div>
+              {esDuena && arrancado && seleccionada.puntos >= p.canjeMinimo && (
+                <div className="py-2 border-t text-sm">
+                  <div className="mb-1">Cambiar puntos por saldo a favor (para productos, color, maquillaje o corte): {p.canjeMinimo} puntos = ${montoCanje(p.canjeMinimo, p)}</div>
+                  <div className="flex gap-2">
+                    <input type="number" min={p.canjeMinimo} max={seleccionada.puntos} value={aCanjear} onChange={e => setACanjear(e.target.value)} placeholder={`${p.canjeMinimo}`} className="w-28 border rounded px-2 py-1" />
+                    <button onClick={() => canjearSaldo(seleccionada.cliente.id, seleccionada.puntos)} className="text-xs px-3 py-1.5 rounded-md bg-purple-600 text-white hover:bg-purple-700">Canjear por saldo</button>
+                  </div>
                 </div>
               )}
-              {seleccionada.nivel !== 'marfil' && (
-                <div className="flex justify-between gap-2 py-2 border-t text-sm">
-                  <span>Prioridad para agendar diciembre{seleccionada.nivel === 'onix' ? ' y mayo' : ''}</span>
-                  <span className="text-xs text-purple-600 shrink-0">Activo</span>
-                </div>
-              )}
-              <div className="py-2 border-t text-sm text-gray-500">Trae a una amiga: {p.referida} puntos y matiz corto cuando ella paga su primer color.</div>
             </div>
 
             <label className="block text-sm">
@@ -259,7 +286,7 @@ export default function CirculoPage() {
               <div className="text-[11px] uppercase tracking-[0.2em] text-purple-600 mb-1">Historial de canjes</div>
               {(seleccionada.cliente.canjes || []).slice().reverse().map((c, i) => (
                 <div key={i} className="py-1.5 border-t text-sm text-gray-600">
-                  {new Date(c.fecha).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })} · {BENEFICIOS[c.clave]?.titulo || c.clave}
+                  {new Date(c.fecha).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })} · {tituloCanje(c)}
                 </div>
               ))}
               {!(seleccionada.cliente.canjes || []).length && <p className="text-sm text-gray-400">Aún no ha canjeado beneficios.</p>}

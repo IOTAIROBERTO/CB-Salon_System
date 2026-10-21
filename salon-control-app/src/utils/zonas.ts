@@ -24,8 +24,8 @@ export const NOMBRE_SALON = 'Hermosillo · en el salón';
 export const ZONAS_INICIALES: Zona[] = [
   { id: 'kino', nombre: 'Bahía de Kino', region: 'Sonora', km: 220, dias: 1, color: false, anticipacionDias: 7, activa: true },
   { id: 'guaymas', nombre: 'Guaymas y San Carlos', region: 'Sonora', km: 260, dias: 1, color: false, anticipacionDias: 7, activa: true },
-  { id: 'tucson', nombre: 'Tucson y alrededores', region: 'Arizona', km: 730, dias: 2, color: true, minimoClientas: 3, anticipacionDias: 14, activa: true },
-  { id: 'phoenix', nombre: 'Phoenix, Glendale y Scottsdale', region: 'Arizona', km: 1150, dias: 3, color: true, minimoClientas: 3, anticipacionDias: 14, activa: true }
+  { id: 'tucson', nombre: 'Tucson y alrededores', region: 'Arizona', km: 730, dias: 2, color: true, minimoClientas: 4, anticipacionDias: 14, activa: true },
+  { id: 'phoenix', nombre: 'Phoenix, Glendale y Scottsdale', region: 'Arizona', km: 1150, dias: 3, color: true, minimoClientas: 6, anticipacionDias: 14, activa: true }
 ];
 
 // Citas guardadas con el esquema anterior (lista fija de ubicaciones)
