@@ -2,6 +2,7 @@
 // frente con la marca y el nombre, reverso con el QR del código de la clienta.
 // El mismo código se lee con un lector de QR o de barras en Clientes y en Círculo CB.
 import qrcode from 'qrcode-generator';
+import { NOMBRE_CIRCULO } from './lealtad';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -20,7 +21,7 @@ export const imprimirTarjeta = (nombre: string, codigo: string) => {
   const w = window.open('', '_blank');
   if (!w) { alert('El navegador bloqueó la ventana. Permite ventanas emergentes para imprimir la tarjeta.'); return; }
   const base = new URL('./marca/', document.baseURI).href;
-  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Tarjeta Círculo CB · ${esc(nombre)}</title>
+  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Tarjeta ${NOMBRE_CIRCULO} · ${esc(nombre)}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Jost:wght@300;400&display=block">
 <style>@page{size:85.6mm 54mm;margin:0}*{box-sizing:border-box;margin:0}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Jost,Arial,sans-serif}
 .t{width:85.6mm;height:54mm;position:relative;overflow:hidden;page-break-after:always}
@@ -30,7 +31,7 @@ export const imprimirTarjeta = (nombre: string, codigo: string) => {
 .r{background:#F6F1E9;color:#111;display:flex;align-items:center;gap:5mm;padding:6mm}.r .q{width:34mm;height:34mm;flex:none}
 .r .c{font-size:11pt;letter-spacing:.12em;font-weight:400}.r p{font-size:6.5pt;color:#6B665F;margin-top:2mm;line-height:1.4}</style></head><body>
 <div class="t f"><img class="m" src="${base}CB_monograma_dorado.svg" alt=""><img class="l" src="${base}CB_horizontal_blanco.svg" alt="Cristina Borquez Beauty Salon">
-<div class="e">Círculo CB</div><div class="n">${esc(nombre)}</div></div>
+<div class="e">${NOMBRE_CIRCULO}</div><div class="n">${esc(nombre)}</div></div>
 <div class="t r"><div class="q">${qrSvg(codigo)}</div><div><div class="c">${esc(codigo)}</div><p>Muéstrala en cada visita para sumar puntos y recibir tus beneficios.<br>WhatsApp 662 161 4688</p></div></div>
 <script>window.onload=()=>document.fonts.ready.then(()=>window.print())</script></body></html>`);
   w.document.close();

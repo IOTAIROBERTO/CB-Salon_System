@@ -48,6 +48,8 @@ export const parametrosDe = (settings?: { circulo?: Partial<ParametrosCirculo> }
   ({ ...PARAMETROS_CIRCULO, ...(settings?.circulo || {}) });
 
 export const NOMBRE_NIVEL: Record<Nivel, string> = { marfil: 'Marfil', dorado: 'Dorado', onix: 'Ónix' };
+/** Nombre del programa: siempre con el nombre completo del salón (decisión de octubre 2026) */
+export const NOMBRE_CIRCULO = 'Círculo Cristina Borquez';
 
 export const BENEFICIOS: Record<ClaveBeneficio, { titulo: string; servicioId: string }> = {
   cumple: { titulo: 'Despunte o flequillo de cortesía (cumpleaños)', servicioId: 's02' },
@@ -118,7 +120,7 @@ export const estadoCirculo = (cliente: ClienteL, citas: CitaL[], ventas: VentaL[
   let puntos = 0;
   const primera = eventos.find(e => e.visita);
   if (!primera) return { puntos: 0, nivel: 'marfil', movimientos, activa: false };
-  movimientos.push({ fecha: primera.fecha, concepto: 'Bienvenida al Círculo CB', puntos: p.bienvenida });
+  movimientos.push({ fecha: primera.fecha, concepto: `Bienvenida al ${NOMBRE_CIRCULO}`, puntos: p.bienvenida });
   puntos += p.bienvenida;
   // Mes por mes desde que se activó: suma lo del mes y, si el mes ya pasó sin visita, descuenta.
   for (let mes = mesDe(primera.fecha); mes <= mesDe(fin); mes = mesSiguiente(mes)) {

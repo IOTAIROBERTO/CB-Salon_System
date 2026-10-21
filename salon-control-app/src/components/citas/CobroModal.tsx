@@ -12,7 +12,7 @@ import { db } from "../../db/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { registrarCanjes } from "../../db/circulo";
 import {
-  NOMBRE_NIVEL, BENEFICIOS, estadoCirculo, parametrosDe, beneficiosDisponibles,
+  NOMBRE_NIVEL, NOMBRE_CIRCULO, BENEFICIOS, estadoCirculo, parametrosDe, beneficiosDisponibles,
   beneficioEnColor, esServicioDeColor, type ClaveBeneficio
 } from "../../utils/lealtad";
 
@@ -87,7 +87,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
     const servicio = servicios.find(s => s.id === BENEFICIOS[clave].servicioId);
     setServiciosAdicionales([...serviciosAdicionales, {
       servicioId: BENEFICIOS[clave].servicioId,
-      nombre: `${servicio?.nombre || BENEFICIOS[clave].titulo} · cortesía Círculo CB`,
+      nombre: `${servicio?.nombre || BENEFICIOS[clave].titulo} · cortesía ${NOMBRE_CIRCULO}`,
       precio: 0,
       beneficio: clave
     }]);
@@ -232,7 +232,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
             {/* Círculo CB */}
             {clienta && (beneficiosCobro.length > 0 || aplicados.length > 0) && (
               <div className="rounded-lg bg-marca-negro text-white p-4">
-                <div className="text-[11px] tracking-[0.24em] uppercase text-marca-dorado">Círculo CB · {NOMBRE_NIVEL[nivel]}</div>
+                <div className="text-[11px] tracking-[0.24em] uppercase text-marca-dorado">{NOMBRE_CIRCULO} · {NOMBRE_NIVEL[nivel]}</div>
                 {beneficiosCobro.map((k, i) => (
                   <div key={k + i} className="flex items-center justify-between gap-2 mt-2 text-sm">
                     <span>{BENEFICIOS[k].titulo}</span>

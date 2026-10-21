@@ -65,7 +65,7 @@ function AppSalon() {
     { to: "/ventas", label: "Ventas" },
     { to: "/inventario", label: "Inventario" },
     { to: "/clientes", label: "Clientes" },
-    { to: "/circulo", label: "Círculo CB" },
+    { to: "/circulo", label: "Círculo" },
     { to: "/catalogo", label: "Catálogo" },
     { to: "/campanas", label: "Campañas" },
     { to: "/empleados", label: "Empleados" },
