@@ -22,7 +22,7 @@ export const notaReserva = (d: DatosReserva) => {
     '',
     `📅 ${dia.charAt(0).toUpperCase() + dia.slice(1)} a las ${d.hora}`,
     `✂️ ${d.servicio}`,
-    d.precio ? `💲 Precio: ${formatCurrency(d.precio)}` : '',
+    d.precio ? `💲 Desde ${formatCurrency(d.precio)}: es el precio mínimo; el final se confirma en tu valoración` : '',
     d.anticipo ? `✅ Anticipo: ${formatCurrency(d.anticipo)} ${d.anticipoPagado ? '(recibido, se descuenta del total)' : '(pendiente: tu lugar queda apartado al recibirlo)'}` : '',
     d.lugar ? `📍 Servicio en ${d.lugar}, en la dirección que acordamos contigo.` : `📍 ${DATOS_SALON.direccion}\n${DATOS_SALON.comoLlegar}`,
     '',

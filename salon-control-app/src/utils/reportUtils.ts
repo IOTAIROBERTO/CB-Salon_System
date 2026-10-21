@@ -2,8 +2,9 @@ import { Cita, Venta, ReportData, ReportStats, ReportPeriod } from '../types/rep
 import { Expense } from '../db/db';
 import { parseFechaLocal } from './dateValidation';
 
-/** Ingreso de una cita cobrada: lo pagado menos la propina (la propina no es venta) */
-const ingresoCita = (c: Cita) => (c.precioFinal || 0) - (c.propina || 0);
+/** Ingreso de una cita cobrada: lo pagado menos la propina (la propina no es venta) y menos lo
+ * pagado con saldo a favor (ese dinero ya contó al venderse la tarjeta o al pagarse el pedido) */
+const ingresoCita = (c: Cita) => (c.precioFinal || 0) - (c.propina || 0) - (c.pagadoConSaldo || 0);
 
 export const calculateReportStats = (
   citas: Cita[],

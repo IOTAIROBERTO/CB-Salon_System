@@ -7,7 +7,7 @@ import { formatDate } from '../utils/clientesUtils';
 import { sinVentasEspejo } from '../utils/ventasUtils';
 import CalendarSection from '../components/empleados/CalendarSection';
 import PagosEquipo from '../components/empleados/PagosEquipo';
-import { MINIMO_POR_HORA } from '../utils/pagos';
+import { MINIMO_POR_HORA, PAGO_SUGERIDO } from '../utils/pagos';
 
 // Bono por cita apoyada: categorías del catálogo
 const CATEGORIAS_BONO: [string, string][] = [['color', 'Color'], ['maquillaje', 'Maquillaje y novias'], ['peinado', 'Peinado'], ['tratamiento', 'Tratamiento'], ['corte', 'Corte']];
@@ -39,8 +39,8 @@ export default function EmpleadosPage() {
         fechaContratacion: fechaLocalISO(),
         cumple: '',
         googleCalendarId: '',
-        pagoPorHora: 60,
-        bonos: {}
+        pagoPorHora: PAGO_SUGERIDO.porHora,
+        bonos: { ...PAGO_SUGERIDO.bonos }
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -62,8 +62,8 @@ export default function EmpleadosPage() {
             fechaContratacion: fechaLocalISO(),
             cumple: '',
             googleCalendarId: '',
-            pagoPorHora: 60,
-            bonos: {}
+            pagoPorHora: PAGO_SUGERIDO.porHora,
+            bonos: { ...PAGO_SUGERIDO.bonos }
         });
         setSelectedEmpleadoId(null);
         setActiveTab('info');

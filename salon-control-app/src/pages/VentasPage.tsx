@@ -6,6 +6,7 @@ import AddVentaButton from '../components/ventas/AddVentaButton';
 import VentasSearch from '../components/ventas/VentasSearch';
 import VentasList from '../components/ventas/VentasList';
 import VentaModal from '../components/ventas/VentaModal';
+import TarjetasRegalo from '../components/ventas/TarjetasRegalo';
 
 export default function VentasPage() {
   // Custom hooks
@@ -34,6 +35,8 @@ export default function VentasPage() {
         </div>
         <AddVentaButton onAdd={openModal} />
       </div>
+
+      <TarjetasRegalo />
 
       {/* Estadísticas rápidas */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

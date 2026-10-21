@@ -60,4 +60,12 @@ assert.deepEqual(choques({ id: 'c3', fecha: lunes, hora: '18:30', servicioId: 'c
   ['Termina a las 19:30, después del cierre (19:00)']);
 assert.deepEqual(choques({ id: 'c4', fecha: lunes, hora: '13:30', servicioId: 'corte' }, [], servicios, bloq), ['Horario bloqueado: Curso']);
 assert.deepEqual(choques({ id: 'c5', fecha: lunes, hora: '10:00', servicioId: 'corte', atiendeId: 'ana' }, citas, servicios, config), []);
+// Servicios largos: uno de 4 h no se ofrece después de las 13:00 y avisa si se agenda a mano
+const largo = [...servicios, { id: 'balayage', nombre: 'Balayage', categoria: 'color', duracion: 240 }];
+const horasLargo = horariosLibres({ fecha: lunes, servicioId: 'balayage', personas: [cristina], citas: [], servicios: largo, config, ahora }).map(h => h.hora);
+assert.equal(horasLargo[horasLargo.length - 1], '13:00');
+assert.deepEqual(choques({ id: 'c7', fecha: lunes, hora: '14:00', servicioId: 'balayage' }, [], largo, config),
+  ['Trabajo de 4 h o más: conviene empezar a más tardar a las 13:00']);
+// Sin reglas (config vieja con largos vacío) solo manda el cierre
+assert.equal(horariosLibres({ fecha: lunes, servicioId: 'balayage', personas: [cristina], citas: [], servicios: largo, config: { ...config, largos: [] }, ahora }).map(h => h.hora).pop(), '15:00');
 console.log('agenda: ok');

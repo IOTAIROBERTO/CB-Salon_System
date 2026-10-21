@@ -130,6 +130,7 @@ export interface Cita {
     googleEventId?: string;
     descripcionTrabajo?: string; // qué se trabajó y por qué se cobró así
     ubicacion?: string; // 'salon' o id de zona (utils/zonas); claves viejas: tucson, phoenix…
+    pagadoConSaldo?: number; // Parte del cobro pagada con saldo a favor (ya contó como ingreso al venderse la tarjeta)
     atiendeId?: string; // Quién la atiende en la agenda ('cristina' o id de empleado)
 }
 
@@ -145,6 +146,7 @@ export interface Venta {
     anticipoPagado?: number;
     saldoPendiente?: number;
     metodoPago: string;
+    concepto?: string; // venta que no es de producto (por ejemplo, tarjeta de regalo)
     empleadoId?: string; // Employee who made the sale/service
 }
 
@@ -215,6 +217,30 @@ export interface Compra {
 }
 
 /** Consentimiento firmado: la foto del formato en papel o la aceptación en la app */
+/** Tarjeta de regalo impresa: se vende con folio y la clienta la activa como saldo a favor */
+export interface TarjetaRegalo {
+    id: string;
+    folio: string; // en mayúsculas, sin espacios
+    monto: number;
+    fechaVenta: string; // ISO
+    compradora?: string;
+    metodoPago?: string;
+    ventaId?: string;
+    activadaPor?: string; // clienteId
+    fechaActivacion?: string; // ISO
+}
+
+/** Saldo a favor de la clienta: abonos (+) por tarjeta de regalo o pedido no recogido; cargos (−) al usarlo */
+export interface MovimientoSaldo {
+    id: string;
+    clienteId: string;
+    fecha: string; // ISO
+    monto: number;
+    concepto: string;
+    folio?: string;
+    citaId?: string;
+}
+
 export interface Consentimiento {
     id: string;
     clienteId: string;
@@ -274,6 +300,8 @@ export class SalonDatabase extends Dexie {
     proveedores!: Table<Proveedor>;
     compras!: Table<Compra>;
     consentimientos!: Table<Consentimiento>;
+    tarjetasRegalo!: Table<TarjetaRegalo>;
+    movimientosSaldo!: Table<MovimientoSaldo>;
 
     // New Tables
     documentos!: Table<SalonDocument>;
@@ -316,6 +344,10 @@ export class SalonDatabase extends Dexie {
         });
         this.version(3).stores({
             consentimientos: 'id, clienteId, fecha'
+        });
+        this.version(4).stores({
+            tarjetasRegalo: 'id, folio, fechaVenta',
+            movimientosSaldo: 'id, clienteId, fecha'
         });
 
         this.cloud.configure({
@@ -360,7 +392,7 @@ export class SalonDatabase extends Dexie {
 const TABLAS_DEL_SALON = new Set([
     'clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos', 'configuracion',
     'empleados', 'campanas', 'plantillas', 'automatizaciones', 'empleadoEvents',
-    'proveedores', 'compras', 'consentimientos'
+    'proveedores', 'compras', 'consentimientos', 'tarjetasRegalo', 'movimientosSaldo'
 ]);
 
 let realmSalonId: string | undefined;

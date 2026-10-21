@@ -121,6 +121,7 @@ export default function useCitas() {
       subtotalConDescuento: info?.subtotalConDescuento ?? precioFinal,
       montoRedondeo: info?.montoRedondeo || 0,
       propina: info?.propina || 0,
+      pagadoConSaldo: info?.pagadoConSaldo || undefined,
       saldoPendiente: 0,
       fechaCompletada: new Date().toISOString(),
       ...(info?.descripcionTrabajo !== undefined && { descripcionTrabajo: info.descripcionTrabajo.trim() || undefined }),

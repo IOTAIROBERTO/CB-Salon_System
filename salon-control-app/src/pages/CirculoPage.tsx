@@ -23,9 +23,9 @@ export const InsigniaNivel = ({ nivel }: { nivel: Nivel }) => (
 );
 
 const REGLAS: [keyof ParametrosCirculo, string][] = [
-  ['bienvenida', 'Bienvenida al activar'], ['porDiezServicio', 'Puntos por cada $10 en servicios'], ['porDiezProducto', 'Puntos por cada $10 en producto'],
+  ['bienvenida', 'Bienvenida al activar'], ['pesosPorPuntoServicio', 'Pesos en servicios por punto'], ['pesosPorPuntoProducto', 'Pesos en producto por punto'],
   ['reservaEnLinea', 'Reserva en línea'], ['cumpleanos', 'Visita en su cumpleaños'], ['referida', 'Amiga recomendada (con color)'],
-  ['inactividadPorcentaje', '% que se pierde por mes sin visita'], ['dorado', 'Puntos para Dorado'], ['onix', 'Puntos para Ónix']
+  ['inactividadPorcentaje', '% que se pierde por mes sin visita'], ['mesesDeGracia', 'Meses sin visita que no castigan'], ['dorado', 'Puntos para Dorado'], ['onix', 'Puntos para Ónix']
 ];
 
 export default function CirculoPage() {

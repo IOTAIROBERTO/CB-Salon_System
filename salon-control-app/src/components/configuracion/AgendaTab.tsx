@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, Trash2, Save } from 'lucide-react';
 import { db } from '../../db/db';
 import { useAgenda, guardarAgenda } from '../../hooks/useAgenda';
-import { DUENA, type ConfigAgenda, type DiaSemana, type HorarioDia } from '../../utils/agenda';
+import { DUENA, AGENDA_INICIAL, type ConfigAgenda, type DiaSemana, type HorarioDia, type LimiteLargo } from '../../utils/agenda';
 
 const DIAS: [DiaSemana, string][] = [['1', 'Lunes'], ['2', 'Martes'], ['3', 'Miércoles'], ['4', 'Jueves'], ['5', 'Viernes'], ['6', 'Sábado'], ['0', 'Domingo']];
 const campo = 'border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500';
@@ -22,6 +22,9 @@ export default function AgendaTab() {
   const setDia = (d: DiaSemana, h: HorarioDia | null) => setCfg({ ...cfg, horario: { ...cfg.horario, [d]: h } });
   const num = (k: 'margen' | 'intervalo' | 'anticipacionHoras' | 'maxDias', v: string) => setCfg({ ...cfg, [k]: Math.max(0, Number(v) || 0) });
   const personas = [{ id: 'todas', nombre: 'Todo el salón' }, { id: DUENA, nombre: 'Cristina' }, ...empleados.filter(e => e.activo).map(e => ({ id: e.id, nombre: e.nombre }))];
+
+  const largos = cfg.largos ?? AGENDA_INICIAL.largos ?? [];
+  const setLargos = (l: LimiteLargo[]) => setCfg({ ...cfg, largos: l });
 
   const guardar = async () => {
     await guardarAgenda(cfg);
@@ -76,6 +79,23 @@ export default function AgendaTab() {
           <label>Agendar hasta (días)<input type="number" min="1" value={cfg.maxDias} onChange={e => num('maxDias', e.target.value)} className={`${campo} w-full mt-1`} /></label>
         </div>
         <p className="text-xs text-gray-500 mt-2">La anticipación y el máximo de días aplican a las clientas; en CB Control puedes agendar cualquier hora futura.</p>
+      </section>
+
+      <section className="bg-white rounded-lg shadow p-5">
+        <h3 className="font-semibold text-lg mb-1">Trabajos largos</h3>
+        <p className="text-sm text-gray-500 mb-3">Un trabajo largo no se ofrece tarde: se acomoda temprano o en otro día. En CB Control puedes agendarlo a cualquier hora (por ejemplo, un caso especial hasta la noche) y solo verás un aviso.</p>
+        <div className="space-y-2 text-sm">
+          {largos.map((l, i) => (
+            <div key={i} className="flex flex-wrap items-center gap-2">
+              Si dura
+              <input type="number" min="1" step="0.5" value={l.horas} onChange={e => setLargos(largos.map((x, j) => j === i ? { ...x, horas: Math.max(0.5, Number(e.target.value) || 1) } : x))} className={`${campo} w-20`} />
+              horas o más, empezar a más tardar a las
+              <input type="time" value={l.ultimaHora} onChange={e => setLargos(largos.map((x, j) => j === i ? { ...x, ultimaHora: e.target.value } : x))} className={campo} />
+              <button type="button" onClick={() => setLargos(largos.filter((_, j) => j !== i))} className="text-red-600 p-1" title="Quitar regla"><Trash2 size={14} /></button>
+            </div>
+          ))}
+          <button type="button" onClick={() => setLargos([...largos, { horas: 3, ultimaHora: '14:00' }])} className="flex items-center gap-1 text-purple-700 mt-1"><Plus size={14} /> Agregar regla</button>
+        </div>
       </section>
 
       <section className="bg-white rounded-lg shadow p-5">

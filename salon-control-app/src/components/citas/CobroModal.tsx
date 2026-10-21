@@ -11,6 +11,8 @@ import {
 import { db } from "../../db/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { registrarCanjes } from "../../db/circulo";
+import { usarSaldo } from "../../db/saldo";
+import { saldoDe, saldoUsable } from "../../utils/saldo";
 import {
   NOMBRE_NIVEL, NOMBRE_CIRCULO, BENEFICIOS, estadoCirculo, parametrosDe, beneficiosDisponibles,
   beneficioEnColor, esServicioDeColor, type ClaveBeneficio
@@ -40,6 +42,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   const [propina, setPropina] = useState(0);
 
   const [anticipoRecibido, setAnticipoRecibido] = useState(cita.montoAnticipo || 0);
+  const [conSaldo, setConSaldo] = useState(0); // saldo a favor que se usa en este cobro
   const [metodoPago, setMetodoPago] = useState("");
   const [notas, setNotas] = useState("");
   const [descripcionTrabajo, setDescripcionTrabajo] = useState(cita.descripcionTrabajo || "");
@@ -54,11 +57,17 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
     serviciosAdicionales.reduce((sum, s) => sum + s.precio, 0);
 
   // Cálculos base usando la nueva utilidad financiera
+  // Saldo a favor (tarjetas de regalo, pedidos no recogidos): se descuenta como un anticipo
+  const movimientosSaldo = useLiveQuery(() => db.movimientosSaldo.where('clienteId').equals(cita.clienteId).toArray(), [cita.clienteId]) || [];
+  const saldoDisponible = saldoDe(movimientosSaldo, cita.clienteId);
+  const sinSaldo = calculateChargeBreakdown(subtotalServicios, porcentajeSeleccionado, 0, anticipoRecibido);
+  const maxSaldo = saldoUsable(saldoDisponible, Math.max(0, sinSaldo.subtotalConDescuento - anticipoRecibido));
+  const saldoAplicado = Math.min(conSaldo, maxSaldo);
   const calculoFinal = calculateChargeBreakdown(
     subtotalServicios,
     porcentajeSeleccionado,
     propina,
-    anticipoRecibido
+    anticipoRecibido + saldoAplicado
   );
 
   // Obtener empleados para el desglose de comisiones
@@ -140,13 +149,15 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
       anticipoRecibido: anticipoRecibido,
       porcentajeOriginal: porcentajeSeleccionado,
       subtotalConDescuento: calculoFinal.subtotalConDescuento,
-      descripcionTrabajo
+      descripcionTrabajo,
+      pagadoConSaldo: saldoAplicado
     };
 
     // Convertir a array si es lo que espera onCompletar (aunque parece que espera un objeto según el nombre de la prop en CobroModalProps)
     // Pero la firma dice serviciosAdicionales?: any[]
     onCompletar(cita.id, precioFinalCompleto, metodoPago, notas, [datosCompletos]);
     registrarCanjes(cita.clienteId, aplicados, cita.id);
+    usarSaldo(cita.clienteId, saldoAplicado, cita.id);
     onClose();
   };
 
@@ -183,6 +194,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
               )}
               <p><strong>Subtotal:</strong> {formatCurrency(calculoFinal.subtotalConDescuento)}</p>
               <p><strong>Anticipo recibido:</strong> -{formatCurrency(anticipoRecibido)}</p>
+              {saldoAplicado > 0 && <p><strong>Saldo a favor:</strong> -{formatCurrency(saldoAplicado)}</p>}
               {calculoFinal.montoRedondeo > 0 && (
                 <p><strong>Redondeo:</strong> +{formatCurrency(calculoFinal.montoRedondeo)}</p>
               )}
@@ -339,6 +351,20 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
               </div>
             </div>
 
+            {/* Saldo a favor de la clienta */}
+            {saldoDisponible > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded p-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Usar saldo a favor (disponible {formatCurrency(saldoDisponible)})
+                </label>
+                <div className="flex gap-2">
+                  <input type="number" min="0" max={maxSaldo} value={saldoAplicado || ''} onChange={(e) => setConSaldo(Math.max(0, Number(e.target.value) || 0))}
+                    className="flex-1 border rounded px-3 py-2" placeholder="$0" />
+                  <button type="button" onClick={() => setConSaldo(maxSaldo)} className="px-3 py-2 rounded border text-sm">Usar {formatCurrency(maxSaldo)}</button>
+                </div>
+              </div>
+            )}
+
             {/* Método de pago */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -354,6 +380,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                 <option value="tarjeta">Tarjeta</option>
                 <option value="transferencia">Transferencia</option>
                 <option value="mixto">Mixto</option>
+                <option value="saldo">Saldo a favor</option>
               </select>
             </div>
 

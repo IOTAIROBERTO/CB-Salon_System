@@ -7,6 +7,7 @@ export interface Cita {
   estado: 'pendiente' | 'confirmada' | 'iniciada' | 'completada' | 'cancelada';
   precioFinal?: number;
   propina?: number;
+  pagadoConSaldo?: number; // parte pagada con saldo a favor (ya contó como ingreso antes)
   montoAnticipo?: number;
   saldoPendiente?: number;
   metodoPago?: string;

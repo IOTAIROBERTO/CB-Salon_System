@@ -17,14 +17,16 @@ export const NOMBRE_ROL: Record<RolSalon, string> = { duena: 'Dueña', empleada:
 // pero el servidor no los aplicó en las pruebas; por eso se copian también
 // al miembro, que sí se respeta. La empleada no puede tocar configuracion
 // ni el equipo (members), ni el pago por hora y los días de apoyo (empleados,
-// empleadoEvents: solo lectura); los consentimientos los agrega pero no los
-// cambia ni los borra.
+// empleadoEvents: solo lectura); los consentimientos, las tarjetas de regalo y
+// los movimientos de saldo los agrega pero no los cambia ni los borra (de la
+// tarjeta solo puede marcar la activación).
 const PERMISOS: Record<RolSalon, DBPermissionSet> = {
   duena: { manage: '*' },
   empleada: {
     manage: ['clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos',
              'campanas', 'plantillas', 'automatizaciones', 'proveedores', 'compras'],
-    add: ['consentimientos']
+    add: ['consentimientos', 'tarjetasRegalo', 'movimientosSaldo'],
+    update: { tarjetasRegalo: ['activadaPor', 'fechaActivacion'] }
   }
 };
 
@@ -75,7 +77,7 @@ export const hayDatosPrivados = async () => {
 const tablasDelSalon = (): Table<any>[] =>
   [db.clientes, db.citas, db.ventas, db.servicios, db.inventario, db.gastos, db.configuracion,
    db.empleados, db.campanas, db.plantillas, db.automatizaciones, db.empleadoEvents,
-   db.proveedores, db.compras, db.consentimientos];
+   db.proveedores, db.compras, db.consentimientos, db.tarjetasRegalo, db.movimientosSaldo];
 
 /** Crea el realm del salón (los datos privados los mueve moverPrivadosAlSalon) */
 export const crearRealmSalon = () =>

@@ -7,6 +7,9 @@
 //   o sea pago triple (arts. 74 y 75).
 // - Aviso si la tarifa por hora queda debajo del salario mínimo.
 
+/** Pago sugerido a una colaboradora nueva (respuestas de la v2: unos $450 por 6 horas, «aumenta un poco») */
+export const PAGO_SUGERIDO = { porHora: 75, bonos: { color: 100, maquillaje: 60, peinado: 60, tratamiento: 40, corte: 25 } as Record<string, number> };
+
 /** Salario mínimo general 2026 por día (DOF 9 dic 2025); jornada de 8 horas */
 export const SALARIO_MINIMO_DIA = 315.04;
 export const MINIMO_POR_HORA = Math.round((SALARIO_MINIMO_DIA / 8) * 100) / 100;

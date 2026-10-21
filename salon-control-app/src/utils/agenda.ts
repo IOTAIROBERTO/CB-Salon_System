@@ -11,6 +11,8 @@ export interface HorarioDia { abre: string; cierra: string; descansoDe?: string;
 export type HorarioSemana = Partial<Record<DiaSemana, HorarioDia | null>>;
 /** Bloqueo de agenda: `personaId` o 'todas'; fechas locales 'YYYY-MM-DDTHH:mm' */
 export interface Bloqueo { id: string; personaId: string; desde: string; hasta: string; motivo?: string }
+/** Servicios largos: si duran al menos `horas`, no se ofrecen después de `ultimaHora` (Cristina puede saltarlo a mano, con aviso) */
+export interface LimiteLargo { horas: number; ultimaHora: string }
 export interface ConfigAgenda {
   horario: HorarioSemana;
   margen: number;            // minutos entre citas
@@ -18,6 +20,7 @@ export interface ConfigAgenda {
   anticipacionHoras: number; // mínimo para que una clienta aparte
   maxDias: number;           // hasta cuántos días adelante
   bloqueos: Bloqueo[];
+  largos?: LimiteLargo[];
 }
 /** Quién atiende: sin categorías hace todos los servicios */
 export interface Persona { id: string; nombre: string; categorias?: string[] }
@@ -33,8 +36,16 @@ export const AGENDA_INICIAL: ConfigAgenda = {
     '1': abierto('10:00', '19:00'), '2': abierto('10:00', '19:00'), '3': abierto('10:00', '19:00'),
     '4': abierto('10:00', '19:00'), '5': abierto('10:00', '19:00'), '6': abierto('10:00', '19:00')
   },
-  margen: 15, intervalo: 30, anticipacionHoras: 3, maxDias: 60, bloqueos: []
+  margen: 15, intervalo: 30, anticipacionHoras: 3, maxDias: 60, bloqueos: [],
+  // Un trabajo largo empieza temprano: de 4 h o más, a más tardar 13:00; de 2 h o más, 16:00
+  largos: [{ horas: 4, ultimaHora: '13:00' }, { horas: 2, ultimaHora: '16:00' }]
 };
+
+/** Hora límite para empezar un servicio de `minutos` (la regla más estricta que le aplica) */
+export const limiteInicio = (minutos: number, config: ConfigAgenda) =>
+  (config.largos ?? AGENDA_INICIAL.largos ?? [])
+    .filter(l => minutos >= l.horas * 60)
+    .sort((a, b) => b.horas - a.horas)[0];
 
 interface ServicioA { id: string; nombre?: string; categoria?: string; duracion?: number; tiempoProceso?: number; tiempoCierre?: number }
 interface CitaA {
@@ -123,6 +134,8 @@ export const horariosLibres = (o: {
     for (let t = aMin(h.abre); t < aMin(h.cierra); t += config.intervalo) {
       const { tramos, sinMargen, fin } = tramosCita(t, servicioId, adicionales, servicios, config.margen);
       if (fin > aMin(h.cierra)) break;
+      const largo = limiteInicio(fin - t, config);
+      if (largo && t > aMin(largo.ultimaHora)) continue;
       if (new Date(`${fecha}T${aHora(t)}:00`) < limite) continue;
       if (tramos.some(x => ocupado.citas.some(y => solapa(x, y))) || sinMargen.some(x => ocupado.fijos.some(y => solapa(x, y)))) continue;
       res.push({ hora: aHora(t), personaId: p.id });
@@ -142,6 +155,8 @@ export const choques = (cita: CitaA, citas: CitaA[], servicios: ServicioA[], con
   else {
     if (ini < aMin(h.abre)) avisos.push(`Empieza antes de abrir (${h.abre})`);
     if (fin > aMin(h.cierra)) avisos.push(`Termina a las ${aHora(fin)}, después del cierre (${h.cierra})`);
+    const largo = limiteInicio(fin - ini, config);
+    if (largo && ini > aMin(largo.ultimaHora)) avisos.push(`Trabajo de ${largo.horas} h o más: conviene empezar a más tardar a las ${largo.ultimaHora}`);
     if (h.descansoDe && h.descansoA && sinMargen.some(x => solapa(x, { de: aMin(h.descansoDe!), a: aMin(h.descansoA!) })))
       avisos.push(`Se cruza con el descanso (${h.descansoDe}–${h.descansoA})`);
   }

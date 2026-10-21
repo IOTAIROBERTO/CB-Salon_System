@@ -4,6 +4,7 @@ import { validateClienteForm } from '../../utils/clientesUtils';
 import { db } from '../../db/db';
 import { normalizar, telefono10 } from '../../utils/texto';
 import ConsentimientosCliente from './ConsentimientosCliente';
+import SaldoCliente from './SaldoCliente';
 
 interface ClienteModalProps {
   isOpen: boolean;
@@ -198,6 +199,7 @@ export default function ClienteModal({
               </div>
 
               {isEditing && <ConsentimientosCliente clienteId={editingCliente!.id} />}
+              {isEditing && <SaldoCliente clienteId={editingCliente!.id} />}
 
               {/* Información importante */}
               {!isEditing && (

@@ -24,6 +24,7 @@ export interface Venta {
   fecha: string;
   notas?: string;
   empleadoId?: string;
+  concepto?: string; // venta que no es de producto (tarjeta de regalo)
 }
 
 export interface VentaFormData {

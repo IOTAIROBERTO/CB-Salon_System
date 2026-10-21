@@ -45,7 +45,7 @@ export default function VentaCard({ venta, clientes, inventario, onDelete }: Ven
           <div>
             <h3 className="font-semibold text-gray-900 flex items-center gap-2">
               <User size={16} className="text-gray-400" />
-              {getClienteName(venta.clienteId, clientes)}
+              {venta.concepto || getClienteName(venta.clienteId, clientes)}
             </h3>
             <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
               <div className="flex items-center gap-1">

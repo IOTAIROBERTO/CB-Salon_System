@@ -4,9 +4,9 @@
 // se puede explicar a la clienta. Arranca en limpio el 1 de enero de 2027.
 //
 // - Bienvenida al activar la tarjeta (primera visita o compra del programa).
-// - Puntos por cada $10 en servicios y, al doble, por cada $10 en producto.
+// - Un punto por cada $20 en servicios y por cada $10 en producto (el producto vale el doble).
 // - Bonos: reserva en línea, visita en su mes de cumpleaños, amiga recomendada.
-// - Cada mes completo sin visita ni compra se pierde un porcentaje de puntos.
+// - Después de unos meses de gracia sin visita ni compra, cada mes se pierde un porcentaje.
 // - El nivel sale de los puntos; los beneficios dependen del nivel.
 
 export type Nivel = 'marfil' | 'dorado' | 'onix';
@@ -21,27 +21,30 @@ export interface Canje {
 export interface ParametrosCirculo {
   inicio: string;               // YYYY-MM-DD
   bienvenida: number;
-  porDiezServicio: number;      // puntos por cada $10 en servicios (sin propina)
-  porDiezProducto: number;      // puntos por cada $10 en producto
+  pesosPorPuntoServicio: number; // pesos en servicios (sin propina) por cada punto
+  pesosPorPuntoProducto: number; // pesos en producto por cada punto
   reservaEnLinea: number;       // cita reservada desde la app
   cumpleanos: number;           // primera visita en su mes de cumpleaños
   referida: number;             // amiga recomendada que pagó un servicio de color
   inactividadPorcentaje: number; // % de puntos que se pierde por mes completo sin visita
+  mesesDeGracia: number;        // meses seguidos sin visita que no castigan (el retoque de color es cada 6 a 10 semanas)
   dorado: number;               // puntos para Dorado
   onix: number;                 // puntos para Ónix
 }
 
 export const PARAMETROS_CIRCULO: ParametrosCirculo = {
   inicio: '2027-01-01',
-  bienvenida: 100,
-  porDiezServicio: 1,
-  porDiezProducto: 2,
-  reservaEnLinea: 50,
-  cumpleanos: 100,
-  referida: 150,
+  // Ajustados con las respuestas de la v2: que no se junten tan rápido pero sea justo
+  bienvenida: 50,
+  pesosPorPuntoServicio: 20,
+  pesosPorPuntoProducto: 10,
+  reservaEnLinea: 20,
+  cumpleanos: 50,
+  referida: 100,
   inactividadPorcentaje: 10,
-  dorado: 600,
-  onix: 1500
+  mesesDeGracia: 2,
+  dorado: 500,
+  onix: 1200
 };
 
 export const parametrosDe = (settings?: { circulo?: Partial<ParametrosCirculo> } | null): ParametrosCirculo =>
@@ -99,7 +102,7 @@ export const estadoCirculo = (cliente: ClienteL, citas: CitaL[], ventas: VentaL[
   for (const c of citas.filter(c => c.clienteId === cliente.id && c.estado === 'completada' && enRango(dia(c))).sort((a, b) => dia(a).localeCompare(dia(b)))) {
     const f = dia(c);
     const monto = Math.max(0, (c.precioFinal || 0) - (c.propina || 0));
-    eventos.push({ fecha: f, concepto: 'Visita', puntos: Math.floor(monto / 10) * p.porDiezServicio, visita: true });
+    eventos.push({ fecha: f, concepto: 'Visita', puntos: Math.floor(monto / p.pesosPorPuntoServicio), visita: true });
     if (c.origen === 'app') eventos.push({ fecha: f, concepto: 'Reserva en línea', puntos: p.reservaEnLinea, visita: true });
     if (cumpleMes && f.slice(5, 7) === cumpleMes && !cumpleAnios.has(f.slice(0, 4))) {
       cumpleAnios.add(f.slice(0, 4));
@@ -107,7 +110,7 @@ export const estadoCirculo = (cliente: ClienteL, citas: CitaL[], ventas: VentaL[
     }
   }
   for (const v of ventas.filter(v => v.clienteId === cliente.id && (v.productos?.length ?? 0) > 0 && enRango(v.fecha.slice(0, 10)))) {
-    eventos.push({ fecha: v.fecha.slice(0, 10), concepto: 'Compra de producto', puntos: Math.floor((v.total || 0) / 10) * p.porDiezProducto, visita: true });
+    eventos.push({ fecha: v.fecha.slice(0, 10), concepto: 'Compra de producto', puntos: Math.floor((v.total || 0) / p.pesosPorPuntoProducto), visita: true });
   }
   for (const amiga of clientes.filter(c => c.referidaPor === cliente.id)) {
     const color = citas.filter(x => x.clienteId === amiga.id && x.estado === 'completada' && esServicioDeColor(x.servicioId, servicios) && enRango(dia(x)))
@@ -122,7 +125,8 @@ export const estadoCirculo = (cliente: ClienteL, citas: CitaL[], ventas: VentaL[
   if (!primera) return { puntos: 0, nivel: 'marfil', movimientos, activa: false };
   movimientos.push({ fecha: primera.fecha, concepto: `Bienvenida al ${NOMBRE_CIRCULO}`, puntos: p.bienvenida });
   puntos += p.bienvenida;
-  // Mes por mes desde que se activó: suma lo del mes y, si el mes ya pasó sin visita, descuenta.
+  // Mes por mes desde que se activó: suma lo del mes y, pasados los meses de gracia sin visita, descuenta.
+  let sinVisita = 0;
   for (let mes = mesDe(primera.fecha); mes <= mesDe(fin); mes = mesSiguiente(mes)) {
     const delMes = eventos.filter(e => mesDe(e.fecha) === mes);
     for (const e of delMes) {
@@ -130,7 +134,8 @@ export const estadoCirculo = (cliente: ClienteL, citas: CitaL[], ventas: VentaL[
       movimientos.push({ fecha: e.fecha, concepto: e.concepto, puntos: e.puntos });
       puntos += e.puntos;
     }
-    if (mes < mesDe(fin) && !delMes.some(e => e.visita)) {
+    if (delMes.some(e => e.visita)) sinVisita = 0;
+    else if (mes < mesDe(fin) && ++sinVisita > p.mesesDeGracia) {
       const pierde = Math.floor((puntos * p.inactividadPorcentaje) / 100);
       if (pierde) {
         movimientos.push({ fecha: `${mes}-28`, concepto: 'Mes sin visita', puntos: -pierde });
