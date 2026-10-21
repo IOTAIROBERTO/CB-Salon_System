@@ -11,10 +11,11 @@ export const venderTarjeta = async (o: { folio: string; monto: number; comprador
   if (!(o.monto > 0)) throw new Error('Elige el monto');
   if (await db.tarjetasRegalo.where('folio').equals(folio).count()) throw new Error('Ese folio ya está registrado');
   const fecha = new Date().toISOString();
-  const ventaId = id('vta');
+  // Ids que salen del folio: si dos equipos registran el mismo folio sin conexión, al sincronizar es un solo registro
+  const ventaId = `vta_tarjeta_${folio}`;
   await db.transaction('rw', db.ventas, db.tarjetasRegalo, async () => {
     await db.ventas.add({ id: ventaId, fecha, clienteId: '', total: o.monto, metodoPago: o.metodoPago, concepto: `Tarjeta de regalo ${folio}` });
-    await db.tarjetasRegalo.add({ id: id('tar'), folio, monto: o.monto, fechaVenta: fecha, compradora: o.compradora?.trim() || undefined, metodoPago: o.metodoPago, ventaId });
+    await db.tarjetasRegalo.add({ id: `tar_${folio}`, folio, monto: o.monto, fechaVenta: fecha, compradora: o.compradora?.trim() || undefined, metodoPago: o.metodoPago, ventaId });
   });
 };
 
@@ -24,10 +25,14 @@ export const activarTarjeta = async (folioEscrito: string, clienteId: string) =>
   const t = await db.tarjetasRegalo.where('folio').equals(folio).first();
   const error = errorActivacion(t);
   if (error) throw new Error(error);
+  // Una sola activación por folio: el abono tiene id fijo, así que activarla dos veces
+  // (en dos equipos sin conexión) no duplica el saldo al sincronizar.
+  const abonoId = `sal_tarjeta_${folio}`;
+  if (await db.movimientosSaldo.get(abonoId)) throw new Error('Esa tarjeta ya se activó');
   const fecha = new Date().toISOString();
   await db.transaction('rw', db.tarjetasRegalo, db.movimientosSaldo, async () => {
     await db.tarjetasRegalo.update(t!.id, { activadaPor: clienteId, fechaActivacion: fecha });
-    await db.movimientosSaldo.add({ id: id('sal'), clienteId, fecha, monto: t!.monto, concepto: `Tarjeta de regalo ${folio}`, folio });
+    await db.movimientosSaldo.add({ id: abonoId, clienteId, fecha, monto: t!.monto, concepto: `Tarjeta de regalo ${folio}`, folio });
   });
   return t!.monto;
 };

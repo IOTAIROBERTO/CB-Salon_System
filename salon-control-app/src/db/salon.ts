@@ -17,16 +17,15 @@ export const NOMBRE_ROL: Record<RolSalon, string> = { duena: 'Dueña', empleada:
 // pero el servidor no los aplicó en las pruebas; por eso se copian también
 // al miembro, que sí se respeta. La empleada no puede tocar configuracion
 // ni el equipo (members), ni el pago por hora y los días de apoyo (empleados,
-// empleadoEvents: solo lectura); los consentimientos, las tarjetas de regalo y
-// los movimientos de saldo los agrega pero no los cambia ni los borra (de la
-// tarjeta solo puede marcar la activación).
+// empleadoEvents: solo lectura); los consentimientos los agrega pero no los
+// cambia ni los borra. Tarjetas de regalo y saldo a favor son dinero: solo la
+// Dueña los escribe (Dexie Cloud no valida montos en el servidor).
 const PERMISOS: Record<RolSalon, DBPermissionSet> = {
   duena: { manage: '*' },
   empleada: {
     manage: ['clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos',
              'campanas', 'plantillas', 'automatizaciones', 'proveedores', 'compras'],
-    add: ['consentimientos', 'tarjetasRegalo', 'movimientosSaldo'],
-    update: { tarjetasRegalo: ['activadaPor', 'fechaActivacion'] }
+    add: ['consentimientos']
   }
 };
 
