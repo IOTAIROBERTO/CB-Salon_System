@@ -49,7 +49,7 @@ export const parametrosDe = (settings?: { circulo?: Partial<ParametrosCirculo> }
 
 export const NOMBRE_NIVEL: Record<Nivel, string> = { marfil: 'Marfil', dorado: 'Dorado', onix: 'Ónix' };
 /** Nombre del programa: siempre con el nombre completo del salón (decisión de octubre 2026) */
-export const NOMBRE_CIRCULO = 'Círculo Cristina Borquez';
+export const NOMBRE_CIRCULO = 'Club Cristina Borquez';
 
 export const BENEFICIOS: Record<ClaveBeneficio, { titulo: string; servicioId: string }> = {
   cumple: { titulo: 'Despunte o flequillo de cortesía (cumpleaños)', servicioId: 's02' },
