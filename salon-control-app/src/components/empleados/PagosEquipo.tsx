@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Printer, Wallet } from 'lucide-react';
 import { db, type Empleado } from '../../db/db';
-import { pagoPeriodo, type PagoPeriodo } from '../../utils/pagos';
+import { pagoPeriodo, RECARGOS_DE_LEY, type PagoPeriodo } from '../../utils/pagos';
 import { formatCurrency } from '../../utils/financialUtils';
 import { DATOS_SALON } from '../../data/datosSalon';
 import { nombreCategoria } from '../../utils/precios';
@@ -45,7 +45,7 @@ export default function PagosEquipo({ empleados, desde, hasta }: PagosEquipoProp
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
       <h2 className="text-lg font-bold text-gray-800 mb-1 flex items-center gap-2"><Wallet className="text-purple-600" /> Pago por horas</h2>
-      <p className="text-xs text-gray-500 mb-4">Días de apoyo con horas (Calendario / Días) más los bonos por cita apoyada. Domingo +25 %, día festivo de ley pago triple.</p>
+      <p className="text-xs text-gray-500 mb-4">Días de apoyo con horas (Calendario / Días) más los bonos por cita apoyada. {RECARGOS_DE_LEY ? 'Domingo +25 %, día festivo de ley pago triple.' : 'Misma tarifa cualquier día (se les llama por convocatoria); domingos y festivos de ley quedan marcados.'}</p>
       {conTarifa.length === 0 && <p className="text-sm text-gray-500">Captura el pago por hora en la ficha de cada colaboradora.</p>}
       <div className="space-y-3">
         {conTarifa.map(emp => {

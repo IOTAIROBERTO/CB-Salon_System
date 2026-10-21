@@ -1,11 +1,13 @@
 // Pago del equipo por horas de apoyo (respuestas de octubre 2026): las chicas
 // van por horas los días que se les llama. Lógica pura, sin base de datos.
 //
-// Reglas de la Ley Federal del Trabajo que se aplican solas:
-// - Domingo: prima dominical de 25 % sobre lo de ese día (art. 71).
-// - Día de descanso obligatorio trabajado: salario normal más el doble,
-//   o sea pago triple (arts. 74 y 75).
+// Respuesta de la v4 (21 oct 2026): como se les llama solo cuando hay trabajo, por ahora se
+// paga la misma tarifa por hora cualquier día. Los domingos y los días de descanso obligatorio
+// quedan marcados en el recibo. Con RECARGOS_DE_LEY = true se vuelven a aplicar las reglas de la
+// Ley Federal del Trabajo: domingo +25 % (art. 71) y día de descanso obligatorio pago triple (arts. 74 y 75).
 // - Aviso si la tarifa por hora queda debajo del salario mínimo.
+
+export const RECARGOS_DE_LEY = false;
 
 /** Pago sugerido a una colaboradora nueva (respuestas de la v2: unos $450 por 6 horas, «aumenta un poco») */
 export const PAGO_SUGERIDO = { porHora: 75, bonos: { color: 100, maquillaje: 60, peinado: 60, tratamiento: 40, corte: 25 } as Record<string, number> };
@@ -60,7 +62,8 @@ const diasEntre = (desde: string, hasta: string) => {
 };
 
 /** Lo que se le paga a una colaboradora entre dos fechas (inclusive) */
-export const pagoPeriodo = (emp: EmpleadoP, apoyos: ApoyoP[], citas: CitaP[], servicios: ServicioP[], desde: string, hasta: string): PagoPeriodo => {
+export const pagoPeriodo = (emp: EmpleadoP, apoyos: ApoyoP[], citas: CitaP[], servicios: ServicioP[], desde: string, hasta: string,
+  recargos = RECARGOS_DE_LEY): PagoPeriodo => {
   const tarifa = emp.pagoPorHora || 0;
   const dias: DiaPagado[] = [];
   for (const a of apoyos.filter(a => a.empleadoId === emp.id && a.tipo === 'apoyo' && a.horas)) {
@@ -69,8 +72,9 @@ export const pagoPeriodo = (emp: EmpleadoP, apoyos: ApoyoP[], citas: CitaP[], se
       const base = a.horas! * tarifa;
       const feriado = nombreFeriado(fecha);
       const domingo = new Date(`${fecha}T12:00:00`).getDay() === 0;
-      const importe = base * (feriado ? 3 : 1) + (domingo ? base * 0.25 : 0);
-      const nota = [feriado && `${feriado}: pago triple`, domingo && 'domingo: +25 %'].filter(Boolean).join(' · ') || undefined;
+      const importe = recargos ? base * (feriado ? 3 : 1) + (domingo ? base * 0.25 : 0) : base;
+      const nota = (recargos ? [feriado && `${feriado}: pago triple`, domingo && 'domingo: +25 %']
+        : [feriado && `${feriado} (descanso obligatorio)`, domingo && 'domingo']).filter(Boolean).join(' · ') || undefined;
       dias.push({ fecha, horas: a.horas!, importe, nota });
     }
   }

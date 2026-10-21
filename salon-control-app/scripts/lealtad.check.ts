@@ -20,11 +20,13 @@ const ventas = [
   { clienteId: 'a', fecha: '2027-01-11T10:00:00Z', total: 3000 }                 // venta espejo de cita: no suma
 ];
 
-// Enero y febrero con visitas; marzo sin visita pierde 10 % (sin meses de gracia)
-const e = estadoCirculo(a, citas, ventas, [a, b], servicios, PARAMETROS_CIRCULO, new Date('2027-04-02T12:00:00'));
+// Enero y febrero con visitas; marzo sin visita es el mes de gracia, abril sin visita pierde 10 %
+const e = estadoCirculo(a, citas, ventas, [a, b], servicios, PARAMETROS_CIRCULO, new Date('2027-05-02T12:00:00'));
 assert.equal(e.movimientos.filter(m => m.puntos > 0).reduce((t, m) => t + m.puntos, 0), 50 + 140 + 25 + 25 + 20 + 50 + 100);
 assert.deepEqual(e.movimientos.filter(m => m.puntos < 0).map(m => m.puntos), [-41]);
 assert.equal(e.puntos, 369);
+assert.equal(estadoCirculo(a, citas, ventas, [a, b], servicios, PARAMETROS_CIRCULO, new Date('2027-04-02T12:00:00')).puntos, 410); // marzo: gracia
+assert.equal(estadoCirculo(a, citas, ventas, [a, b], servicios, { ...PARAMETROS_CIRCULO, mesesDeGracia: 0 }, new Date('2027-04-02T12:00:00')).puntos, 369); // sin gracia
 assert.equal(e.nivel, 'marfil');
 
 // Multiplicador: ya en Dorado, cada compra suma 1.15x

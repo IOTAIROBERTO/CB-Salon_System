@@ -20,9 +20,15 @@ const citas = [
   { estado: 'completada', fecha: '2026-11-15', servicioId: 'c', empleadoIds: ['ana'] }, // corte sin bono
   { estado: 'cancelada', fecha: '2026-11-15', servicioId: 'b', empleadoIds: ['ana'] }
 ];
+// v4: misma tarifa cualquier día; domingo y feriado solo quedan marcados
 const p = pagoPeriodo(emp, apoyos, citas, servicios, '2026-11-14', '2026-11-20');
 assert.equal(p.horas, 18);
-assert.deepEqual(p.dias.map(d => d.importe), [360, 450, 1080]); // normal, domingo +25 %, feriado ×3
+assert.deepEqual(p.dias.map(d => d.importe), [360, 360, 360]);
+assert.deepEqual(p.dias.map(d => d.nota), [undefined, 'domingo', 'Día de la Revolución (descanso obligatorio)']);
 assert.equal(p.totalBonos, 80);
-assert.equal(p.total, 360 + 450 + 1080 + 80);
+assert.equal(p.total, 3 * 360 + 80);
+// Con los recargos de ley
+const ley = pagoPeriodo(emp, apoyos, citas, servicios, '2026-11-14', '2026-11-20', true);
+assert.deepEqual(ley.dias.map(d => d.importe), [360, 450, 1080]); // normal, domingo +25 %, feriado ×3
+assert.equal(ley.total, 360 + 450 + 1080 + 80);
 console.log('pagos: ok');

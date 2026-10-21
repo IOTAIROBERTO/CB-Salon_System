@@ -8,7 +8,7 @@
 // - Un punto por cada $20 en servicios y por cada $10 en producto, multiplicado por
 //   el nivel en que va la clienta: Marfil 1x, Dorado 1.15x, Ónix 1.37x.
 // - Bonos fijos: reserva en línea, visita en su mes de cumpleaños, amiga recomendada.
-// - Cada mes completo sin visita ni compra se pierde un porcentaje (meses de gracia opcionales).
+// - Después de 1 mes de gracia, cada mes completo sin visita ni compra se pierde un porcentaje (v4).
 // - Descuento en productos que se desbloquea con los puntos (5%, 10% y 15%).
 // - Los puntos se canjean por saldo a favor (productos, color, maquillaje o corte).
 // - Cortesías: detalle de cumpleaños y corte de cabello por constancia.
@@ -53,7 +53,7 @@ export const PARAMETROS_CIRCULO: ParametrosCirculo = {
   cumpleanos: 50,
   referida: 100,
   inactividadPorcentaje: 10,
-  mesesDeGracia: 0,
+  mesesDeGracia: 1, // v4: con color cada 8 semanas hay meses sin visita y no se castiga a la clienta constante
   dorado: 500,
   onix: 1500,
   multiplicadorDorado: 1.15,
