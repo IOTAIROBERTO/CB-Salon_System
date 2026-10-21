@@ -13,7 +13,8 @@ export const registrarCanjes = async (clienteId: string, claves: ClaveBeneficio[
   });
 };
 
-/** Cambia puntos por saldo a favor (solo la Dueña): el canje queda en la clienta y el saldo en movimientosSaldo */
+/** Cambia puntos por saldo a favor (solo la Dueña). Los puntos se descuentan del movimiento de saldo;
+ *  la copia en la clienta es solo para el historial. */
 export const canjearPuntos = async (clienteId: string, puntos: number, p: ParametrosCirculo) => {
   const cliente = await db.clientes.get(clienteId);
   if (!cliente) throw new Error('No se encontró la clienta');
@@ -21,7 +22,7 @@ export const canjearPuntos = async (clienteId: string, puntos: number, p: Parame
   const monto = montoCanje(puntos, p);
   await db.transaction('rw', db.clientes, db.movimientosSaldo, async () => {
     await db.clientes.update(clienteId, { canjes: [...(cliente.canjes || []), { clave: 'saldo', fecha, puntos }] });
-    await db.movimientosSaldo.add({ id: `sal_club_${clienteId}_${Date.now()}`, clienteId, fecha, monto, concepto: `Canje de ${puntos} puntos del ${NOMBRE_CIRCULO}`, origen: 'club' });
+    await db.movimientosSaldo.add({ id: `sal_club_${clienteId}_${Date.now()}`, clienteId, fecha, monto, concepto: `Canje de ${puntos} puntos del ${NOMBRE_CIRCULO}`, origen: 'club', puntos });
   });
   return monto;
 };

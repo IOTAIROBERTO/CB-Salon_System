@@ -122,9 +122,13 @@ export const siguienteNivel = (puntos: number, p: ParametrosCirculo = PARAMETROS
     : puntos < p.onix ? { nivel: 'onix', falta: p.onix - puntos }
       : null;
 
-/** Puntos, nivel y movimientos de una clienta a la fecha */
+/** Saldo a favor de la clienta (movimientosSaldo): los de origen 'club' traen los puntos canjeados */
+interface MovimientoL { clienteId: string; fecha: string; puntos?: number; origen?: string }
+
+/** Puntos, nivel y movimientos de una clienta a la fecha. Los canjes por saldo se leen de movimientosSaldo,
+ *  que solo escribe la Dueña, para que nadie más pueda devolver puntos ya cambiados por dinero. */
 export const estadoCirculo = (cliente: ClienteL, citas: CitaL[], ventas: VentaL[], clientes: ClienteL[], servicios: ServicioL[],
-  p: ParametrosCirculo = PARAMETROS_CIRCULO, hoy = new Date()): EstadoCirculo => {
+  p: ParametrosCirculo = PARAMETROS_CIRCULO, hoy = new Date(), saldo: MovimientoL[] = []): EstadoCirculo => {
   const fin = hoyISO(hoy);
   const enRango = (f: string) => f >= p.inicio && f <= fin;
   type Ev = { fecha: string; concepto: string; puntos: number; visita: boolean; compra?: boolean };
@@ -149,8 +153,8 @@ export const estadoCirculo = (cliente: ClienteL, citas: CitaL[], ventas: VentaL[
       .map(dia).sort()[0];
     if (color) eventos.push({ fecha: color, concepto: 'Amiga recomendada', puntos: p.referida, visita: false });
   }
-  for (const c of (cliente.canjes || []).filter(c => c.clave === 'saldo' && c.puntos && enRango(c.fecha.slice(0, 10)))) {
-    eventos.push({ fecha: c.fecha.slice(0, 10), concepto: 'Canje por saldo a favor', puntos: -c.puntos!, visita: false });
+  for (const m of saldo.filter(m => m.clienteId === cliente.id && m.origen === 'club' && m.puntos && enRango(m.fecha.slice(0, 10)))) {
+    eventos.push({ fecha: m.fecha.slice(0, 10), concepto: 'Canje por saldo a favor', puntos: -m.puntos!, visita: false });
   }
   eventos.sort((a, b) => a.fecha.localeCompare(b.fecha));
 

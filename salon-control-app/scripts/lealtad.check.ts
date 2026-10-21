@@ -39,9 +39,14 @@ assert.equal(ec.puntos, 665);
 assert.equal(ec.nivel, 'dorado');
 assert.match(ec.movimientos[ec.movimientos.length - 1].concepto, /×1\.15/);
 
-// Canje de puntos por saldo: resta los puntos
-const ecCanje = estadoCirculo({ ...c, canjes: [{ clave: 'saldo', fecha: '2027-02-08T10:00:00Z', puntos: 200 }] }, citasC, [], [c], servicios, PARAMETROS_CIRCULO, new Date('2027-02-10T12:00:00'));
+// Canje de puntos por saldo: resta los puntos del movimiento de saldo (solo la Dueña), no de la clienta
+const canje = { clienteId: 'c', fecha: '2027-02-08T10:00:00Z', puntos: 200, origen: 'club' };
+const ecCanje = estadoCirculo(c, citasC, [], [c], servicios, PARAMETROS_CIRCULO, new Date('2027-02-10T12:00:00'), [canje, { ...canje, clienteId: 'otra' }]);
 assert.equal(ecCanje.puntos, 665 - 200); // el canje del 8 de febrero resta después de la compra del 5
+const borrado = estadoCirculo({ ...c, canjes: [] }, citasC, [], [c], servicios, PARAMETROS_CIRCULO, new Date('2027-02-10T12:00:00'), [canje]);
+assert.equal(borrado.puntos, 665 - 200); // borrar el historial en la clienta no devuelve los puntos
+assert.equal(estadoCirculo({ ...c, canjes: [{ clave: 'saldo', fecha: '2027-02-08T10:00:00Z', puntos: 200 }] }, citasC, [], [c], servicios,
+  PARAMETROS_CIRCULO, new Date('2027-02-10T12:00:00')).puntos, 665); // y escribir canjes en la clienta no quita puntos
 assert.equal(montoCanje(200), 50);
 assert.equal(tituloCanje({ clave: 'saldo', puntos: 200 }), '200 puntos cambiados por saldo');
 assert.equal(tituloCanje({ clave: 'ampolleta' }), 'ampolleta'); // canjes viejos no truenan

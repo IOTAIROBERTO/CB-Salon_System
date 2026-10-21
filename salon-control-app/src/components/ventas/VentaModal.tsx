@@ -34,11 +34,12 @@ export default function VentaModal({
   // Descuento en productos que la clienta ya desbloqueó en el Club (5, 10 o 15%)
   const descuentoClub = useLiveQuery(async () => {
     if (!ventaData.clienteId) return 0;
-    const [cliente, citas, ventas, todas, servicios, settings] = await Promise.all([db.clientes.get(ventaData.clienteId), db.citas.toArray(),
-      db.ventas.toArray(), db.clientes.toArray(), db.servicios.toArray(), db.configuracion.get('settings')]);
+    const [cliente, citas, ventas, todas, servicios, settings, saldo] = await Promise.all([db.clientes.get(ventaData.clienteId), db.citas.toArray(),
+      db.ventas.toArray(), db.clientes.toArray(), db.servicios.toArray(), db.configuracion.get('settings'),
+      db.movimientosSaldo.where('clienteId').equals(ventaData.clienteId).toArray()]);
     if (!cliente) return 0;
     const p = parametrosDe(settings as any);
-    return descuentoProducto(estadoCirculo(cliente, citas, ventas, todas, servicios, p).puntos, p);
+    return descuentoProducto(estadoCirculo(cliente, citas, ventas, todas, servicios, p, undefined, saldo).puntos, p);
   }, [ventaData.clienteId]) || 0;
 
   if (!isOpen) return null;

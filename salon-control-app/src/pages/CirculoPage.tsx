@@ -37,6 +37,7 @@ export default function CirculoPage() {
   const citas = useLiveQuery(() => db.citas.toArray()) || [];
   const ventas = useLiveQuery(() => db.ventas.toArray()) || [];
   const servicios = useLiveQuery(() => db.servicios.toArray()) || [];
+  const saldo = useLiveQuery(() => db.movimientosSaldo.toArray()) || [];
   const settings = useLiveQuery(() => db.configuracion.get('settings'));
   const p = parametrosDe(settings as any);
   const [filtro, setFiltro] = useState<Nivel | 'todas'>('todas');
@@ -50,10 +51,10 @@ export default function CirculoPage() {
   const filas = useMemo(() => clientes
     .filter(c => c.activo !== false)
     .map(c => {
-      const e = estadoCirculo(c, citas, ventas, clientes, servicios, p);
+      const e = estadoCirculo(c, citas, ventas, clientes, servicios, p, undefined, saldo);
       return { cliente: c, codigo: codigoClienta(c.id), ...e, sig: siguienteNivel(e.puntos, p), disponibles: beneficiosDisponibles(c, e.nivel, clientes, citas, servicios, new Date(), p), descuento: descuentoProducto(e.puntos, p) };
     })
-    .sort((a, b) => b.puntos - a.puntos || a.cliente.nombre.localeCompare(b.cliente.nombre)), [clientes, citas, ventas, servicios, p]);
+    .sort((a, b) => b.puntos - a.puntos || a.cliente.nombre.localeCompare(b.cliente.nombre)), [clientes, citas, ventas, servicios, saldo, p]);
 
   const q = normalizar(busqueda.trim());
   const visibles = filas.filter(f =>

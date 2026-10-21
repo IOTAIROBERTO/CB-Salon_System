@@ -79,7 +79,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   const ventasTodas = useLiveQuery(() => db.ventas.toArray()) || [];
   const clienta = clientesTodos.find(c => c.id === cita.clienteId);
   const settingsCirculo = useLiveQuery(() => db.configuracion.get('settings'));
-  const nivel = clienta ? estadoCirculo(clienta, citasTodas, ventasTodas, clientesTodos, servicios as any, parametrosDe(settingsCirculo as any)).nivel : 'marfil';
+  const nivel = clienta ? estadoCirculo(clienta, citasTodas, ventasTodas, clientesTodos, servicios as any, parametrosDe(settingsCirculo as any), undefined, movimientosSaldo).nivel : 'marfil';
   const aplicados = serviciosAdicionales.filter(s => s.beneficio).map(s => s.beneficio!);
   const sinAplicar = (lista: ClaveBeneficio[]) => {
     const restantes = [...aplicados];

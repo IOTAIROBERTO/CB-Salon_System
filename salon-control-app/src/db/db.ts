@@ -240,6 +240,7 @@ export interface MovimientoSaldo {
     folio?: string;
     citaId?: string;
     origen?: 'club'; // saldo que salió de canjear puntos: para productos, color, maquillaje o corte
+    puntos?: number; // puntos canjeados (origen 'club'): de aquí se descuentan, no de la clienta
 }
 
 export interface Consentimiento {
