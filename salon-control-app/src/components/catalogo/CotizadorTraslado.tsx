@@ -39,9 +39,11 @@ export default function CotizadorTraslado({ servicios }: CotizadorTrasladoProps)
   const elegidos = permitidos.filter(s => servicioIds.includes(s.id));
   const km = zona ? zona.km : kmOtro;
   const dias = zona ? zona.dias : diasOtro;
-  const { gasolina, viaticos, traslado } = calcularTraslado(km, dias, params);
+  // Novias que obligan a dormir allá: una noche menos que los días. En Arizona no se paga hotel (v5).
+  const noches = zona?.color ? 0 : Math.max(0, dias - 1);
+  const { gasolina, viaticos, traslado, hospedaje } = calcularTraslado(km, dias, params, noches);
   const servicio = elegidos.reduce((t, s) => t + s.precioSugerido, 0) * clientas;
-  const total = servicio + traslado;
+  const total = servicio + traslado + hospedaje;
   const anticipo = Math.round((total * 0.3) / 50) * 50;
   const lugar = zona ? zona.nombre : 'fuera de Hermosillo';
   const hayColor = elegidos.some(s => s.categoria === 'color');
@@ -54,6 +56,7 @@ export default function CotizadorTraslado({ servicios }: CotizadorTrasladoProps)
     `Cotización ${lugar}${clientas > 1 ? ` (${clientas} clientas)` : ''}:`,
     ...elegidos.map(s => `• ${s.nombre}: ${formatCurrency(s.precioSugerido)}${clientas > 1 ? ` × ${clientas}` : ''}`),
     `• Traslado (gasolina y viáticos): ${formatCurrency(traslado)}`,
+    ...(noches ? [`• Hospedaje (${noches} ${noches === 1 ? 'noche' : 'noches'}): ${formatCurrency(hospedaje)}`] : []),
     `Total: ${formatCurrency(total)}`,
     `Anticipo para apartar la fecha (30%): ${formatCurrency(anticipo)}`
   ].join('\n');
@@ -209,7 +212,8 @@ export default function CotizadorTraslado({ servicios }: CotizadorTrasladoProps)
                     ['precioGasolina', 'Gasolina por litro'],
                     ['comidaDia', 'Comida por persona/día'],
                     ['cafeDia', 'Café por persona/día'],
-                    ['personas', 'Personas']
+                    ['personas', 'Personas'],
+                    ['hospedajeNoche', 'Hospedaje por noche (mínimo)']
                   ] as const).map(([k, etiqueta]) => (
                     <div key={k}>
                       <label className="block text-xs text-gray-600 mb-1">{etiqueta}</label>
@@ -229,12 +233,13 @@ export default function CotizadorTraslado({ servicios }: CotizadorTrasladoProps)
               <div className="flex justify-between text-gray-600"><span>Gasolina ({km} km)</span><span>{formatCurrency(gasolina)}</span></div>
               <div className="flex justify-between text-gray-600"><span>Viáticos ({dias} {dias === 1 ? 'día' : 'días'}, {params.personas} personas)</span><span>{formatCurrency(viaticos)}</span></div>
               <div className="flex justify-between font-medium border-t pt-2"><span>Traslado</span><span>{formatCurrency(traslado)}</span></div>
+              {noches > 0 && <div className="flex justify-between font-medium"><span>Hospedaje ({noches} {noches === 1 ? 'noche' : 'noches'})</span><span>{formatCurrency(hospedaje)}</span></div>}
               <div className="flex justify-between text-lg font-semibold border-t pt-2"><span>Total</span><span>{formatCurrency(total)}</span></div>
               <div className="flex justify-between text-purple-700"><span>Anticipo 30%</span><span>{formatCurrency(anticipo)}</span></div>
               {avisos.map(a => (
                 <p key={a} className="text-xs text-amber-800 flex gap-1"><AlertTriangle size={13} className="shrink-0 mt-0.5" />{a}</p>
               ))}
-              <p className="text-xs text-gray-500 pt-1">Sin hospedaje ni casetas; para Arizona no incluye visa ni seguro del carro.</p>
+              <p className="text-xs text-gray-500 pt-1">Sin casetas. Hospedaje mínimo por noche cuando hay que dormir allá; si el hotel cuesta más, la diferencia la pone el salón (anotarla como gasto del viaje). Para Arizona no incluye visa ni seguro del carro.</p>
               <button onClick={copiar} disabled={elegidos.length === 0}
                 className="w-full mt-2 flex items-center justify-center gap-2 bg-purple-600 text-white rounded-lg py-2 hover:bg-purple-700 disabled:opacity-40">
                 <Copy size={16} /> Copiar para WhatsApp

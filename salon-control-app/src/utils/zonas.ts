@@ -26,8 +26,9 @@ export const ZONAS_INICIALES: Zona[] = [
   { id: 'guaymas', nombre: 'Guaymas', region: 'Sonora', km: 260, dias: 1, color: false, anticipacionDias: 7, activa: true },
   { id: 'empalme', nombre: 'Empalme', region: 'Sonora', km: 250, dias: 1, color: false, anticipacionDias: 7, activa: true },
   { id: 'san-carlos', nombre: 'San Carlos', region: 'Sonora', km: 300, dias: 2, color: false, anticipacionDias: 7, activa: true },
-  // Mínimos a US$200 por diseño (v4), de la «Calculadora de viajes - Arizona y Sonora»
-  { id: 'tucson', nombre: 'Tucson y alrededores', region: 'Arizona', km: 730, dias: 2, color: true, minimoClientas: 4, anticipacionDias: 14, activa: true },
+  // Mínimo = clientas para ganar más que quedándose en el salón, sin hotel y con la asistente a US$20 por
+  // hora (v5): Tucson a US$200 y Phoenix a US$220 («Calculadora de viajes - Arizona y Sonora»)
+  { id: 'tucson', nombre: 'Tucson y alrededores', region: 'Arizona', km: 730, dias: 2, color: true, minimoClientas: 5, anticipacionDias: 14, activa: true },
   { id: 'phoenix', nombre: 'Phoenix, Glendale y Scottsdale', region: 'Arizona', km: 1150, dias: 3, color: true, minimoClientas: 7, anticipacionDias: 14, activa: true }
 ];
 
