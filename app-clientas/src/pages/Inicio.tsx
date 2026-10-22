@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Clock, Facebook, Instagram, MapPin, MessageCircle, Star } from 'lucide-react'
+import AvisoInstalar from '@/components/AvisoInstalar'
 import { DATOS_SALON, ENLACE_FACEBOOK, ENLACE_INSTAGRAM, ENLACE_MAPA, NOMBRE_CLUB, enlaceWhatsApp } from '@/salon'
 
 export default function Inicio() {
@@ -12,6 +13,8 @@ export default function Inicio() {
       </header>
 
       <main className="space-y-3 p-4">
+        <AvisoInstalar />
+
         <Link to="/club" className="tarjeta flex items-center gap-3">
           <Star className="shrink-0 text-marca-dorado" />
           <div>

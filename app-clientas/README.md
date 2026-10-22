@@ -9,7 +9,7 @@ notificaciones y se actualiza sola cada vez que se publica la web (sin subir otr
 
 | Pantalla | Qué hace |
 |---|---|
-| Inicio | Logo, botón para agendar, Club, cómo llegar, horario, WhatsApp, Instagram y Facebook. |
+| Inicio | Logo, botón para agendar, Club, cómo llegar, horario, WhatsApp, Instagram y Facebook. Aviso para instalarla sin tienda: botón «Instalar» en Android, pasos de «Agregar a pantalla de inicio» en iPhone y «ábrela en tu navegador» si viene de Instagram o Facebook. No sale si ya está instalada o si la clienta lo cerró. |
 | Agendar | Catálogo 2027 por categoría («desde $…»). La clienta elige servicio, fecha y turno y la solicitud sale **por WhatsApp ya escrita**; Cristina o Roberto confirman y mandan el anticipo. |
 | Productos | Aviso de catálogo próximo y botón para preguntar por WhatsApp. |
 | Mi Club | Reglas del Club Cristina Borquez: cómo se juntan puntos, niveles, descuentos, canje y cortesías. |
