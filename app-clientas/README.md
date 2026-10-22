@@ -26,12 +26,15 @@ npm run dev        # http://localhost:3002
 npm run build      # revisa tipos y deja la app en dist/
 ```
 
-## Publicarla en la web (después de mudarse a Cloudflare)
+## Publicarla en la web
 
-1. Cloudflare → Workers y Pages → crear un proyecto conectado al repositorio: carpeta raíz `app-clientas`,
-   comando `npx vite build`, salida `dist`.
-2. Dominio propio: `app.cristinaborquez.com`. La TWA necesita el archivo `/.well-known/assetlinks.json` en la raíz
-   de ese dominio; ya va en `public/.well-known/` y se publica solo.
+Ya está en Cloudflare Pages (cuenta de iotai.roberto@gmail.com), proyecto **cristinaborquez-app**:
+<https://cristinaborquez-app.pages.dev>. Se publica sola con cada cambio en `main` (carpeta raíz `app-clientas`,
+comando `npx vite build`, salida `dist`, `NODE_VERSION=20`).
+
+Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto → Custom domains → agregar
+`app.cristinaborquez.com`. La TWA necesita `/.well-known/assetlinks.json` en la raíz de ese dominio; ya va en
+`public/.well-known/` y se publica solo.
 
 ## Publicarla en Google Play
 

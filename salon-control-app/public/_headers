@@ -1,0 +1,6 @@
+# Cloudflare Pages: los mismos encabezados que netlify.toml.
+# SAMEORIGIN y no DENY: la página Galería de la app muestra /galeria/ en un iframe.
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
