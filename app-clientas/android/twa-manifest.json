@@ -1,0 +1,32 @@
+{
+  "packageId": "com.cristinaborquez.app",
+  "host": "app.cristinaborquez.com",
+  "name": "Cristina Borquez Beauty Salon",
+  "launcherName": "Cristina Borquez",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#111111",
+  "themeColorDark": "#111111",
+  "navigationColor": "#111111",
+  "navigationColorDark": "#111111",
+  "backgroundColor": "#111111",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://app.cristinaborquez.com/icons/icon-512.png",
+  "maskableIconUrl": "https://app.cristinaborquez.com/icons/maskable-512.png",
+  "webManifestUrl": "https://app.cristinaborquez.com/manifest.webmanifest",
+  "splashScreenFadeOutDuration": 300,
+  "fallbackType": "customtabs",
+  "enableSiteSettingsShortcut": false,
+  "appVersionName": "0.1.0",
+  "appVersionCode": 1,
+  "signingKey": {
+    "path": "C:/Users/Roberto/Documents/llaves-cb/cb-app-subida.keystore",
+    "alias": "cb-app"
+  },
+  "shortcuts": [
+    { "name": "Agendar", "shortName": "Agendar", "url": "/#/agendar", "chosenIconUrl": "https://app.cristinaborquez.com/icons/icon-192.png" },
+    { "name": "Mi Club", "shortName": "Mi Club", "url": "/#/club", "chosenIconUrl": "https://app.cristinaborquez.com/icons/icon-192.png" }
+  ],
+  "generatorApp": "bubblewrap-cli"
+}

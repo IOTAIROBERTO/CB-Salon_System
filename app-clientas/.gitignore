@@ -1,0 +1,16 @@
+node_modules
+dist
+*.local
+
+# Android (Bubblewrap): lo que genera la compilación y, sobre todo, la llave de firma.
+# La llave NUNCA se sube: si se pierde o se filtra, la app de Play queda en riesgo. Va en Bitwarden.
+android/*.apk
+android/*.aab
+android/*.idsig
+android/app/
+android/build/
+android/gradle*
+android/.gradle/
+android/local.properties
+*.keystore
+*.jks

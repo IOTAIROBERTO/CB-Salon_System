@@ -4,8 +4,24 @@
     {
       "name": "salon-control-app",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "salon-control-app", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "salon-control-app",
+        "run",
+        "dev"
+      ],
       "port": 3000
+    },
+    {
+      "name": "app-clientas",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "app-clientas",
+        "run",
+        "dev"
+      ],
+      "port": 3002
     }
   ]
 }

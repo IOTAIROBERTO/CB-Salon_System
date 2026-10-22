@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply font-sans text-marca-grafito antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* En la capa de componentes para que las clases sueltas (bg-…, w-…) puedan cambiarlas */
+@layer components {
+  .titulo {
+    @apply font-display text-marca-negro;
+  }
+
+  .boton {
+    @apply flex items-center justify-center gap-2 rounded-full bg-marca-negro px-6 py-3 text-sm font-medium tracking-wide text-white active:bg-marca-grafito;
+  }
+
+  .boton-claro {
+    @apply flex items-center justify-center gap-2 rounded-full border border-marca-dorado px-6 py-3 text-sm font-medium tracking-wide text-marca-dorado-prof active:bg-marca-champan;
+  }
+
+  .tarjeta {
+    @apply rounded-2xl border border-marca-linea bg-white p-4;
+  }
+
+  .campo {
+    @apply w-full rounded-xl border border-marca-linea bg-white px-4 py-3 text-base outline-none focus:border-marca-dorado;
+  }
+}
