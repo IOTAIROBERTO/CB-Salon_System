@@ -53,8 +53,9 @@ npm run build      # revisa tipos y deja la app en dist/
    del teléfono, descripción corta y larga, aviso de privacidad (ya existe en `02_Legal_y_Clientas`, se publica en
    la web) y el formulario de *Seguridad de los datos* (nombre, teléfono y citas; no se venden ni se comparten).
 
-> **Antes de la primera subida, confirmar** el identificador `com.cristinaborquez.app` y el dominio
-> `app.cristinaborquez.com`: en Play el identificador ya no se puede cambiar nunca.
+> **Confirmado el 22 de octubre de 2026:** identificador `com.cristinaborquez.app` y dominio
+> `app.cristinaborquez.com`. En Play el identificador ya no se puede cambiar nunca: no tocarlo en
+> `android/twa-manifest.json` ni en `public/.well-known/assetlinks.json`.
 
 ## Lo que sigue (fases de la propuesta)
 
