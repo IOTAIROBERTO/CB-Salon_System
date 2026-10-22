@@ -21,10 +21,11 @@ export interface Zona {
 export const SALON = 'salon';
 export const NOMBRE_SALON = 'Hermosillo · en el salón';
 
+// Novias en Sonora: 2 días y una noche (llegar un día antes); el cotizador cobra el hospedaje mínimo de esa noche (21 oct)
 export const ZONAS_INICIALES: Zona[] = [
-  { id: 'kino', nombre: 'Bahía de Kino', region: 'Sonora', km: 220, dias: 1, color: false, anticipacionDias: 7, activa: true },
-  { id: 'guaymas', nombre: 'Guaymas', region: 'Sonora', km: 260, dias: 1, color: false, anticipacionDias: 7, activa: true },
-  { id: 'empalme', nombre: 'Empalme', region: 'Sonora', km: 250, dias: 1, color: false, anticipacionDias: 7, activa: true },
+  { id: 'kino', nombre: 'Bahía de Kino', region: 'Sonora', km: 220, dias: 2, color: false, anticipacionDias: 7, activa: true },
+  { id: 'guaymas', nombre: 'Guaymas', region: 'Sonora', km: 260, dias: 2, color: false, anticipacionDias: 7, activa: true },
+  { id: 'empalme', nombre: 'Empalme', region: 'Sonora', km: 250, dias: 2, color: false, anticipacionDias: 7, activa: true },
   { id: 'san-carlos', nombre: 'San Carlos', region: 'Sonora', km: 300, dias: 2, color: false, anticipacionDias: 7, activa: true },
   // Mínimo = clientas para ganar más que quedándose en el salón en un viaje de 3 días, sin asistente: Cristina
   // atiende 1 o 2 por día de trabajo con descanso en medio (6 o 7 por semana), gasolina por tanque del Mazda 2 (21 oct): Tucson a US$200 y Phoenix a US$220 («Calculadora de viajes - Arizona y Sonora»)
