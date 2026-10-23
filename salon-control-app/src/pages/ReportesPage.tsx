@@ -29,7 +29,7 @@ export default function ReportesPage() {
     <div className="w-full max-w-none space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Reportes y Análisis</h1>
+        <h1 className="font-bold text-gray-900">Reportes</h1>
         <div className="flex gap-2">
           <ExportButton reportData={reportData} period={reportPeriod} />
         </div>

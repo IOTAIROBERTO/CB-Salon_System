@@ -17,7 +17,7 @@ export default function CumpleanerosBanner({ cumpleaneros }: CumpleanerosBannerP
   const cumpleanosHoy = cumpleaneros.filter(cliente => esCumpleanosHoy(cliente.cumple));
 
   return (
-    <div className="bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200 rounded-lg p-4">
+    <div className="bg-marca-marfil border border-marca-dorado/40 rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Gift size={20} className="text-pink-600" />
@@ -49,10 +49,10 @@ export default function CumpleanerosBanner({ cumpleaneros }: CumpleanerosBannerP
             {cumpleanosHoy.map(cliente => (
               <div
                 key={cliente.id}
-                className="bg-pink-200 border-2 border-pink-400 rounded-lg px-3 py-2 shadow-sm animate-pulse"
+                className="bg-white border border-marca-dorado/50 rounded-lg px-3 py-2 shadow-sm"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-xl">🎂</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-marca-dorado" />
                   <div>
                     <span className="font-semibold text-pink-900">{cliente.nombre}</span>
                     <div className="text-sm text-pink-700">
@@ -79,7 +79,7 @@ export default function CumpleanerosBanner({ cumpleaneros }: CumpleanerosBannerP
                 className="bg-white border border-pink-200 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-pink-600">🎈</span>
+                  <span className="text-marca-dorado">·</span>
                   <div>
                     <div className="font-medium text-gray-900">{cliente.nombre}</div>
                     <div className="text-xs text-pink-600">

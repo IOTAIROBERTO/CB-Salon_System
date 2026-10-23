@@ -205,7 +205,7 @@ export default function ClienteModal({
               {!isEditing && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <h4 className="text-sm font-semibold text-blue-800 mb-2">
-                    💡 Información importante:
+                    Información importante:
                   </h4>
                   <ul className="text-xs text-blue-700 space-y-1">
                     <li>• El cliente estará disponible para crear citas una vez guardado</li>

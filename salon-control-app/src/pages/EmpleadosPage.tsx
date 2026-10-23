@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, Empleado } from '../db/db';
-import { Users, UserPlus, DollarSign, Trash2, Edit2, Search, X } from 'lucide-react';
+import { UserPlus, DollarSign, Trash2, Edit2, Search, X } from 'lucide-react';
 import { calculateCommission, formatCurrency } from '../utils/financialUtils';
 import { formatDate } from '../utils/clientesUtils';
 import { sinVentasEspejo } from '../utils/ventasUtils';
@@ -152,8 +152,8 @@ export default function EmpleadosPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <Users className="text-purple-600" /> Gestión de Personal
+                    <h1 className="font-bold text-gray-800 flex items-center gap-2">
+                        Equipo
                     </h1>
                     <p className="text-gray-500">Equipo, pago por horas, bonos y comisiones</p>
                 </div>

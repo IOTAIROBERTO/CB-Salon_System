@@ -65,12 +65,12 @@ export default function AvisoInstalar() {
   }
 
   return (
-    <section className="tarjeta relative border-marca-dorado bg-marca-marfil">
-      <button onClick={cerrar} aria-label="Cerrar aviso" className="absolute right-1 top-1 p-2 text-marca-gris"><X size={18} /></button>
-      <div className="flex gap-3 pr-6">
-        <Download className="shrink-0 text-marca-dorado" />
-        <div className="min-w-0 flex-1 space-y-2 text-sm text-marca-gris">
-          <p className="font-medium text-marca-negro">Instala la app en tu celular</p>
+    <section className="tarjeta relative border-l-2 border-marca-dorado">
+      <button onClick={cerrar} aria-label="Cerrar aviso" className="absolute right-1 top-1 p-2 text-marca-gris"><X size={16} strokeWidth={1.5} /></button>
+      <div className="flex gap-4 pr-6">
+        <Download size={18} strokeWidth={1.4} className="mt-0.5 shrink-0 text-marca-dorado" />
+        <div className="min-w-0 flex-1 space-y-2 text-sm leading-relaxed text-marca-gris">
+          <p className="font-display text-xl text-marca-negro">Lleva el salón en tu celular</p>
           <p>Queda con su ícono junto a tus apps y la abres en un toque, sin buscar el enlace.</p>
           {pasos}
         </div>

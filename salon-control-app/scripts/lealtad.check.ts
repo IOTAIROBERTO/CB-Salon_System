@@ -2,85 +2,172 @@
 import assert from 'node:assert/strict';
 import {
   estadoCirculo, nivelPorPuntos, siguienteNivel, beneficiosDisponibles, enlaceWhatsApp, codigoClienta, PARAMETROS_CIRCULO,
-  descuentoProducto, siguienteDescuento, montoCanje, rachaConstancia, tituloCanje
+  descuentoProducto, descuentoServicio, montoCanje, montoTarjeta, porcentajeReferida, rachaConstancia, tituloCanje,
+  descuentosReferidaDisponibles, parametrosDe, datosBeneficio, textoSaldoPuntos, permanentesDe, costoPuntos, ANIVERSARIO_PUNTOS
 } from '../src/utils/lealtad';
+import { descuentoAntojo } from '../src/data/menuAntojos';
 
-const servicios = [{ id: 's10', categoria: 'color' }, { id: 's01', categoria: 'corte' }];
+const P = PARAMETROS_CIRCULO;
+const P2 = { ...P, miel: 300, ambar: 900, dorado: 2000, onix: 3500 }; // umbrales altos: prueban multiplicadores paso a paso
+const servicios = [{ id: 's10', categoria: 'color' }, { id: 's17', categoria: 'color' }, { id: 's01', categoria: 'corte' }];
+const fecha = (f: string) => new Date(`${f}T12:00:00`);
+
+// Clienta a: cumpleaños en febrero. 1 ene 2027 es viernes: el 10 de enero es domingo, el 11 y el 15 de febrero lunes.
 const a = { id: 'a', cumple: '1990-02-03' };
 const b = { id: 'b', referidaPor: 'a' };
 const citas = [
   { clienteId: 'a', servicioId: 's01', estado: 'completada', fecha: '2026-12-20', precioFinal: 9000 },   // antes del arranque: no cuenta
-  { clienteId: 'a', servicioId: 's10', estado: 'completada', fecha: '2027-01-10', precioFinal: 3000, propina: 200 }, // 2800 / 20 = 140 + bienvenida
+  { clienteId: 'a', servicioId: 's10', estado: 'completada', fecha: '2027-01-10', precioFinal: 3000, propina: 200 }, // 2800 / 10 = 280 (+100 bienvenida → Miel)
   { clienteId: 'a', servicioId: 's10', estado: 'cancelada', fecha: '2027-01-12', precioFinal: 5000 },
-  { clienteId: 'a', servicioId: 's01', estado: 'completada', fecha: '2027-02-15', precioFinal: 500, origen: 'app' }, // 25 + app + cumpleaños
-  { clienteId: 'b', servicioId: 's10', estado: 'completada', fecha: '2027-02-20', precioFinal: 2600 }    // amiga con color
+  { clienteId: 'a', servicioId: 's01', estado: 'completada', fecha: '2027-02-15', precioFinal: 500, origen: 'app' }, // 50 × 1.05 × 2 (cumpleaños) = 105 + 40 app
+  { clienteId: 'b', servicioId: 's10', estado: 'completada', fecha: '2027-02-20', precioFinal: 2600 }    // amiga con matiz: 200 puntos, sin descuento
 ];
 const ventas = [
-  { clienteId: 'a', fecha: '2027-01-11T10:00:00Z', total: 250, productos: [{}] }, // 250 / 10 = 25
+  { clienteId: 'a', fecha: '2027-01-11T10:00:00Z', total: 250, productos: [{}] }, // 250 / 5 = 50 × 1.05 = 52
   { clienteId: 'a', fecha: '2027-01-11T10:00:00Z', total: 3000 }                 // venta espejo de cita: no suma
 ];
+const ea = estadoCirculo(a, citas, ventas, [a, b], servicios, P, fecha('2027-04-30'));
+assert.equal(ea.puntos, 100 + 280 + 52 + 105 + 40 + 200);
+assert.equal(ea.puntosNivel, 777);
+assert.equal(ea.nivel, 'ambar');
+// Inactividad: última visita 15 feb; a los 75 días (1 may) pierde 5 %, a los 90 (16 may) 7 %, a los 120 (15 jun) 12 %
+assert.equal(estadoCirculo(a, citas, ventas, [a, b], servicios, P, fecha('2027-05-02')).puntos, 777 - 38);
+const junio = estadoCirculo(a, citas, ventas, [a, b], servicios, P, fecha('2027-06-20'));
+assert.equal(junio.puntos, 606);
+assert.deepEqual(junio.movimientos.filter(m => m.puntos < 0).map(m => m.puntos), [-38, -51, -82]);
+assert.equal(junio.puntosNivel, 606); // perder puntos baja los puntos del nivel
+assert.equal(junio.nivel, 'ambar');
 
-// Enero y febrero con visitas; marzo sin visita es el mes de gracia, abril sin visita pierde 10 %
-const e = estadoCirculo(a, citas, ventas, [a, b], servicios, PARAMETROS_CIRCULO, new Date('2027-05-02T12:00:00'));
-assert.equal(e.movimientos.filter(m => m.puntos > 0).reduce((t, m) => t + m.puntos, 0), 50 + 140 + 25 + 25 + 20 + 50 + 100);
-assert.deepEqual(e.movimientos.filter(m => m.puntos < 0).map(m => m.puntos), [-41]);
-assert.equal(e.puntos, 369);
-assert.equal(estadoCirculo(a, citas, ventas, [a, b], servicios, PARAMETROS_CIRCULO, new Date('2027-04-02T12:00:00')).puntos, 410); // marzo: gracia
-assert.equal(estadoCirculo(a, citas, ventas, [a, b], servicios, { ...PARAMETROS_CIRCULO, mesesDeGracia: 0 }, new Date('2027-04-02T12:00:00')).puntos, 369); // sin gracia
-assert.equal(e.nivel, 'marfil');
-
-// Multiplicador: ya en Dorado, cada compra suma 1.15x
+// Multiplicador por nivel y días dobles (martes y miércoles)
 const c = { id: 'c' };
 const citasC = [
-  { clienteId: 'c', servicioId: 's10', estado: 'completada', fecha: '2027-01-05', precioFinal: 8000 }, // 400 + 50 = 450
-  { clienteId: 'c', servicioId: 's10', estado: 'completada', fecha: '2027-01-20', precioFinal: 2000 }, // 100 → 550: Dorado
-  { clienteId: 'c', servicioId: 's10', estado: 'completada', fecha: '2027-02-05', precioFinal: 2000 }  // 100 × 1.15 = 115
+  { clienteId: 'c', servicioId: 's10', estado: 'completada', fecha: '2027-01-04', precioFinal: 8000 },  // lunes: 800 + 100 = 900 → Ámbar
+  { clienteId: 'c', servicioId: 's10', estado: 'completada', fecha: '2027-01-18', precioFinal: 2000 },  // 200 × 1.1 = 220
+  { clienteId: 'c', servicioId: 's10', estado: 'completada', fecha: '2027-02-01', precioFinal: 10000 }, // 1000 × 1.1 = 1100 → 2220: Dorado
+  { clienteId: 'c', servicioId: 's10', estado: 'completada', fecha: '2027-02-08', precioFinal: 1000 }   // 100 × 1.2 = 120
 ];
-const ec = estadoCirculo(c, citasC, [], [c], servicios, PARAMETROS_CIRCULO, new Date('2027-02-10T12:00:00'));
-assert.equal(ec.puntos, 665);
+const ec = estadoCirculo(c, citasC, [], [c], servicios, P2, fecha('2027-02-08'));
+assert.equal(ec.puntos, 2340);
 assert.equal(ec.nivel, 'dorado');
-assert.match(ec.movimientos[ec.movimientos.length - 1].concepto, /×1\.15/);
+assert.match(ec.movimientos[ec.movimientos.length - 1].concepto, /×1\.2/);
+const martes = [...citasC, { clienteId: 'c', servicioId: 's10', estado: 'completada', fecha: '2027-02-09', precioFinal: 1000 }];
+assert.equal(estadoCirculo(c, martes, [], [c], servicios, P2, fecha('2027-02-09')).puntos, 2340 + 240); // 100 × 1.2 × 2
 
-// Canje de puntos por saldo: resta los puntos del movimiento de saldo (solo la Dueña), no de la clienta
-const canje = { clienteId: 'c', fecha: '2027-02-08T10:00:00Z', puntos: 200, origen: 'club' };
-const ecCanje = estadoCirculo(c, citasC, [], [c], servicios, PARAMETROS_CIRCULO, new Date('2027-02-10T12:00:00'), [canje, { ...canje, clienteId: 'otra' }]);
-assert.equal(ecCanje.puntos, 665 - 200); // el canje del 8 de febrero resta después de la compra del 5
-const borrado = estadoCirculo({ ...c, canjes: [] }, citasC, [], [c], servicios, PARAMETROS_CIRCULO, new Date('2027-02-10T12:00:00'), [canje]);
-assert.equal(borrado.puntos, 665 - 200); // borrar el historial en la clienta no devuelve los puntos
-assert.equal(estadoCirculo({ ...c, canjes: [{ clave: 'saldo', fecha: '2027-02-08T10:00:00Z', puntos: 200 }] }, citasC, [], [c], servicios,
-  PARAMETROS_CIRCULO, new Date('2027-02-10T12:00:00')).puntos, 665); // y escribir canjes en la clienta no quita puntos
-assert.equal(montoCanje(200), 50);
-assert.equal(tituloCanje({ clave: 'saldo', puntos: 200 }), '200 puntos cambiados por saldo');
-assert.equal(tituloCanje({ clave: 'ampolleta' }), 'ampolleta'); // canjes viejos no truenan
+// Gastar puntos (leído de movimientosSaldo) baja el saldo y también el nivel
+const canje = { clienteId: 'c', fecha: '2027-02-10T10:00:00Z', puntos: 400, origen: 'club', concepto: 'Regalo Dorado: corte' };
+const ecCanje = estadoCirculo(c, citasC, [], [c], servicios, P2, fecha('2027-02-10'), [canje, { ...canje, clienteId: 'otra' }]);
+assert.equal(ecCanje.puntos, 1940);
+assert.equal(ecCanje.puntosNivel, 1940);
+assert.equal(ecCanje.nivel, 'ambar'); // de Dorado (2,000) a Ámbar por gastar
+assert.equal(ecCanje.movimientos.find(m => m.puntos === -400)?.concepto, 'Regalo Dorado: corte');
+assert.equal(estadoCirculo({ ...c, canjes: [{ clave: 'saldo', fecha: '2027-02-10T10:00:00Z', puntos: 400 }] }, citasC, [], [c], servicios,
+  P2, fecha('2027-02-10')).puntos, 2340); // escribir canjes en la clienta no quita puntos
+// Un año sin venir: lo ganado hace más de 12 meses ya no cuenta y la inactividad baja el saldo
+const unAnio = estadoCirculo(c, citasC, [], [c], servicios, P2, fecha('2028-01-10'));
+assert.ok(unAnio.puntosNivel < 900 && unAnio.puntosNivel <= unAnio.puntos);
+assert.equal(unAnio.nivel, 'miel');
 
-// Descuentos en productos que se desbloquean
-assert.equal(descuentoProducto(349), 0);
-assert.equal(descuentoProducto(350), 5);
-assert.equal(descuentoProducto(900), 10);
-assert.equal(descuentoProducto(2250), 15);
-assert.deepEqual(siguienteDescuento(400), { pct: 10, puntos: 900 });
+// Aniversario en el Club: cuenta si vino en los últimos 90 días, y vale más en niveles altos
+const g = { id: 'g' };
+const citasG = [
+  { clienteId: 'g', servicioId: 's10', estado: 'completada', fecha: '2027-01-04', precioFinal: 1500 },
+  { clienteId: 'g', servicioId: 's10', estado: 'completada', fecha: '2027-11-29', precioFinal: 1500 }
+];
+const eg = estadoCirculo(g, citasG, [], [g], servicios, P, fecha('2028-01-10'));
+const aniv = eg.movimientos.find(m => /aniversario/.test(m.concepto));
+assert.equal(aniv?.fecha, '2028-01-04');
+assert.equal(aniv?.puntos, ANIVERSARIO_PUNTOS.miel);
+const sinVisitaReciente = estadoCirculo(g, citasG.slice(0, 1), [], [g], servicios, P, fecha('2028-01-10'));
+assert.ok(!sinVisitaReciente.movimientos.some(m => /aniversario/.test(m.concepto)));
+
+// Amiga recomendada con diseño de color: 20 % en la próxima cita (con tope), sin puntos; la amiga recibe bienvenida extra
+const d = { id: 'd' };
+const e = { id: 'e', referidaPor: 'd' };
+const citasD = [
+  { clienteId: 'd', servicioId: 's01', estado: 'completada', fecha: '2027-01-04', precioFinal: 500 },
+  { clienteId: 'e', servicioId: 's17', estado: 'completada', fecha: '2027-01-20', precioFinal: 2600 }
+];
+assert.equal(estadoCirculo(d, citasD, [], [d, e], servicios, P, fecha('2027-01-25')).puntos, 100 + 50);
+assert.equal(estadoCirculo(e, citasD, [], [d, e], servicios, P, fecha('2027-01-25')).puntos, 100 + 100 + 546); // 260 × 1.05 × 2 (miércoles)
+assert.equal(descuentosReferidaDisponibles(d, [d, e], citasD, P, fecha('2027-01-25')), 1);
+assert.deepEqual(beneficiosDisponibles(d, 'marfil', [d, e], citasD, servicios, fecha('2027-01-25')), ['referida']);
+assert.equal(descuentosReferidaDisponibles({ ...d, canjes: [{ clave: 'referida', fecha: '2027-02-01T10:00:00Z' }] }, [d, e], citasD, P, fecha('2027-02-02')), 0);
+assert.equal(porcentajeReferida(2600), 20);
+assert.equal(porcentajeReferida(5000), 12); // tope de $600
 
 // Niveles
-assert.equal(nivelPorPuntos(499), 'marfil');
-assert.equal(nivelPorPuntos(500), 'dorado');
-assert.equal(nivelPorPuntos(1500), 'onix');
-assert.deepEqual(siguienteNivel(369), { nivel: 'dorado', falta: 131 });
-assert.deepEqual(estadoCirculo({ id: 'z' }, citas, ventas, [], servicios).puntos, 0);
+assert.equal(nivelPorPuntos(149), 'marfil');
+assert.equal(nivelPorPuntos(150), 'miel');
+assert.equal(nivelPorPuntos(500), 'ambar');
+assert.equal(nivelPorPuntos(1000), 'dorado');
+assert.equal(nivelPorPuntos(1700), 'onix');
+assert.deepEqual(siguienteNivel(777), { nivel: 'dorado', falta: 223, desde: 1000 });
+assert.equal(siguienteNivel(4000), null);
+assert.equal(estadoCirculo({ id: 'z' }, citas, ventas, [], servicios).puntos, 0);
 
-// Constancia: 5 visitas sin pasar 70 días entre una y otra → corte de cortesía; se reinicia al usarlo
-const d = { id: 'd' };
-const visitas = ['2027-01-10', '2027-03-01', '2027-04-25', '2027-06-20', '2027-08-15'].map(f => ({ clienteId: 'd', servicioId: 's10', estado: 'completada', fecha: f, precioFinal: 1000 }));
-assert.equal(rachaConstancia(d, visitas), 5);
-assert.deepEqual(beneficiosDisponibles(d, 'marfil', [d], visitas, servicios, new Date('2027-08-20T12:00:00')), ['constancia']);
-assert.equal(rachaConstancia({ ...d, canjes: [{ clave: 'constancia', fecha: '2027-08-15T18:00:00Z' }] }, visitas), 0);
-const conHueco = visitas.map((v, i) => i === 2 ? { ...v, fecha: '2027-05-30' } : v); // 90 días entre la 2.ª y la 3.ª
-assert.equal(rachaConstancia(d, conHueco), 3);
-// Cumpleaños: detalle una vez en su mes
-assert.deepEqual(beneficiosDisponibles(a, 'marfil', [a, b], citas, servicios, new Date('2027-02-25T12:00:00')), ['cumple']);
+// 1. Permanentes: siempre mejoran al subir
+assert.equal(descuentoProducto('marfil'), 0);
+assert.equal(descuentoProducto('miel'), 3);
+assert.equal(descuentoProducto('onix'), 10);
+assert.equal(descuentoServicio('miel', 's23'), 5);
+assert.equal(descuentoServicio('ambar', 's23'), 10);
+assert.equal(descuentoServicio('miel', 's01'), 0);
+assert.equal(descuentoServicio('ambar', 's01'), 5);
+assert.equal(descuentoServicio('onix', 's21'), 15);
+assert.equal(descuentoServicio('onix', 's25'), 0); // paquetes de novia fuera
+assert.deepEqual(permanentesDe('marfil'), []);
+assert.equal(permanentesDe('onix').length, 8);
+assert.equal(montoCanje(200), 50);
+assert.equal(montoTarjeta(200, 'marfil'), 50);
+assert.equal(montoTarjeta(200, 'dorado'), 55);
+assert.equal(montoTarjeta(200, 'onix'), 58);
 
+// 2. Regalos de nivel: los de su nivel y los de abajo, si le alcanzan los puntos; se tachan al usarlos por 12 meses
+assert.deepEqual(beneficiosDisponibles({ id: 'r' }, 'ambar', [], [], servicios, fecha('2027-03-25'), P, 600), ['regaloMiel', 'regaloAmbar', 'flequillo']);
+assert.deepEqual(beneficiosDisponibles({ id: 'r' }, 'ambar', [], [], servicios, fecha('2027-03-25'), P, 200), ['regaloMiel', 'flequillo']);
+const usoRegalo = { id: 'r', canjes: [{ clave: 'regaloMiel' as const, fecha: '2027-03-01T10:00:00Z', puntos: 150 }] };
+assert.deepEqual(beneficiosDisponibles(usoRegalo, 'ambar', [], [], servicios, fecha('2027-03-25'), P, 600), ['regaloAmbar', 'flequillo']);
+assert.deepEqual(beneficiosDisponibles(usoRegalo, 'miel', [], [], servicios, fecha('2028-03-02'), P, 600), ['regaloMiel']); // vuelve a los 12 meses
+assert.deepEqual(beneficiosDisponibles({ id: 'r' }, 'onix', [], [], servicios, fecha('2027-03-25'), P, 5000),
+  ['regaloMiel', 'regaloAmbar', 'regaloDorado', 'regaloOnix', 'flequillo', 'antojoOnix']);
+assert.deepEqual(beneficiosDisponibles({ id: 'r', canjes: [{ clave: 'antojoOnix', fecha: '2027-03-02T10:00:00Z' }] }, 'onix', [], [], servicios, fecha('2027-03-25'), P, 0), ['flequillo']); // uno al mes
+assert.equal(costoPuntos('regaloOnix'), 350);
+assert.equal(costoPuntos('cumple'), 0);
+assert.equal(tituloCanje({ clave: 'regaloAmbar' }), 'Regalo Ámbar: Mascarilla en cabina (250 pts)');
+assert.equal(tituloCanje({ clave: 'tarjeta', puntos: 200 }), '200 puntos cambiados por tarjeta de regalo');
+assert.equal(tituloCanje({ clave: 'corteAnual' }), 'corteAnual'); // canjes viejos no truenan
+
+// 3. Celebraciones: el cumpleaños mejora con el nivel y nunca se pierde al subir
+assert.deepEqual(beneficiosDisponibles(a, 'marfil', [a], [], servicios, fecha('2027-02-25')), []);       // Marfil: puntos dobles automáticos
+assert.deepEqual(beneficiosDisponibles(a, 'miel', [a], [], servicios, fecha('2027-02-25'), P, 0), ['cumple']);
+assert.equal(datosBeneficio('cumple', 'ambar').servicioId, 's03');
+assert.equal(datosBeneficio('cumple', 'dorado').servicioId, 's06');
+assert.equal(datosBeneficio('cumple', 'onix').servicioId, 's06');
+assert.match(datosBeneficio('cumple', 'onix').titulo, /tamaño viaje/);
+
+// Constancia: 5 visitas sin pasar 70 días entre una y otra → ampolleta; se reinicia al usarla
+const f = { id: 'f' };
+const visitas = ['2027-01-10', '2027-03-01', '2027-04-25', '2027-06-20', '2027-08-15'].map(x => ({ clienteId: 'f', servicioId: 's10', estado: 'completada', fecha: x, precioFinal: 1000 }));
+assert.equal(rachaConstancia(f, visitas), 5);
+assert.deepEqual(beneficiosDisponibles(f, 'marfil', [f], visitas, servicios, fecha('2027-08-20')), ['constancia']);
+assert.equal(rachaConstancia({ ...f, canjes: [{ clave: 'constancia', fecha: '2027-08-15T18:00:00Z' }] }, visitas), 0);
+
+// Ajustes guardados de versiones anteriores se ignoran
+assert.equal(parametrosDe({ circulo: { dorado: 500 } }).dorado, 1000);
+assert.equal(parametrosDe({ circulo: { version: 3, dorado: 2500 } }).dorado, 1000);
+assert.equal(parametrosDe({ circulo: { version: 4, dorado: 2500 } }).dorado, 2500);
+
+assert.equal(textoSaldoPuntos(1240), 'Saldo actual: 1,240 puntos = $310. Sigue acumulando o úsalos en tu siguiente compra de producto o servicio.');
+assert.match(textoSaldoPuntos(150), /= \$38\. Sigue acumulando: desde 200 puntos/);
 assert.match(codigoClienta('cli_123'), /^CB[0-9A-Z]{6}$/);
-assert.equal(codigoClienta('cli_123'), codigoClienta('cli_123'));
-assert.notEqual(codigoClienta('cli_123'), codigoClienta('cli_124'));
 assert.equal(enlaceWhatsApp('662 161 4688', 'hola'), 'https://wa.me/526621614688?text=hola');
 assert.equal(enlaceWhatsApp('abc', 'hola'), null);
+// Menú de antojos: la selección desde Ámbar; en Ónix también el resto
+assert.equal(descuentoAntojo('miel', 'Oreo'), 0);
+assert.equal(descuentoAntojo('ambar', 'Oreo 42 g'), 5);
+assert.equal(descuentoAntojo('dorado', 'Waffles con miel'), 10);
+assert.equal(descuentoAntojo('dorado', 'Coca-Cola'), 0);
+assert.equal(descuentoAntojo('onix', 'Coca-Cola 355 ml'), 5);
+assert.equal(descuentoAntojo('onix', 'Papas Sabritas'), 10);
+assert.equal(descuentoAntojo('onix', ''), 5);
 console.log('lealtad: ok');

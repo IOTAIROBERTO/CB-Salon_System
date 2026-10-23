@@ -31,9 +31,19 @@ const TEXTOS: Record<string, { titulo: string; enviar: string }> = {
 
 const COLOR_ALERTA = { error: 'bg-red-50 text-red-700', warning: 'bg-yellow-50 text-yellow-800', info: 'bg-purple-50 text-purple-800' };
 
-const tarjeta = 'w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 space-y-4';
-const botonPrincipal = 'w-full bg-purple-600 text-white py-2 rounded-lg font-semibold hover:bg-purple-700';
-const botonSecundario = 'w-full text-gray-600 py-2 rounded-lg hover:bg-gray-100';
+const tarjeta = 'w-full max-w-sm bg-white rounded-lg shadow-2xl px-8 py-9 space-y-5';
+const botonPrincipal = 'w-full bg-marca-negro text-white py-3.5 rounded-md text-[11px] uppercase tracking-[0.24em] hover:bg-gray-800 transition-colors disabled:opacity-60';
+const botonSecundario = 'w-full text-gray-600 py-3 rounded-md text-sm hover:bg-gray-100 transition-colors';
+
+/** Monograma y nombre arriba de cada tarjeta de acceso */
+const Marca = () => (
+  <div className="text-center">
+    <img src="./marca/CB_monograma_dorado.svg" alt="" className="mx-auto h-12 w-auto" />
+    <p className="mt-4 font-display text-3xl leading-none text-marca-negro">CB <em className="text-marca-dorado-prof">Control</em></p>
+    <p className="mt-2 text-[10px] uppercase tracking-[0.3em] text-gray-500">Cristina Borquez Beauty Salon</p>
+    <div className="mx-auto mt-5 h-px w-10 bg-marca-dorado" />
+  </div>
+);
 
 /** Se muestra cuando Dexie Cloud pide algo al usuario (email, código, avisos) */
 export function LoginSalon() {
@@ -49,11 +59,12 @@ export function LoginSalon() {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-marca-negro/95 p-4 backdrop-blur-sm">
       <form onSubmit={enviar} className={tarjeta}>
-        <h2 className="text-xl font-bold text-gray-900">{textos.titulo}</h2>
+        <Marca />
+        <h2 className="text-center text-2xl text-gray-900">{textos.titulo}</h2>
         {ui.type === 'email' && (
-          <p className="text-sm text-gray-600">Escribe tu correo y te enviaremos un código para entrar.</p>
+          <p className="text-center text-sm text-gray-500">Escribe tu correo y te enviaremos un código para entrar.</p>
         )}
         {ui.alerts.map((a, i) => (
           <p key={i} className={`text-sm rounded-lg p-3 ${COLOR_ALERTA[a.type]}`}>{textoAlerta(a)}</p>
@@ -66,13 +77,13 @@ export function LoginSalon() {
         ))}
         {Object.entries(ui.fields).map(([nombre, campo]: [string, any]) => (
           <label key={nombre} className="block">
-            <span className="block text-sm font-medium mb-1">
+            <span className="block text-[10px] uppercase tracking-[0.24em] text-gray-500 mb-1">
               {nombre === 'email' ? 'Correo electrónico' : nombre === 'otp' ? 'Código' : campo.label}
             </span>
             <input
               autoFocus
               required
-              className="w-full border rounded-lg p-2"
+              className="w-full border-0 border-b border-gray-300 bg-transparent px-0 py-2.5 text-base focus:border-marca-dorado focus:ring-0 outline-none transition-colors"
               type={nombre === 'email' ? 'email' : campo.type === 'password' ? 'password' : 'text'}
               inputMode={nombre === 'otp' ? 'numeric' : undefined}
               autoComplete={nombre === 'email' ? 'email' : nombre === 'otp' ? 'one-time-code' : undefined}
@@ -112,9 +123,9 @@ export function PantallaSinSalon({ estado, reintentar }: { estado: 'sin-salon' |
   const crear = hacer(crearRealmSalon);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-marca-negro p-4">
       <div className={tarjeta}>
-        <h2 className="text-xl font-bold text-gray-900">Salon Total Control</h2>
+        <Marca />
         {estado === 'invitada' ? (
           <>
             <p className="text-gray-700">Te invitaron a unirte al equipo del <b>{NOMBRE_REALM}</b>.</p>

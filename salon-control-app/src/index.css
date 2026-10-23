@@ -69,3 +69,57 @@ h1, h2 {
   font-family: 'Cormorant Garamond', Georgia, serif;
   letter-spacing: 0.005em;
 }
+/* Sistema visual premium: cifras alineadas, títulos de página grandes y tablas con rótulos finos.
+   Los títulos ganan a preflight (h1 hereda tamaño) y pierden ante cualquier clase; lo demás va en :where() para pesar cero. */
+body {
+  background-color: #FAF8F5;
+  font-weight: 300;
+  font-feature-settings: 'lnum', 'tnum';
+}
+
+main h1 {
+  font-size: clamp(1.9rem, 2.6vw, 2.5rem);
+  font-weight: 500;
+  line-height: 1.1;
+  color: #111111;
+}
+
+main h2 {
+  font-weight: 500;
+}
+
+:where(th) {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7A746B;
+}
+
+:where(input, select, textarea) {
+  accent-color: #8A6A2F;
+}
+
+::selection {
+  background: #E8D9BC;
+  color: #111111;
+}
+
+/* Barras de desplazamiento discretas */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #D3CCBF transparent;
+}
+
+/* Botón principal en negro (la marca vive en el dorado de los acentos, no en botones café) */
+.bg-purple-600 { background-color: #111111; }
+.bg-purple-700, .hover\:bg-purple-700:hover { background-color: #2B2B2B; }
+
+/* Cifras grandes (tarjetas de resumen) en Cormorant, como en el brand book */
+main .text-2xl.font-bold, main .text-3xl.font-bold {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 500;
+  font-size: 2.1rem;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}

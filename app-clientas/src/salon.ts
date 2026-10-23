@@ -4,7 +4,11 @@ import { DATOS_SALON, POLITICAS } from '@salon/data/datosSalon'
 import catalogo from '@salon/data/servicios_dataset.json'
 
 export { DATOS_SALON, POLITICAS }
-export { NOMBRE_CIRCULO as NOMBRE_CLUB, NOMBRE_NIVEL, PARAMETROS_CIRCULO as REGLAS_CLUB, BENEFICIOS, descuentosProducto, montoCanje } from '@salon/utils/lealtad'
+export { MENU_ANTOJOS, CORTESIAS_SIEMPRE } from '@salon/data/menuAntojos'
+export {
+  NOMBRE_CIRCULO as NOMBRE_CLUB, NOMBRE_NIVEL, NIVELES, BENEFICIOS_NIVEL, REGALOS_NIVEL, CLAVES_REGALO, ANIVERSARIO_PUNTOS, DIAS_PUNTOS_DOBLES,
+  PARAMETROS_CIRCULO as REGLAS_CLUB, REGLA_CANJE, AVISO_GASTO, beneficioCumple, textoSaldoPuntos, montoCanje, multiplicador, umbral
+} from '@salon/utils/lealtad'
 
 export interface Servicio { id: string; nombre: string; categoria: string; precio: number; anticipo: number; duracion: number }
 

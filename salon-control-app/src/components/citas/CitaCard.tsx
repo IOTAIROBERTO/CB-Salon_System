@@ -198,7 +198,7 @@ export default function CitaCard({
 
   return (
     <div className={`rounded-lg shadow border p-4 ${
-      isCumpleanos ? 'bg-gradient-to-r from-pink-50 to-purple-50 border-pink-300' : 'bg-white'
+      isCumpleanos ? 'bg-marca-marfil border-marca-dorado/60' : 'bg-white'
     }`}>
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Información principal */}
@@ -218,7 +218,7 @@ export default function CitaCard({
               <span className="font-semibold text-gray-900">{cliente}</span>
               {/* INDICADOR DE CUMPLEAÑOS MEJORADO */}
               {isCumpleanos && (
-                <div className="flex items-center gap-1 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md animate-pulse">
+                <div className="flex items-center gap-1 bg-marca-negro text-marca-dorado px-3 py-1 rounded-full text-[10px] uppercase tracking-[0.18em]">
                   <Cake size={14} />
                   <span>¡Cumpleaños!</span>
                 </div>
@@ -247,11 +247,11 @@ export default function CitaCard({
 
           {/* Mensaje especial de cumpleaños */}
           {isCumpleanos && (
-            <div className="bg-gradient-to-r from-pink-100 to-purple-100 border border-pink-300 rounded-lg p-3">
+            <div className="bg-marca-marfil border border-marca-dorado/40 rounded-lg p-3">
               <div className="flex items-center gap-2">
                 <Gift size={16} className="text-pink-600" />
                 <p className="text-sm font-medium text-pink-800">
-                  🎉 ¡Es el cumpleaños del cliente! Considera ofrecer un descuento o detalle especial.
+                  ¡Es el cumpleaños del cliente! Considera ofrecer un descuento o detalle especial.
                 </p>
               </div>
             </div>

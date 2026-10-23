@@ -55,8 +55,8 @@ export default function ClientesTable({ clientes, onEdit, onDelete }: ClientesTa
                         <div className="flex items-center gap-2">
                           <div className="font-medium text-gray-900">{cliente.nombre}</div>
                           {esCumpleHoy && (
-                            <div className="flex items-center gap-1 bg-pink-200 text-pink-800 px-2 py-1 rounded-full text-xs animate-pulse">
-                              🎂 <span>¡Hoy!</span>
+                            <div className="flex items-center gap-1 bg-pink-200 text-pink-800 px-2 py-1 rounded-full text-xs">
+                              <span>¡Hoy!</span>
                             </div>
                           )}
                         </div>

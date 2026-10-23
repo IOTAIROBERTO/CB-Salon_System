@@ -49,7 +49,7 @@ export default function CatalogoPreciosPage() {
     <div className="w-full max-w-none space-y-6 p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Catálogo y listas de precios</h1>
+          <h1 className="font-bold text-gray-900">Catálogo y listas de precios</h1>
           <p className="text-gray-600 mt-1">
             La lista {listas.activa} es la que se cobra y se edita aquí; las de años anteriores quedan de consulta.
           </p>

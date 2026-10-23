@@ -64,24 +64,6 @@ export default function TimeSelector({ value, onChange, minTime, label }: TimeSe
     }
   };
 
-  const getBlockColor = (block: 'mañana' | 'tarde' | 'noche') => {
-    const colors = {
-      mañana: 'from-yellow-400 to-orange-400',
-      tarde: 'from-orange-400 to-red-400',
-      noche: 'from-purple-400 to-indigo-500'
-    };
-    return colors[block];
-  };
-
-  const getBlockIcon = (block: 'mañana' | 'tarde' | 'noche') => {
-    const icons = {
-      mañana: '🌅',
-      tarde: '☀️',
-      noche: '🌙'
-    };
-    return icons[block];
-  };
-
   return (
     <div className="space-y-2">
       {label && (
@@ -126,12 +108,11 @@ export default function TimeSelector({ value, onChange, minTime, label }: TimeSe
                 onClick={() => setSelectedBlock(block)}
                 className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm transition-all ${
                   selectedBlock === block
-                    ? `bg-gradient-to-r ${getBlockColor(block)} text-white shadow-md`
+                    ? 'bg-marca-negro text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                <span className="mr-1">{getBlockIcon(block)}</span>
-                {block.charAt(0).toUpperCase() + block.slice(1)}
+                                {block.charAt(0).toUpperCase() + block.slice(1)}
               </button>
             ))}
           </div>

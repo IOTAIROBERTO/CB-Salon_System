@@ -87,7 +87,7 @@ export default function StockModal({
                         : 'bg-gray-100 text-gray-700 border-2 border-gray-200 hover:bg-gray-200'
                     }`}
                   >
-                    <div className="text-lg">➕</div>
+                    <div className="text-lg">+</div>
                     <div className="text-sm">Entrada</div>
                   </button>
                   <button
@@ -99,7 +99,7 @@ export default function StockModal({
                         : 'bg-gray-100 text-gray-700 border-2 border-gray-200 hover:bg-gray-200'
                     }`}
                   >
-                    <div className="text-lg">➖</div>
+                    <div className="text-lg">−</div>
                     <div className="text-sm">Salida</div>
                   </button>
                 </div>

@@ -44,3 +44,6 @@ src/data/historico.json
 
 # Dexie Cloud: credenciales secretas, nunca subir
 dexie-cloud.key
+
+# Visual Studio
+.vs/

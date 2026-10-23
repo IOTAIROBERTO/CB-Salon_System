@@ -73,7 +73,7 @@ export default function DocumentosPage() {
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Documentos y Contratos</h1>
+                    <h1 className="font-bold text-gray-800">Documentos</h1>
                     <p className="text-gray-600">Archivos, imágenes y notas del salón</p>
                 </div>
                 <button

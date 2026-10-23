@@ -10,11 +10,13 @@ import {
 } from "../../utils/financialUtils";
 import { db } from "../../db/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import { registrarCanjes } from "../../db/circulo";
+import { registrarCanjes, canjearPuntos } from "../../db/circulo";
+import { useRolSalon } from "../../db/salon";
 import { usarSaldo } from "../../db/saldo";
 import { saldoDe, saldoUsable } from "../../utils/saldo";
 import {
-  NOMBRE_NIVEL, NOMBRE_CIRCULO, BENEFICIOS, estadoCirculo, parametrosDe, beneficiosDisponibles, type ClaveBeneficio
+  NOMBRE_NIVEL, NOMBRE_CIRCULO, estadoCirculo, parametrosDe, beneficiosDisponibles, datosBeneficio, descuentoServicio, porcentajeReferida, textoSaldoPuntos, montoCanje, costoPuntos, AVISO_GASTO,
+  type ClaveBeneficio
 } from "../../utils/lealtad";
 
 interface CobroModalProps {
@@ -38,6 +40,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
 
   // Estados para descuentos y propina
   const [porcentajeSeleccionado, setPorcentajeSeleccionado] = useState(0);
+  const [descuentoClub, setDescuentoClub] = useState<'referida' | 'nivel' | null>(null); // descuento del Club aplicado en este cobro
   const [propina, setPropina] = useState(0);
 
   const [anticipoRecibido, setAnticipoRecibido] = useState(cita.montoAnticipo || 0);
@@ -79,21 +82,40 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   const ventasTodas = useLiveQuery(() => db.ventas.toArray()) || [];
   const clienta = clientesTodos.find(c => c.id === cita.clienteId);
   const settingsCirculo = useLiveQuery(() => db.configuracion.get('settings'));
-  const nivel = clienta ? estadoCirculo(clienta, citasTodas, ventasTodas, clientesTodos, servicios as any, parametrosDe(settingsCirculo as any), undefined, movimientosSaldo).nivel : 'marfil';
-  const aplicados = serviciosAdicionales.filter(s => s.beneficio).map(s => s.beneficio!);
+  const pClub = parametrosDe(settingsCirculo as any);
+  const estadoClub = clienta ? estadoCirculo(clienta, citasTodas, ventasTodas, clientesTodos, servicios as any, pClub, undefined, movimientosSaldo) : null;
+  const nivel = estadoClub?.nivel ?? 'marfil';
+  const puntosClub = estadoClub?.activa ? estadoClub.puntos : 0;
+  const esDuena = useRolSalon() === 'duena';
+  // Usar los puntos aquí mismo: se cambian por saldo a favor (solo la Dueña) y el saldo entra a este cobro
+  const usarPuntos = async () => {
+    if (!clienta || !confirm(`¿Cambiar ${puntosClub.toLocaleString('es-MX')} puntos por $${montoCanje(puntosClub, pClub)} de saldo y usarlo en este cobro?`)) return;
+    const monto = await canjearPuntos(clienta.id, puntosClub, pClub);
+    setConSaldo(c => c + monto);
+  };
+  const aplicados: ClaveBeneficio[] = [...serviciosAdicionales.filter(s => s.beneficio).map(s => s.beneficio!), ...(descuentoClub === 'referida' ? ['referida' as const] : [])];
+  const pctNivel = clienta ? descuentoServicio(nivel, servicioSeleccionadoId) : 0; // 15% en maquillaje desde Ámbar, peinado en Ónix
   const sinAplicar = (lista: ClaveBeneficio[]) => {
     const restantes = [...aplicados];
     return lista.filter(k => { const i = restantes.indexOf(k); if (i >= 0) { restantes.splice(i, 1); return false; } return true; });
   };
   const beneficiosCobro = clienta
-    ? sinAplicar(beneficiosDisponibles(clienta, nivel, clientesTodos, citasTodas, servicios as any, new Date(), parametrosDe(settingsCirculo as any)))
+    ? sinAplicar(beneficiosDisponibles(clienta, nivel, clientesTodos, citasTodas, servicios as any, new Date(), pClub,
+        puntosClub - aplicados.reduce((t, k) => t + costoPuntos(k), 0)))   // los regalos ya aplicados gastan puntos
+        .filter(k => k !== 'referida' || !descuentoClub)   // un solo descuento del Club por cobro
     : [];
 
   const aplicarBeneficio = (clave: ClaveBeneficio) => {
-    const servicio = servicios.find(s => s.id === BENEFICIOS[clave].servicioId);
+    if (clave === 'referida') {   // 20% con tope en pesos, expresado como porcentaje del cobro
+      setPorcentajeSeleccionado(porcentajeReferida(subtotalServicios, pClub));
+      setDescuentoClub('referida');
+      return;
+    }
+    const datos = datosBeneficio(clave, nivel);
+    const servicio = servicios.find(s => s.id === datos.servicioId);
     setServiciosAdicionales([...serviciosAdicionales, {
-      servicioId: BENEFICIOS[clave].servicioId,
-      nombre: `${servicio?.nombre || BENEFICIOS[clave].titulo} · cortesía ${NOMBRE_CIRCULO}`,
+      servicioId: datos.servicioId,
+      nombre: `${servicio?.nombre || datos.titulo} · cortesía ${NOMBRE_CIRCULO}`,
       precio: 0,
       beneficio: clave
     }]);
@@ -239,19 +261,37 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
           {/* Columna izquierda: Servicios y configuraciones */}
           <div className="space-y-4">
             {/* Círculo CB */}
-            {clienta && (beneficiosCobro.length > 0 || aplicados.length > 0) && (
+            {clienta && (beneficiosCobro.length > 0 || aplicados.length > 0 || pctNivel > 0 || puntosClub > 0) && (
               <div className="rounded-lg bg-marca-negro text-white p-4">
                 <div className="text-[11px] tracking-[0.24em] uppercase text-marca-dorado">{NOMBRE_CIRCULO} · {NOMBRE_NIVEL[nivel]}</div>
+                {puntosClub > 0 && (
+                  <div className="mt-2 text-sm text-gray-200">
+                    {textoSaldoPuntos(puntosClub, pClub)}
+                    {esDuena && puntosClub >= pClub.canjeMinimo && (
+                      <button type="button" onClick={usarPuntos}
+                        className="mt-2 block text-xs px-3 py-1 rounded-md border border-marca-dorado text-marca-dorado hover:bg-white/10">Usar los puntos en este cobro</button>
+                    )}
+                  </div>
+                )}
                 {beneficiosCobro.map((k, i) => (
                   <div key={k + i} className="flex items-center justify-between gap-2 mt-2 text-sm">
-                    <span>{BENEFICIOS[k].titulo}</span>
+                    <span>{k === 'referida' ? `${datosBeneficio(k, nivel).titulo}: ${pClub.referidaDescuento}% (tope $${pClub.referidaTope})` : datosBeneficio(k, nivel).titulo}</span>
                     <button type="button" onClick={() => aplicarBeneficio(k)}
                       className="shrink-0 text-xs px-3 py-1 rounded-md bg-marca-dorado text-marca-negro font-medium hover:opacity-90">Aplicar</button>
                   </div>
                 ))}
+                {beneficiosCobro.some(k => costoPuntos(k)) && <div className="text-[11px] text-gray-400 mt-2">{AVISO_GASTO}.</div>}
                 {aplicados.length > 0 && (
-                  <div className="text-xs text-gray-300 mt-2">Aplicado: {aplicados.map(k => BENEFICIOS[k].titulo).join(', ')}. Se registra al finalizar.</div>
+                  <div className="text-xs text-gray-300 mt-2">Aplicado: {aplicados.map(k => datosBeneficio(k, nivel).titulo).join(', ')}. Se registra al finalizar.</div>
                 )}
+                {pctNivel > 0 && !descuentoClub && (
+                  <div className="flex items-center justify-between gap-2 mt-2 text-sm">
+                    <span>{pctNivel}% del Club en este servicio ({NOMBRE_NIVEL[nivel]})</span>
+                    <button type="button" onClick={() => { setPorcentajeSeleccionado(pctNivel); setDescuentoClub('nivel'); }}
+                      className="shrink-0 text-xs px-3 py-1 rounded-md bg-marca-dorado text-marca-negro font-medium hover:opacity-90">Aplicar</button>
+                  </div>
+                )}
+                {descuentoClub && <div className="text-xs text-gray-300 mt-2">Descuento del Club aplicado: {porcentajeSeleccionado}%.</div>}
               </div>
             )}
             {/* Servicios */}

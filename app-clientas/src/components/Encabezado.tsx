@@ -1,9 +1,12 @@
-/** Franja negra con el título de cada pantalla */
-export default function Encabezado({ titulo, bajada }: { titulo: string; bajada?: string }) {
+/** Encabezado claro de cada pantalla: rótulo, título grande y bajada */
+export default function Encabezado({ rotulo, titulo, bajada }: { rotulo?: string; titulo: string; bajada?: string }) {
   return (
-    <header className="bg-marca-negro px-5 pb-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] text-white">
-      <h1 className="font-display text-3xl text-marca-dorado">{titulo}</h1>
-      {bajada && <p className="mt-1 text-sm text-marca-champan">{bajada}</p>}
+    <header className="px-6 pb-6 pt-[calc(env(safe-area-inset-top)+2.25rem)]">
+      <img src="./icons/monograma.svg" alt="" className="mb-6 h-7 w-auto opacity-90" />
+      {rotulo && <p className="rotulo">{rotulo}</p>}
+      <h1 className="titulo mt-2 text-[2.6rem]">{titulo}</h1>
+      {bajada && <p className="mt-3 max-w-xs text-sm leading-relaxed text-marca-gris">{bajada}</p>}
+      <div className="mt-6 h-px w-12 bg-marca-dorado" />
     </header>
   )
 }

@@ -47,19 +47,19 @@ export default function CitasPage() {
   return (
     <div className="w-full max-w-none">
       {/* Header */}
-      <div className="flex justify-between mb-6">
+      <div className="flex justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Gestión de Citas</h1>
+          <h1 className="font-bold">Citas</h1>
           <p className="text-gray-600 mt-1">
             Administra las citas y servicios de tu salón
           </p>
         </div>
         <button
           onClick={() => openModal("create")}
-          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors"
+          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex shrink-0 items-center gap-2 self-start whitespace-nowrap transition-colors"
         >
           <Plus size={20} />
-          Nueva Cita
+          Nueva cita
         </button>
       </div>
 

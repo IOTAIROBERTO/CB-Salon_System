@@ -3,29 +3,57 @@
 @tailwind utilities;
 
 body {
-  @apply font-sans text-marca-grafito antialiased;
+  @apply bg-marca-marfil font-sans font-light text-marca-grafito antialiased;
   -webkit-tap-highlight-color: transparent;
+  font-feature-settings: 'lnum';
 }
 
 /* En la capa de componentes para que las clases sueltas (bg-…, w-…) puedan cambiarlas */
 @layer components {
   .titulo {
-    @apply font-display text-marca-negro;
+    @apply font-display font-normal leading-tight text-marca-negro;
+  }
+
+  /* Rótulo pequeño en mayúsculas espaciadas, como en el brand book */
+  .rotulo {
+    @apply text-[10px] font-normal uppercase tracking-[0.28em] text-marca-dorado-prof;
   }
 
   .boton {
-    @apply flex items-center justify-center gap-2 rounded-full bg-marca-negro px-6 py-3 text-sm font-medium tracking-wide text-white active:bg-marca-grafito;
+    @apply flex items-center justify-center gap-2 rounded-sm bg-marca-negro px-7 py-3.5 text-[11px] font-normal uppercase tracking-[0.22em] text-white transition active:scale-[0.98] active:bg-marca-grafito;
+  }
+
+  .boton-dorado {
+    @apply boton bg-marca-dorado text-marca-negro active:bg-marca-champan;
   }
 
   .boton-claro {
-    @apply flex items-center justify-center gap-2 rounded-full border border-marca-dorado px-6 py-3 text-sm font-medium tracking-wide text-marca-dorado-prof active:bg-marca-champan;
+    @apply flex items-center justify-center gap-2 rounded-sm border border-marca-negro/80 px-7 py-3.5 text-[11px] font-normal uppercase tracking-[0.22em] text-marca-negro transition active:scale-[0.98] active:bg-white;
   }
 
   .tarjeta {
-    @apply rounded-2xl border border-marca-linea bg-white p-4;
+    @apply rounded-sm bg-white p-5 shadow-[0_1px_0_rgba(17,17,17,0.04),0_12px_32px_-18px_rgba(17,17,17,0.18)];
+  }
+
+  /* Renglón de lista con filete fino: para información, sin cajas */
+  .renglon {
+    @apply flex gap-4 border-b border-marca-linea/70 py-5 last:border-0;
   }
 
   .campo {
-    @apply w-full rounded-xl border border-marca-linea bg-white px-4 py-3 text-base outline-none focus:border-marca-dorado;
+    @apply w-full rounded-none border-0 border-b border-marca-linea bg-transparent px-0 py-3 text-base font-light text-marca-negro outline-none transition placeholder:text-marca-gris/70 focus:border-marca-dorado;
   }
+
+  .aparece {
+    animation: aparece 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+
+@keyframes aparece {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aparece { animation: none; }
 }

@@ -1,7 +1,10 @@
-import { HashRouter as Router, Routes, Route, Link, Navigate } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Link, NavLink, Navigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { loadEmailJS } from "./utils/emailJSLoader";
-import { Menu, X } from "lucide-react";
+import {
+  BarChart3, BookOpen, CalendarCheck, CalendarDays, Crown, FileText, Image, LogOut, Megaphone, Menu, Package,
+  Receipt, Scissors, Settings, Users, Wallet, X, type LucideIcon
+} from "lucide-react";
 import CitasPage from "./pages/CitasPage";
 import VentasPage from "./pages/VentasPage";
 import InventarioPage from "./pages/InventarioPage";
@@ -30,6 +33,34 @@ import { LoginSalon, PantallaSinSalon } from "./components/auth/AccesoSalon";
 // Páginas solo para la dueña (la empleada no las ve en el menú ni por URL)
 const SOLO_DUENA = new Set(["/reportes", "/configuracion"]);
 
+type Enlace = { to: string; label: string; Icono: LucideIcon };
+
+// Menú agrupado como se trabaja en el salón
+const SECCIONES: { titulo: string; enlaces: Enlace[] }[] = [
+  { titulo: "Agenda", enlaces: [
+    { to: "/citas", label: "Citas", Icono: CalendarCheck },
+    { to: "/calendario", label: "Calendario", Icono: CalendarDays },
+  ] },
+  { titulo: "Ventas", enlaces: [
+    { to: "/ventas", label: "Ventas", Icono: Receipt },
+    { to: "/inventario", label: "Inventario", Icono: Package },
+    { to: "/catalogo", label: "Catálogo", Icono: BookOpen },
+  ] },
+  { titulo: "Clientas", enlaces: [
+    { to: "/clientes", label: "Clientes", Icono: Users },
+    { to: "/circulo", label: "Club", Icono: Crown },
+    { to: "/campanas", label: "Campañas", Icono: Megaphone },
+  ] },
+  { titulo: "Salón", enlaces: [
+    { to: "/empleados", label: "Equipo", Icono: Scissors },
+    { to: "/gastos", label: "Gastos", Icono: Wallet },
+    { to: "/documentos", label: "Documentos", Icono: FileText },
+    { to: "/galeria", label: "Galería", Icono: Image },
+    { to: "/reportes", label: "Reportes", Icono: BarChart3 },
+    { to: "/configuracion", label: "Configuración", Icono: Settings },
+  ] },
+];
+
 export default function App() {
   const { estado, reintentar } = useInitializeData();
   return (
@@ -38,7 +69,10 @@ export default function App() {
       {estado === "listo" ? (
         <AppSalon />
       ) : estado === "cargando" ? (
-        <div className="min-h-screen flex items-center justify-center text-gray-500">Cargando salón…</div>
+        <div className="min-h-screen flex flex-col items-center justify-center gap-5 bg-marca-negro text-marca-champan">
+          <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-14 w-auto animate-pulse" />
+          <span className="text-[11px] uppercase tracking-[0.3em]">Cargando salón</span>
+        </div>
       ) : (
         <PantallaSinSalon estado={estado} reintentar={reintentar} />
       )}
@@ -47,11 +81,8 @@ export default function App() {
 }
 
 function AppSalon() {
-  const rol = useRolSalon();
   useMarketingAutomations();
   useAutoBackup();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const usuario = useObservable(db.cloud.currentUser);
 
   // Inicialización y Carga de EmailJS
   useEffect(() => {
@@ -59,184 +90,132 @@ function AppSalon() {
     googleCalendarService.initialize();
   }, []);
 
-  const navLinks = [
-    { to: "/citas", label: "Citas" },
-    { to: "/calendario", label: "Calendario" },
-    { to: "/ventas", label: "Ventas" },
-    { to: "/inventario", label: "Inventario" },
-    { to: "/clientes", label: "Clientes" },
-    { to: "/circulo", label: "Club" },
-    { to: "/catalogo", label: "Catálogo" },
-    { to: "/campanas", label: "Campañas" },
-    { to: "/empleados", label: "Empleados" },
-    { to: "/gastos", label: "Gastos" },
-    { to: "/documentos", label: "Documentos" },
-    { to: "/galeria", label: "Galería" },
-    { to: "/reportes", label: "Reportes" },
-    { to: "/configuracion", label: "Configuración" }
-  ].filter(link => rol === "duena" || !SOLO_DUENA.has(link.to));
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
-  const closeMobileMenu = () => {
-    setIsMobileMenuOpen(false);
-  };
-
   return (
     <SettingsProvider>
       <Router>
-        <div className="min-h-screen w-full flex flex-col bg-gray-50">
-          {/* Barra de navegacion */}
-          <nav className="bg-marca-negro text-white shadow-lg relative z-50 border-b border-marca-dorado/40">
-            <div className="max-w-full px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center h-16">
-                {/* Logo/Titulo y Widget */}
-                <div className="flex items-center gap-4">
-                  <Link to="/citas" className="flex-shrink-0 flex items-center gap-3" title="Cristina Borquez Beauty Salon">
-                    <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-9 w-auto" />
-                    <span className="font-display text-xl sm:text-2xl leading-none tracking-wide xl:hidden 2xl:inline">
-                      CB <em className="text-marca-dorado">Control</em>
-                    </span>
-                  </Link>
-                </div>
-
-                {/* Navegacion Desktop */}
-                <div className="hidden xl:block">
-                  <div className="ml-4 flex items-baseline space-x-1">
-                    {navLinks.map((link) => (
-                      <Link
-                        key={link.to}
-                        className="hover:bg-white/10 hover:text-marca-dorado px-2 py-2 rounded-md text-xs xl:text-sm font-medium transition-colors duration-200 whitespace-nowrap"
-                        to={link.to}
-                      >
-                        {link.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Sesión de Dexie Cloud */}
-                {usuario?.isLoggedIn && (
-                  <button
-                    onClick={() => db.cloud.logout().then(() => location.reload())}
-                    title={`Sesión: ${usuario.email}${rol ? ` (${NOMBRE_ROL[rol]})` : ""}`}
-                    className="hidden xl:block ml-2 hover:bg-white/10 hover:text-marca-dorado px-2 py-2 rounded-md text-xs xl:text-sm font-medium"
-                  >
-                    Salir
-                  </button>
-                )}
-
-                {/* Boton hamburguesa movil */}
-                <div className="xl:hidden">
-                  <button
-                    onClick={toggleMobileMenu}
-                    className="inline-flex items-center justify-center p-2 rounded-md hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition-colors duration-200"
-                  >
-                    <span className="sr-only">Abrir menu principal</span>
-                    {isMobileMenuOpen ? (
-                      <X className="block h-6 w-6" />
-                    ) : (
-                      <Menu className="block h-6 w-6" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Menu movil */}
-            <div className={`xl:hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen
-              ? 'max-h-[80vh] overflow-y-auto opacity-100 visible'
-              : 'max-h-0 opacity-0 invisible overflow-hidden'
-              }`}>
-              <div className="px-2 pt-2 pb-3 space-y-1 bg-[#1A1A1A]">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.to}
-                    className="block hover:bg-white/10 hover:text-marca-dorado px-3 py-2 rounded-md text-base font-medium transition-colors duration-200"
-                    to={link.to}
-                    onClick={closeMobileMenu}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-                {usuario?.isLoggedIn && (
-                  <button
-                    onClick={() => db.cloud.logout().then(() => location.reload())}
-                    className="block w-full text-left hover:bg-white/10 hover:text-marca-dorado px-3 py-2 rounded-md text-base font-medium"
-                  >
-                    Salir ({usuario.email})
-                  </button>
-                )}
-              </div>
-            </div>
-          </nav>
-
-          {/* Area principal de contenido */}
-          <main className="flex-1 w-full max-w-full">
-            <div className="h-full px-4 py-6 sm:px-6 lg:px-8">
-              <div className="mx-auto max-w-7xl">
-                <Routes>
-                  <Route path="/" element={<Navigate to="/citas" replace />} />
-                  <Route path="/citas" element={<CitasPage />} />
-                  <Route path="/calendario" element={<CalendarioPage />} />
-                  <Route path="/ventas" element={<VentasPage />} />
-                  <Route path="/inventario" element={<InventarioPage />} />
-                  <Route path="/clientes" element={<ClientesPage />} />
-                  <Route path="/circulo" element={<CirculoPage />} />
-                  <Route path="/catalogo" element={<CatalogoPreciosPage />} />
-                  <Route path="/campanas" element={<EmailCampaignsPage />} />
-                  <Route path="/empleados" element={<EmpleadosPage />} />
-                  <Route path="/gastos" element={<GastosPage />} />
-                  <Route path="/documentos" element={<DocumentosPage />} />
-                  <Route path="/galeria" element={<GaleriaPage />} />
-                  {rol === "duena" && <Route path="/reportes" element={<ReportesPage />} />}
-                  {rol === "duena" && <Route path="/configuracion" element={<ConfiguracionPage />} />}
-
-                  {/* Redirecciones para compatibilidad con URLs antiguas */}
-                  <Route path="/servicios" element={<Navigate to="/citas" replace />} />
-
-                  <Route
-                    path="*"
-                    element={
-                      <div className="flex items-center justify-center h-64">
-                        <div className="text-center">
-                          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                            Pagina no encontrada
-                          </h2>
-                          <p className="text-gray-600 mb-4">
-                            La pagina que buscas no existe.
-                          </p>
-                          <Link
-                            to="/citas"
-                            className="inline-block bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors duration-200"
-                          >
-                            Volver al inicio
-                          </Link>
-                        </div>
-                      </div>
-                    }
-                  />
-                </Routes>
-              </div>
-            </div>
-          </main>
-
-          {/* Overlay para cerrar menu movil */}
-          {isMobileMenuOpen && (
-            <div
-              className="fixed inset-0 bg-black bg-opacity-50 z-40 xl:hidden"
-              onClick={closeMobileMenu}
-            ></div>
-          )}
-
-          {/* Indicador de pagina activa en movil */}
-          <div className="xl:hidden bg-black text-marca-dorado text-center py-1 text-xs tracking-[0.2em] uppercase">
-            {navLinks.find(link => window.location.hash === `#${link.to}`)?.label || 'CB Control'}
-          </div>
-        </div>
+        <Marco />
       </Router>
     </SettingsProvider>
+  );
+}
+
+function Marco() {
+  const rol = useRolSalon();
+  const usuario = useObservable(db.cloud.currentUser);
+  const { pathname } = useLocation();
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  useEffect(() => setMenuAbierto(false), [pathname]);
+
+  const secciones = SECCIONES
+    .map(s => ({ ...s, enlaces: s.enlaces.filter(e => rol === "duena" || !SOLO_DUENA.has(e.to)) }))
+    .filter(s => s.enlaces.length);
+  const actual = secciones.flatMap(s => s.enlaces).find(e => pathname.startsWith(e.to));
+  const salir = () => db.cloud.logout().then(() => location.reload());
+
+  const menu = (
+    <div className="flex h-full flex-col">
+      <Link to="/citas" className="flex items-center gap-3 px-6 pb-8 pt-7" title="Cristina Borquez Beauty Salon">
+        <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-10 w-auto" />
+        <span className="font-display text-2xl leading-none text-white">CB <em className="text-marca-dorado">Control</em></span>
+      </Link>
+      <nav className="flex-1 space-y-7 overflow-y-auto px-3 pb-6">
+        {secciones.map(s => (
+          <div key={s.titulo}>
+            <p className="px-3 pb-2 text-[10px] uppercase tracking-[0.28em] text-white/35">{s.titulo}</p>
+            {s.enlaces.map(({ to, label, Icono }) => (
+              <NavLink key={to} to={to}
+                className={({ isActive }) => `group relative flex items-center gap-3 rounded-md px-3 py-2 text-[13.5px] tracking-wide transition-colors ${isActive ? "bg-white/[0.06] text-marca-dorado" : "text-white/70 hover:bg-white/[0.04] hover:text-white"}`}>
+                {({ isActive }) => (
+                  <>
+                    <span className={`absolute left-0 top-1/2 h-5 w-px -translate-y-1/2 bg-marca-dorado transition-opacity ${isActive ? "opacity-100" : "opacity-0"}`} />
+                    <Icono size={17} strokeWidth={1.4} className={isActive ? "" : "text-white/45 group-hover:text-white/80"} />
+                    {label}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        ))}
+      </nav>
+      {usuario?.isLoggedIn && (
+        <div className="border-t border-white/10 px-6 py-4">
+          <p className="truncate text-xs text-white/50" title={usuario.email}>{usuario.email}</p>
+          <div className="mt-1 flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-[0.24em] text-marca-dorado">{rol ? NOMBRE_ROL[rol] : ""}</span>
+            <button onClick={salir} className="flex items-center gap-1.5 text-xs text-white/60 hover:text-marca-dorado">
+              <LogOut size={14} strokeWidth={1.5} /> Salir
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen w-full bg-gray-50">
+      {/* Barra lateral fija en pantallas grandes */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-marca-dorado/15 bg-marca-negro lg:block">{menu}</aside>
+
+      {/* Barra superior y cajón en celular y tableta */}
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-marca-dorado/20 bg-marca-negro/95 px-4 text-white backdrop-blur lg:hidden">
+        <Link to="/citas" className="flex items-center gap-2.5">
+          <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-8 w-auto" />
+          <span className="text-[11px] uppercase tracking-[0.26em] text-marca-champan">{actual?.label ?? "CB Control"}</span>
+        </Link>
+        <button onClick={() => setMenuAbierto(true)} className="rounded-md p-2 hover:bg-white/10" aria-label="Abrir menú">
+          <Menu size={22} strokeWidth={1.5} />
+        </button>
+      </header>
+      <div className={`fixed inset-0 z-50 lg:hidden ${menuAbierto ? "" : "pointer-events-none"}`}>
+        <div onClick={() => setMenuAbierto(false)} className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${menuAbierto ? "opacity-100" : "opacity-0"}`} />
+        <aside className={`absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-marca-negro shadow-2xl transition-transform duration-300 ease-out ${menuAbierto ? "translate-x-0" : "-translate-x-full"}`}>
+          <button onClick={() => setMenuAbierto(false)} className="absolute right-3 top-6 rounded-md p-2 text-white/70 hover:bg-white/10" aria-label="Cerrar menú">
+            <X size={20} strokeWidth={1.5} />
+          </button>
+          {menu}
+        </aside>
+      </div>
+
+      {/* Contenido */}
+      <main className="w-full lg:pl-64">
+        <div className="px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
+          <div className="mx-auto max-w-7xl">
+            <Routes>
+              <Route path="/" element={<Navigate to="/citas" replace />} />
+              <Route path="/citas" element={<CitasPage />} />
+              <Route path="/calendario" element={<CalendarioPage />} />
+              <Route path="/ventas" element={<VentasPage />} />
+              <Route path="/inventario" element={<InventarioPage />} />
+              <Route path="/clientes" element={<ClientesPage />} />
+              <Route path="/circulo" element={<CirculoPage />} />
+              <Route path="/catalogo" element={<CatalogoPreciosPage />} />
+              <Route path="/campanas" element={<EmailCampaignsPage />} />
+              <Route path="/empleados" element={<EmpleadosPage />} />
+              <Route path="/gastos" element={<GastosPage />} />
+              <Route path="/documentos" element={<DocumentosPage />} />
+              <Route path="/galeria" element={<GaleriaPage />} />
+              {rol === "duena" && <Route path="/reportes" element={<ReportesPage />} />}
+              {rol === "duena" && <Route path="/configuracion" element={<ConfiguracionPage />} />}
+
+              {/* Redirecciones para compatibilidad con URLs antiguas */}
+              <Route path="/servicios" element={<Navigate to="/citas" replace />} />
+
+              <Route
+                path="*"
+                element={
+                  <div className="flex h-64 flex-col items-center justify-center text-center">
+                    <h1>Página no encontrada</h1>
+                    <p className="mb-6 mt-2 text-gray-500">La página que buscas no existe.</p>
+                    <Link to="/citas" className="rounded-md bg-marca-negro px-5 py-2.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-gray-800">
+                      Volver a citas
+                    </Link>
+                  </div>
+                }
+              />
+            </Routes>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }

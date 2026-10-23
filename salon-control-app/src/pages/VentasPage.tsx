@@ -28,7 +28,7 @@ export default function VentasPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gestión de Ventas</h1>
+          <h1 className="font-bold text-gray-900">Ventas</h1>
           <p className="text-gray-600 mt-1">
             Registro y seguimiento de ventas de productos
           </p>

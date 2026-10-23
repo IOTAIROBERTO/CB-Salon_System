@@ -270,12 +270,12 @@ export default function EmailCampaigns({ clientes }: EmailCampaignsProps) {
             onClick={() => setShowTemplateLibrary(true)}
             className="flex items-center gap-2 px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50"
           >
-            📚 Plantillas
+            Plantillas
           </button>
 
           <button
             onClick={() => setShowWizard(true)}
-            className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 shadow-md"
+            className="flex items-center gap-2 px-6 py-2 bg-marca-negro text-white rounded-lg hover:bg-gray-800 shadow-md"
           >
             <Plus size={20} />
             Nueva Campaña
@@ -318,7 +318,7 @@ export default function EmailCampaigns({ clientes }: EmailCampaignsProps) {
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
           >
-            📧 Campañas
+            Campañas
           </button>
           <button
             onClick={() => setActiveView('analytics')}
@@ -328,7 +328,7 @@ export default function EmailCampaigns({ clientes }: EmailCampaignsProps) {
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
           >
-            📊 Analytics
+            Analítica
           </button>
           <button
             onClick={() => setActiveView('history')}
@@ -338,7 +338,7 @@ export default function EmailCampaigns({ clientes }: EmailCampaignsProps) {
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
           >
-            🕐 Historial
+            Historial
           </button>
           <button
             onClick={() => setActiveView('guide')}
@@ -348,7 +348,7 @@ export default function EmailCampaigns({ clientes }: EmailCampaignsProps) {
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
           >
-            💡 Guía
+            Guía
           </button>
         </div>
 
@@ -475,10 +475,10 @@ export default function EmailCampaigns({ clientes }: EmailCampaignsProps) {
       {/* Floating Help Button */}
       <button
         onClick={() => setActiveView('guide')}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-yellow-400 to-orange-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center text-2xl"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-marca-negro text-marca-dorado rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center text-2xl"
         title="Mejores Prácticas"
       >
-        💡
+        ?
       </button>
     </div>
   );

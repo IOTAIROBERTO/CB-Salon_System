@@ -2,8 +2,7 @@
 import { useState } from 'react';
 import { 
   X, ChevronRight, ChevronLeft, Check, 
-  Users, Mail, Eye, Sparkles 
-} from 'lucide-react';
+  Users, Mail, Eye, Sparkles, Gift, Cake, Clock, Newspaper } from 'lucide-react';
 
 interface Cliente {
   id: string;
@@ -29,28 +28,28 @@ const CAMPAIGN_TYPES = [
     id: 'promocion',
     name: 'Promoción',
     description: 'Ofertas especiales y descuentos',
-    icon: '🎁',
+    icon: <Gift size={34} strokeWidth={1.4} />,
     color: 'yellow'
   },
   {
     id: 'cumpleanos',
     name: 'Cumpleaños',
     description: 'Felicitaciones personalizadas',
-    icon: '🎂',
+    icon: <Cake size={34} strokeWidth={1.4} />,
     color: 'pink'
   },
   {
     id: 'recordatorio',
     name: 'Recordatorio',
     description: 'Recuerda tu próxima cita',
-    icon: '⏰',
+    icon: <Clock size={34} strokeWidth={1.4} />,
     color: 'blue'
   },
   {
     id: 'newsletter',
     name: 'Newsletter',
     description: 'Novedades y actualizaciones',
-    icon: '📰',
+    icon: <Newspaper size={34} strokeWidth={1.4} />,
     color: 'purple'
   }
 ];
@@ -297,7 +296,7 @@ export default function EmailCampaignWizard({ clientes, onComplete, onClose }: W
       {/* Advertencia */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <div className="text-yellow-600 text-lg">⚠️</div>
+          <div className="text-yellow-700 text-lg">!</div>
           <div className="flex-1 text-sm text-yellow-800">
             <p className="font-medium">Antes de crear:</p>
             <ul className="list-disc list-inside mt-2 space-y-1">
@@ -315,7 +314,7 @@ export default function EmailCampaignWizard({ clientes, onComplete, onClose }: W
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+        <div className="px-6 py-4 border-b bg-marca-negro text-white">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">Crear Nueva Campaña</h2>
             <button onClick={onClose} className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors">

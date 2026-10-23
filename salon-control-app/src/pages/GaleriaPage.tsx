@@ -20,7 +20,7 @@ export default function GaleriaPage() {
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
         <div>
-          <h1 className="text-3xl text-gray-900">Galería</h1>
+          <h1 className="text-gray-900">Galería</h1>
           <p className="text-sm text-gray-600">Página pública con los trabajos del salón. Compártela con clientas o en tu perfil de Google e Instagram.</p>
         </div>
         <div className="flex flex-wrap gap-2">

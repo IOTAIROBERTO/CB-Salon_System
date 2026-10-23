@@ -53,7 +53,7 @@ export default function ClientesPage() {
       {/* Header */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          <h1 className="font-bold text-gray-900">
             Clientes
           </h1>
           <AddClienteButton onAdd={openCreateModal} />

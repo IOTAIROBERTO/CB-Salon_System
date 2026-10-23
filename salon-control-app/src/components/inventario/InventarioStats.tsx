@@ -15,7 +15,7 @@ export default function InventarioStats({ stats }: InventarioStatsProps) {
   } = stats;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       <div className="bg-white p-4 rounded-lg shadow border">
         <div className="flex items-center justify-between">
           <div>
@@ -44,7 +44,7 @@ export default function InventarioStats({ stats }: InventarioStatsProps) {
               {formatCurrency(valorTotalInventario)}
             </p>
           </div>
-          <span className="text-2xl">💰</span>
+          
         </div>
       </div>
 
@@ -54,7 +54,7 @@ export default function InventarioStats({ stats }: InventarioStatsProps) {
             <p className="text-sm text-gray-600">Categorías</p>
             <p className="text-2xl font-bold text-purple-600">{categorias}</p>
           </div>
-          <span className="text-2xl">📦</span>
+          
         </div>
       </div>
     </div>

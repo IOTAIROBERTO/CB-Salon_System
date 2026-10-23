@@ -120,7 +120,7 @@ export default function CalendarioPage() {
                         <CalendarIcon size={24} />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Calendario Unificado</h1>
+                        <h1 className="font-bold text-gray-800">Calendario</h1>
                         <p className="text-xs text-gray-500">Citas y apoyo de auxiliares</p>
                     </div>
                 </div>

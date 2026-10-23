@@ -307,7 +307,7 @@ export default function EmailCampaignsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Email Marketing</h1>
+          <h1 className="font-bold text-gray-900">Campañas</h1>
           <p className="text-gray-600 mt-1">Gestiona campañas y automatizaciones</p>
         </div>
         <Link to="/configuracion" className="text-purple-600 hover:text-purple-800 flex items-center gap-2">

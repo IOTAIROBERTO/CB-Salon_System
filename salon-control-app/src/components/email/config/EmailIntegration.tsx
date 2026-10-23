@@ -124,7 +124,7 @@ export default function EmailIntegration({ onClose }: EmailIntegrationProps) {
     }
 
     setIsTesting(true);
-    setTestResult('📧 Enviando email de prueba...');
+    setTestResult('Enviando email de prueba...');
 
     try {
       if (config.provider === 'emailjs' && config.emailjs) {
@@ -265,7 +265,7 @@ export default function EmailIntegration({ onClose }: EmailIntegrationProps) {
 
               {showInstructions && (
                 <div className="bg-blue-50 p-4 rounded-lg text-sm">
-                  <h4 className="font-medium text-blue-900 mb-2">📋 Configuración requerida:</h4>
+                  <h4 className="font-medium text-blue-900 mb-2">Configuración requerida:</h4>
                   <ol className="text-blue-800 space-y-1 list-decimal list-inside">
                     <li>Crea cuenta en <a href="https://emailjs.com" target="_blank" className="underline">emailjs.com</a></li>
                     <li>Template Subject: <code>{"{{subject}}"}</code></li>

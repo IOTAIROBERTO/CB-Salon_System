@@ -1,8 +1,7 @@
 // src/components/email/campaigns/CampaignCard.tsx
 import { 
   Mail, Calendar, Users, Eye, Send, Edit, Trash2, 
-  MoreVertical, CheckCircle, Clock, TrendingUp, Copy
-} from 'lucide-react';
+  MoreVertical, CheckCircle, Clock, TrendingUp, Copy, Gift, Cake, Newspaper } from 'lucide-react';
 import { useState } from 'react';
 
 interface Campaign {
@@ -33,26 +32,26 @@ interface CampaignCardProps {
 
 const TYPE_STYLES = {
   promocion: {
-    icon: '🎁',
-    gradient: 'from-yellow-400 to-orange-500',
+    icon: <Gift size={18} strokeWidth={1.4} />,
+    gradient: 'from-purple-300 to-purple-500',
     bg: 'bg-yellow-50',
     border: 'border-yellow-200'
   },
   cumpleanos: {
-    icon: '🎂',
-    gradient: 'from-pink-400 to-purple-500',
+    icon: <Cake size={18} strokeWidth={1.4} />,
+    gradient: 'from-purple-300 to-purple-500',
     bg: 'bg-pink-50',
     border: 'border-pink-200'
   },
   recordatorio: {
-    icon: '⏰',
-    gradient: 'from-blue-400 to-cyan-500',
+    icon: <Clock size={18} strokeWidth={1.4} />,
+    gradient: 'from-purple-300 to-purple-500',
     bg: 'bg-blue-50',
     border: 'border-blue-200'
   },
   newsletter: {
-    icon: '📰',
-    gradient: 'from-purple-400 to-indigo-500',
+    icon: <Newspaper size={18} strokeWidth={1.4} />,
+    gradient: 'from-purple-300 to-purple-500',
     bg: 'bg-purple-50',
     border: 'border-purple-200'
   }
@@ -214,7 +213,7 @@ export default function CampaignCard({
 
         {/* Stats Section - Collapsible */}
         {showStats && campaign.stats && campaign.status === 'sent' && (
-          <div className="mb-4 p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+          <div className="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
             <div className="grid grid-cols-4 gap-3">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">{campaign.stats.sent}</div>
@@ -263,7 +262,7 @@ export default function CampaignCard({
           {campaign.status === 'draft' && (
             <button
               onClick={onSend}
-              className="flex-1 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all font-medium flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+              className="flex-1 px-4 py-2.5 bg-marca-negro text-white rounded-lg hover:bg-gray-800 transition-all font-medium flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
             >
               <Send size={16} />
               Enviar
@@ -273,7 +272,7 @@ export default function CampaignCard({
           {campaign.status === 'sent' && (
             <button
               onClick={onDuplicate}
-              className="flex-1 px-4 py-2.5 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-lg hover:from-green-700 hover:to-teal-700 transition-all font-medium flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+              className="flex-1 px-4 py-2.5 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-all font-medium flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
             >
               <Copy size={16} />
               Duplicar

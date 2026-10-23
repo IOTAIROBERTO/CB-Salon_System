@@ -53,7 +53,7 @@ export default function GastosPage() {
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Control de Gastos</h1>
+                    <h1 className="font-bold text-gray-800">Gastos</h1>
                     <p className="text-gray-600">Administra los egresos del salón</p>
                 </div>
                 <button

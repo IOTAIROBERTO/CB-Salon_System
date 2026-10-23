@@ -6,7 +6,8 @@ import { validateVentaForm, calculateVentaTotal, generateVentaId } from '../../u
 import ProductSelector from './ProductSelector';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
-import { estadoCirculo, parametrosDe, descuentoProducto, NOMBRE_CIRCULO } from '../../utils/lealtad';
+import { estadoCirculo, parametrosDe, descuentoProducto, NOMBRE_CIRCULO, NOMBRE_NIVEL, type Nivel } from '../../utils/lealtad';
+import { CATEGORIA_ANTOJOS, descuentoAntojo } from '../../data/menuAntojos';
 
 interface VentaModalProps {
   isOpen: boolean;
@@ -31,16 +32,26 @@ export default function VentaModal({
 }: VentaModalProps) {
   // Hooks antes del return condicional (regla de hooks de React)
   const empleados = useLiveQuery(() => db.empleados.toArray())?.filter(e => e.activo) || [];
-  // Descuento en productos que la clienta ya desbloqueó en el Club (5, 10 o 15%)
-  const descuentoClub = useLiveQuery(async () => {
-    if (!ventaData.clienteId) return 0;
+  // Nivel del Club de la clienta: decide el descuento de cada producto (cabello y antojos tienen su propia escala)
+  const nivelClub = useLiveQuery(async (): Promise<Nivel | null> => {
+    if (!ventaData.clienteId) return null;
     const [cliente, citas, ventas, todas, servicios, settings, saldo] = await Promise.all([db.clientes.get(ventaData.clienteId), db.citas.toArray(),
       db.ventas.toArray(), db.clientes.toArray(), db.servicios.toArray(), db.configuracion.get('settings'),
       db.movimientosSaldo.where('clienteId').equals(ventaData.clienteId).toArray()]);
-    if (!cliente) return 0;
+    if (!cliente) return null;
     const p = parametrosDe(settings as any);
-    return descuentoProducto(estadoCirculo(cliente, citas, ventas, todas, servicios, p, undefined, saldo).puntos, p);
-  }, [ventaData.clienteId]) || 0;
+    const e = estadoCirculo(cliente, citas, ventas, todas, servicios, p, undefined, saldo);
+    return e.activa ? e.nivel : null;
+  }, [ventaData.clienteId]) ?? null;
+  const pctItem = (itemId: string) => {
+    const prod = inventario.find(i => i.id === itemId) as (Item & { categoria?: string }) | undefined;
+    if (!nivelClub || !prod) return 0;
+    return prod.categoria === CATEGORIA_ANTOJOS ? descuentoAntojo(nivelClub, prod.nombre) : descuentoProducto(nivelClub);
+  };
+  const totalConClub = () => Math.round(ventaData.items.reduce((t, it) => {
+    const prod = inventario.find(i => i.id === it.itemId);
+    return t + (prod ? prod.precio * it.cantidad * (1 - pctItem(it.itemId) / 100) : 0);
+  }, 0));
 
   if (!isOpen) return null;
 
@@ -53,7 +64,8 @@ export default function VentaModal({
       return;
     }
 
-    const total = Math.round(calculateVentaTotal(ventaData.items, inventario) * (1 - descuentoClub / 100));
+    const total = totalConClub();
+    const ahorro = calculateVentaTotal(ventaData.items, inventario) - total;
 
     const nuevaVenta: Venta = {
       id: generateVentaId(),
@@ -62,7 +74,7 @@ export default function VentaModal({
       items: ventaData.items,
       total,
       fecha: new Date().toISOString(),
-      notas: [ventaData.notas, descuentoClub ? `Descuento ${NOMBRE_CIRCULO} ${descuentoClub}%` : ''].filter(Boolean).join(' · ')
+      notas: [ventaData.notas, ahorro > 0 && nivelClub ? `Descuento ${NOMBRE_CIRCULO} (${NOMBRE_NIVEL[nivelClub]}): $${ahorro}` : ''].filter(Boolean).join(' · ')
     };
 
     try {
@@ -74,7 +86,7 @@ export default function VentaModal({
   };
 
   const subtotal = calculateVentaTotal(ventaData.items, inventario);
-  const total = Math.round(subtotal * (1 - descuentoClub / 100));
+  const total = totalConClub();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -142,9 +154,9 @@ export default function VentaModal({
               {/* Resumen de total */}
               {ventaData.items.length > 0 && (
                 <div className="bg-gray-50 p-3 rounded-lg">
-                  {descuentoClub > 0 && (
+                  {subtotal > total && nivelClub && (
                     <div className="flex justify-between items-center text-sm text-green-700 mb-1">
-                      <span>Descuento {NOMBRE_CIRCULO} ({descuentoClub}%)</span>
+                      <span>Descuento {NOMBRE_CIRCULO} ({NOMBRE_NIVEL[nivelClub]})</span>
                       <span>−{formatCurrency(subtotal - total)}</span>
                     </div>
                   )}
