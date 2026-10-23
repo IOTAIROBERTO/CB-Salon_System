@@ -4,6 +4,8 @@ import { db } from './db';
 import { NOMBRE_CIRCULO, costoPuntos, montoCanje, montoTarjeta, tituloCanje, type ClaveBeneficio, type Nivel, type ParametrosCirculo } from '../utils/lealtad';
 import { normalizarFolio } from '../utils/saldo';
 
+/** Los regalos de nivel (con costo en puntos) escriben movimientosSaldo, que solo la Dueña puede escribir en Dexie Cloud:
+ *  las pantallas solo los ofrecen a la Dueña, para que nunca quede un regalo usado sin descontar sus puntos. */
 export const registrarCanjes = async (clienteId: string, claves: ClaveBeneficio[], citaId?: string) => {
   if (!claves.length) return;
   const cliente = await db.clientes.get(clienteId);

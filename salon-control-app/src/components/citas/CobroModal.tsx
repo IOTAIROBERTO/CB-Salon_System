@@ -103,6 +103,8 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
     ? sinAplicar(beneficiosDisponibles(clienta, nivel, clientesTodos, citasTodas, servicios as any, new Date(), pClub,
         puntosClub - aplicados.reduce((t, k) => t + costoPuntos(k), 0)))   // los regalos ya aplicados gastan puntos
         .filter(k => k !== 'referida' || !descuentoClub)   // un solo descuento del Club por cobro
+        // Los regalos de nivel gastan puntos (movimientosSaldo): solo la Dueña puede escribirlos; si no, quedaría usado sin descontar
+        .filter(k => esDuena || !costoPuntos(k))
     : [];
 
   const aplicarBeneficio = (clave: ClaveBeneficio) => {

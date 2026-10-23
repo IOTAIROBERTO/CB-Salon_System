@@ -245,7 +245,9 @@ export default function CirculoPage() {
               ) : (
                 <div key={k + i} className="flex items-center justify-between gap-2 py-2 border-t text-sm">
                   <span>{datosBeneficio(k, seleccionada.nivel).titulo}</span>
-                  <button onClick={() => canjear(seleccionada.cliente.id, k, seleccionada.nivel)} className="shrink-0 text-xs px-3 py-1.5 rounded-md bg-purple-600 text-white hover:bg-purple-700">Canjear</button>
+                  {esDuena || !costoPuntos(k)
+                    ? <button onClick={() => canjear(seleccionada.cliente.id, k, seleccionada.nivel)} className="shrink-0 text-xs px-3 py-1.5 rounded-md bg-purple-600 text-white hover:bg-purple-700">Canjear</button>
+                    : <span className="shrink-0 text-xs text-gray-400">Lo aplica la Dueña</span>}
                 </div>
               ))}
               <div className="flex justify-between gap-2 py-2 border-t text-sm">
