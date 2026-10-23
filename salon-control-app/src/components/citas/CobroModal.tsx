@@ -64,7 +64,10 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   const saldoDisponible = saldoDe(movimientosSaldo, cita.clienteId);
   const sinSaldo = calculateChargeBreakdown(subtotalServicios, porcentajeSeleccionado, 0, anticipoRecibido);
   const maxSaldo = saldoUsable(saldoDisponible, Math.max(0, sinSaldo.subtotalConDescuento - anticipoRecibido));
-  const saldoAplicado = Math.min(conSaldo, maxSaldo);
+  // Usar saldo escribe movimientosSaldo, que solo la Dueña puede escribir en Dexie Cloud: si lo hiciera la empleada,
+  // la cita quedaría pagada con saldo y el servidor rechazaría el cargo (la clienta conservaría el dinero)
+  const esDuena = useRolSalon() === 'duena';
+  const saldoAplicado = esDuena ? Math.min(conSaldo, maxSaldo) : 0;
   const calculoFinal = calculateChargeBreakdown(
     subtotalServicios,
     porcentajeSeleccionado,
@@ -86,7 +89,6 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   const estadoClub = clienta ? estadoCirculo(clienta, citasTodas, ventasTodas, clientesTodos, servicios as any, pClub, undefined, movimientosSaldo) : null;
   const nivel = estadoClub?.nivel ?? 'marfil';
   const puntosClub = estadoClub?.activa ? estadoClub.puntos : 0;
-  const esDuena = useRolSalon() === 'duena';
   // Usar los puntos aquí mismo: se cambian por saldo a favor (solo la Dueña) y el saldo entra a este cobro
   const usarPuntos = async () => {
     if (!clienta || !confirm(`¿Cambiar ${puntosClub.toLocaleString('es-MX')} puntos por $${montoCanje(puntosClub, pClub)} de saldo y usarlo en este cobro?`)) return;
@@ -391,7 +393,10 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
             </div>
 
             {/* Saldo a favor de la clienta */}
-            {saldoDisponible > 0 && (
+            {saldoDisponible > 0 && !esDuena && (
+              <p className="bg-green-50 border border-green-200 rounded p-3 text-sm text-gray-700">Tiene {formatCurrency(saldoDisponible)} de saldo a favor: para usarlo en este cobro, que lo cobre la Dueña.</p>
+            )}
+            {saldoDisponible > 0 && esDuena && (
               <div className="bg-green-50 border border-green-200 rounded p-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Usar saldo a favor (disponible {formatCurrency(saldoDisponible)})
