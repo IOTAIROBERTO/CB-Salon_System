@@ -113,13 +113,13 @@ export const SERVICIOS_MAQUILLAJE = ['s23', 's24'];
 export const SERVICIOS_CORTE_PEINADO = ['s01', 's02', 's04', 's21', 's22'];
 
 /** 1. Permanentes: mientras esté en el nivel y sin gastar puntos. Cada nivel mejora al anterior. */
-// antojosSeleccion: waffles, snacks y galletas (los de mejor margen, data/menuAntojos.ts); antojosResto: todo lo demás del menú
-export const BENEFICIOS_NIVEL: Record<Nivel, { productos: number; maquillaje: number; cortePeinado: number; tarjeta: number; flequillo: boolean; antojosSeleccion: number; antojosResto: number; antojoCortesia: boolean }> = {
-  marfil: { productos: 0, maquillaje: 0, cortePeinado: 0, tarjeta: 0, flequillo: false, antojosSeleccion: 0, antojosResto: 0, antojoCortesia: false },
-  miel: { productos: 3, maquillaje: 5, cortePeinado: 0, tarjeta: 0, flequillo: false, antojosSeleccion: 0, antojosResto: 0, antojoCortesia: false },
-  ambar: { productos: 5, maquillaje: 10, cortePeinado: 5, tarjeta: 5, flequillo: true, antojosSeleccion: 5, antojosResto: 0, antojoCortesia: false },
-  dorado: { productos: 8, maquillaje: 12, cortePeinado: 10, tarjeta: 10, flequillo: true, antojosSeleccion: 10, antojosResto: 0, antojoCortesia: false },
-  onix: { productos: 10, maquillaje: 15, cortePeinado: 15, tarjeta: 15, flequillo: true, antojosSeleccion: 10, antojosResto: 5, antojoCortesia: true }
+// antojosComida: todo lo de comer del menú de antojos (data/menuAntojos.ts); las bebidas no llevan descuento
+export const BENEFICIOS_NIVEL: Record<Nivel, { productos: number; maquillaje: number; cortePeinado: number; tarjeta: number; flequillo: boolean; antojosComida: number; antojoCortesia: boolean }> = {
+  marfil: { productos: 0, maquillaje: 0, cortePeinado: 0, tarjeta: 0, flequillo: false, antojosComida: 0, antojoCortesia: false },
+  miel: { productos: 3, maquillaje: 5, cortePeinado: 0, tarjeta: 0, flequillo: false, antojosComida: 0, antojoCortesia: false },
+  ambar: { productos: 5, maquillaje: 10, cortePeinado: 5, tarjeta: 5, flequillo: true, antojosComida: 5, antojoCortesia: false },
+  dorado: { productos: 8, maquillaje: 12, cortePeinado: 10, tarjeta: 10, flequillo: true, antojosComida: 10, antojoCortesia: false },
+  onix: { productos: 10, maquillaje: 15, cortePeinado: 15, tarjeta: 15, flequillo: true, antojosComida: 15, antojoCortesia: true }
 };
 /** Lista legible de lo permanente de un nivel (para la app, la ficha y los mensajes) */
 export const permanentesDe = (nivel: Nivel, p: ParametrosCirculo = PARAMETROS_CIRCULO) => {
@@ -130,38 +130,32 @@ export const permanentesDe = (nivel: Nivel, p: ParametrosCirculo = PARAMETROS_CI
     b.maquillaje ? `${b.maquillaje}% en maquillaje social` : '',
     b.cortePeinado ? `${b.cortePeinado}% en corte y peinado` : '',
     b.flequillo ? 'Despunte de flequillo gratis, uno al mes' : '',
-    b.antojosSeleccion ? `${b.antojosSeleccion}% en waffles, snacks y galletas del menú de antojos${b.antojosResto ? ` y ${b.antojosResto}% en todo lo demás` : ''}` : '',
+    b.antojosComida ? `${b.antojosComida}% en antojos de comida (no incluye bebidas)` : '',
     b.antojoCortesia ? 'Un antojo y una bebida del menú de cortesía, uno al mes' : '',
-    b.tarjeta ? `Tus puntos rinden ${b.tarjeta}% más en tarjetas de regalo` : ''
+    b.tarjeta ? `Si cambias tus puntos por una tarjeta de regalo, valen ${b.tarjeta}% más` : ''
   ].filter(Boolean);
 };
 
 /** 2. Regalo de nivel: uno por nivel, cuesta puntos, se tacha al usarlo y vuelve a estar disponible a los 12 meses */
 export const REGALOS_NIVEL: Record<ClaveRegalo, { nivel: Nivel; titulo: string; servicioId: string; precio: number; puntos: number }> = {
-  regaloMiel: { nivel: 'miel', titulo: 'Ampolleta de hidratación', servicioId: 's03', precio: 150, puntos: 150 },
-  regaloAmbar: { nivel: 'ambar', titulo: 'Mascarilla en cabina', servicioId: 's06', precio: 500, puntos: 250 },
-  regaloDorado: { nivel: 'dorado', titulo: 'Corte de cabello', servicioId: 's01', precio: 500, puntos: 300 },
-  regaloOnix: { nivel: 'onix', titulo: 'Corte + ampolleta de hidratación', servicioId: 's04', precio: 650, puntos: 350 }
+  regaloMiel: { nivel: 'miel', titulo: 'Ampolleta de hidratación', servicioId: 's03', precio: 150, puntos: 200 },
+  regaloAmbar: { nivel: 'ambar', titulo: 'Mascarilla para el cabello', servicioId: 's06', precio: 500, puntos: 400 },
+  regaloDorado: { nivel: 'dorado', titulo: 'Corte de cabello', servicioId: 's01', precio: 500, puntos: 450 },
+  regaloOnix: { nivel: 'onix', titulo: 'Corte + ampolleta de hidratación', servicioId: 's04', precio: 650, puntos: 550 }
 };
 export const CLAVES_REGALO = Object.keys(REGALOS_NIVEL) as ClaveRegalo[];
 export const esRegalo = (clave: string): clave is ClaveRegalo => clave in REGALOS_NIVEL;
 /** Puntos que cuesta usar ese beneficio (solo los regalos de nivel cuestan) */
 export const costoPuntos = (clave: string) => esRegalo(clave) ? REGALOS_NIVEL[clave].puntos : 0;
 
-/** 3. Celebraciones gratis. El cumpleaños mejora con el nivel sin quitar nada: siempre puntos dobles todo el mes. */
-const CUMPLE: Record<Nivel, { titulo: string; servicioId: string }> = {
-  marfil: { titulo: 'Puntos dobles todo tu mes', servicioId: '' },
-  miel: { titulo: 'Detalle de cumpleaños con el logo', servicioId: '' },
-  ambar: { titulo: 'Detalle de cumpleaños y ampolleta de hidratación', servicioId: 's03' },
-  dorado: { titulo: 'Detalle de cumpleaños y mascarilla en cabina', servicioId: 's06' },
-  onix: { titulo: 'Detalle de cumpleaños, mascarilla en cabina y producto tamaño viaje', servicioId: 's06' }
-};
-export const beneficioCumple = (nivel: Nivel) => CUMPLE[nivel];
+/** 3. Celebraciones gratis. Cumpleaños: puntos dobles todo el mes y una sorpresa; qué sorpresa lo deciden Cristina o Roberto. */
+const CUMPLE = { titulo: 'Sorpresa por tu cumpleaños', servicioId: '' };
+export const beneficioCumple = (_nivel?: Nivel) => CUMPLE;
 /** Puntos de aniversario en el Club (si vino en los últimos 90 días) */
 export const ANIVERSARIO_PUNTOS: Record<Nivel, number> = { marfil: 100, miel: 150, ambar: 200, dorado: 250, onix: 300 };
 
 export const BENEFICIOS: Record<Exclude<ClaveBeneficio, ClaveRegalo>, { titulo: string; servicioId: string }> = {
-  cumple: { titulo: 'Regalo de cumpleaños', servicioId: '' },
+  cumple: { titulo: 'Sorpresa por tu cumpleaños', servicioId: '' },
   constancia: { titulo: 'Ampolleta de hidratación por constancia', servicioId: 's03' },
   flequillo: { titulo: 'Despunte de flequillo del mes', servicioId: 's02' },
   antojoOnix: { titulo: 'Antojo y bebida de cortesía del mes', servicioId: '' },
@@ -169,7 +163,7 @@ export const BENEFICIOS: Record<Exclude<ClaveBeneficio, ClaveRegalo>, { titulo: 
 };
 export const datosBeneficio = (clave: ClaveBeneficio, nivel: Nivel) => {
   if (esRegalo(clave)) { const r = REGALOS_NIVEL[clave]; return { titulo: `Regalo ${NOMBRE_NIVEL[r.nivel]}: ${r.titulo} (${r.puntos} pts)`, servicioId: r.servicioId }; }
-  return clave === 'cumple' ? { ...beneficioCumple(nivel), titulo: `Cumpleaños: ${beneficioCumple(nivel).titulo.toLowerCase()}` } : BENEFICIOS[clave];
+  return clave === 'cumple' ? beneficioCumple(nivel) : BENEFICIOS[clave];
 };
 
 /** Título de un canje (también de canjes viejos que ya no existen) */
@@ -373,7 +367,7 @@ export const beneficiosDisponibles = (cliente: ClienteL, nivel: Nivel, clientes:
   const mes = String(hoy.getMonth() + 1).padStart(2, '0');
   const anio = String(hoy.getFullYear());
   const usado = (clave: ClaveBeneficio, prefijo: string) => canjes.some(c => c.clave === clave && c.fecha.startsWith(prefijo));
-  if (orden(nivel) >= orden('miel') && cliente.cumple?.slice(5, 7) === mes && !usado('cumple', anio)) res.push('cumple');
+  if (cliente.cumple?.slice(5, 7) === mes && !usado('cumple', anio)) res.push('cumple');
   if (rachaConstancia(cliente, citas, p) >= p.constanciaVisitas) res.push('constancia');
   // Regalos de nivel: todos los de su nivel y los de abajo, uno de cada uno; vuelven a los 12 meses de usarlos
   const haceUnAnio = masDias(hoyISO(hoy), -365);

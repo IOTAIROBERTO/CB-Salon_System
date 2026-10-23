@@ -117,6 +117,7 @@ assert.equal(descuentoServicio('onix', 's21'), 15);
 assert.equal(descuentoServicio('onix', 's25'), 0); // paquetes de novia fuera
 assert.deepEqual(permanentesDe('marfil'), []);
 assert.equal(permanentesDe('onix').length, 8);
+assert.match(permanentesDe('onix').join(' · '), /15% en antojos de comida \(no incluye bebidas\)/);
 assert.equal(montoCanje(200), 50);
 assert.equal(montoTarjeta(200, 'marfil'), 50);
 assert.equal(montoTarjeta(200, 'dorado'), 55);
@@ -124,26 +125,24 @@ assert.equal(montoTarjeta(200, 'onix'), 58);
 
 // 2. Regalos de nivel: los de su nivel y los de abajo, si le alcanzan los puntos; se tachan al usarlos por 12 meses
 assert.deepEqual(beneficiosDisponibles({ id: 'r' }, 'ambar', [], [], servicios, fecha('2027-03-25'), P, 600), ['regaloMiel', 'regaloAmbar', 'flequillo']);
-assert.deepEqual(beneficiosDisponibles({ id: 'r' }, 'ambar', [], [], servicios, fecha('2027-03-25'), P, 200), ['regaloMiel', 'flequillo']);
-const usoRegalo = { id: 'r', canjes: [{ clave: 'regaloMiel' as const, fecha: '2027-03-01T10:00:00Z', puntos: 150 }] };
+assert.deepEqual(beneficiosDisponibles({ id: 'r' }, 'ambar', [], [], servicios, fecha('2027-03-25'), P, 300), ['regaloMiel', 'flequillo']);
+const usoRegalo = { id: 'r', canjes: [{ clave: 'regaloMiel' as const, fecha: '2027-03-01T10:00:00Z', puntos: 200 }] };
 assert.deepEqual(beneficiosDisponibles(usoRegalo, 'ambar', [], [], servicios, fecha('2027-03-25'), P, 600), ['regaloAmbar', 'flequillo']);
 assert.deepEqual(beneficiosDisponibles(usoRegalo, 'miel', [], [], servicios, fecha('2028-03-02'), P, 600), ['regaloMiel']); // vuelve a los 12 meses
 assert.deepEqual(beneficiosDisponibles({ id: 'r' }, 'onix', [], [], servicios, fecha('2027-03-25'), P, 5000),
   ['regaloMiel', 'regaloAmbar', 'regaloDorado', 'regaloOnix', 'flequillo', 'antojoOnix']);
 assert.deepEqual(beneficiosDisponibles({ id: 'r', canjes: [{ clave: 'antojoOnix', fecha: '2027-03-02T10:00:00Z' }] }, 'onix', [], [], servicios, fecha('2027-03-25'), P, 0), ['flequillo']); // uno al mes
-assert.equal(costoPuntos('regaloOnix'), 350);
+assert.equal(costoPuntos('regaloOnix'), 550);
 assert.equal(costoPuntos('cumple'), 0);
-assert.equal(tituloCanje({ clave: 'regaloAmbar' }), 'Regalo Ámbar: Mascarilla en cabina (250 pts)');
+assert.equal(tituloCanje({ clave: 'regaloAmbar' }), 'Regalo Ámbar: Mascarilla para el cabello (400 pts)');
 assert.equal(tituloCanje({ clave: 'tarjeta', puntos: 200 }), '200 puntos cambiados por tarjeta de regalo');
 assert.equal(tituloCanje({ clave: 'corteAnual' }), 'corteAnual'); // canjes viejos no truenan
 
 // 3. Celebraciones: el cumpleaños mejora con el nivel y nunca se pierde al subir
-assert.deepEqual(beneficiosDisponibles(a, 'marfil', [a], [], servicios, fecha('2027-02-25')), []);       // Marfil: puntos dobles automáticos
+assert.deepEqual(beneficiosDisponibles(a, 'marfil', [a], [], servicios, fecha('2027-02-25')), ['cumple']); // sorpresa en todos los niveles
 assert.deepEqual(beneficiosDisponibles(a, 'miel', [a], [], servicios, fecha('2027-02-25'), P, 0), ['cumple']);
-assert.equal(datosBeneficio('cumple', 'ambar').servicioId, 's03');
-assert.equal(datosBeneficio('cumple', 'dorado').servicioId, 's06');
-assert.equal(datosBeneficio('cumple', 'onix').servicioId, 's06');
-assert.match(datosBeneficio('cumple', 'onix').titulo, /tamaño viaje/);
+assert.deepEqual(beneficiosDisponibles({ ...a, canjes: [{ clave: 'cumple', fecha: '2027-02-10T10:00:00Z' }] }, 'onix', [a], [], servicios, fecha('2027-02-25'), P, 0), ['flequillo', 'antojoOnix']);
+assert.equal(datosBeneficio('cumple', 'onix').titulo, 'Sorpresa por tu cumpleaños');
 
 // Constancia: 5 visitas sin pasar 70 días entre una y otra → ampolleta; se reinicia al usarla
 const f = { id: 'f' };
@@ -162,12 +161,12 @@ assert.match(textoSaldoPuntos(150), /= \$38\. Sigue acumulando: desde 200 puntos
 assert.match(codigoClienta('cli_123'), /^CB[0-9A-Z]{6}$/);
 assert.equal(enlaceWhatsApp('662 161 4688', 'hola'), 'https://wa.me/526621614688?text=hola');
 assert.equal(enlaceWhatsApp('abc', 'hola'), null);
-// Menú de antojos: la selección desde Ámbar; en Ónix también el resto
+// Menú de antojos: comida con descuento desde Ámbar; bebidas no
 assert.equal(descuentoAntojo('miel', 'Oreo'), 0);
 assert.equal(descuentoAntojo('ambar', 'Oreo 42 g'), 5);
-assert.equal(descuentoAntojo('dorado', 'Waffles con miel'), 10);
-assert.equal(descuentoAntojo('dorado', 'Coca-Cola'), 0);
-assert.equal(descuentoAntojo('onix', 'Coca-Cola 355 ml'), 5);
-assert.equal(descuentoAntojo('onix', 'Papas Sabritas'), 10);
-assert.equal(descuentoAntojo('onix', ''), 5);
+assert.equal(descuentoAntojo('dorado', 'Dumplings'), 10);
+assert.equal(descuentoAntojo('onix', 'Maruchan'), 15);
+assert.equal(descuentoAntojo('onix', 'Coca-Cola 355 ml'), 0); // bebidas sin descuento
+assert.equal(descuentoAntojo('onix', 'Algo nuevo'), 0);
+assert.equal(descuentoAntojo('onix', ''), 0);
 console.log('lealtad: ok');

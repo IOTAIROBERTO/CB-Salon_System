@@ -7,7 +7,7 @@ export { DATOS_SALON, POLITICAS }
 export { MENU_ANTOJOS, CORTESIAS_SIEMPRE } from '@salon/data/menuAntojos'
 export {
   NOMBRE_CIRCULO as NOMBRE_CLUB, NOMBRE_NIVEL, NIVELES, BENEFICIOS_NIVEL, REGALOS_NIVEL, CLAVES_REGALO, ANIVERSARIO_PUNTOS, DIAS_PUNTOS_DOBLES,
-  PARAMETROS_CIRCULO as REGLAS_CLUB, REGLA_CANJE, AVISO_GASTO, beneficioCumple, textoSaldoPuntos, montoCanje, multiplicador, umbral
+  PARAMETROS_CIRCULO as REGLAS_CLUB, REGLA_CANJE, AVISO_GASTO, textoSaldoPuntos, montoCanje, montoTarjeta, multiplicador, umbral
 } from '@salon/utils/lealtad'
 
 export interface Servicio { id: string; nombre: string; categoria: string; precio: number; anticipo: number; duracion: number }

@@ -1,6 +1,7 @@
 import { MessageCircle } from 'lucide-react'
 import Encabezado from '@/components/Encabezado'
 import { BENEFICIOS_NIVEL, CORTESIAS_SIEMPRE, MENU_ANTOJOS, NOMBRE_CLUB, NOMBRE_NIVEL, POLITICAS, enlaceWhatsApp, pesos } from '@/salon'
+import { esComida } from '@salon/data/menuAntojos'
 
 // El menú de antojos sale de CB Control (data/menuAntojos.ts). El catálogo de productos vendrá del inventario por la API
 // (fase 3); mientras, se pregunta por WhatsApp.
@@ -41,7 +42,7 @@ export default function Productos() {
                       : <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-marca-champan/50 font-display text-xl text-marca-dorado-prof">{a.nombre[0]}</span>}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-marca-negro">{a.nombre}</p>
-                      <p className="text-xs text-marca-gris">{[a.detalle, a.seleccion ? `Club: ${B.ambar.antojosSeleccion}–${B.onix.antojosSeleccion}%` : ''].filter(Boolean).join(' · ')}</p>
+                      <p className="text-xs text-marca-gris">{[a.detalle, esComida(a) ? `Club: ${B.ambar.antojosComida}–${B.onix.antojosComida}%` : ''].filter(Boolean).join(' · ')}</p>
                     </div>
                     <p className="text-sm tabular-nums text-marca-negro">{pesos(a.precio)}</p>
                   </div>
@@ -51,9 +52,8 @@ export default function Productos() {
           ))}
           <div className="tarjeta mt-6 space-y-2 p-5 text-sm leading-relaxed text-marca-gris">
             <p className="rotulo">Con el {NOMBRE_CLUB}</p>
-            <p><span className="text-marca-negro">{NOMBRE_NIVEL.ambar}:</span> {B.ambar.antojosSeleccion}% en waffles, snacks y galletas.</p>
-            <p><span className="text-marca-negro">{NOMBRE_NIVEL.dorado}:</span> {B.dorado.antojosSeleccion}% en waffles, snacks y galletas.</p>
-            <p><span className="text-marca-negro">{NOMBRE_NIVEL.onix}:</span> {B.onix.antojosSeleccion}% en waffles, snacks y galletas, {B.onix.antojosResto}% en todo lo demás y un antojo con bebida de cortesía cada mes.</p>
+            <p>En antojos de comida (no incluye bebidas): <span className="text-marca-negro">{NOMBRE_NIVEL.ambar} {B.ambar.antojosComida}% · {NOMBRE_NIVEL.dorado} {B.dorado.antojosComida}% · {NOMBRE_NIVEL.onix} {B.onix.antojosComida}%</span>.</p>
+            <p>En {NOMBRE_NIVEL.onix}, además, un antojo con bebida de cortesía cada mes.</p>
           </div>
         </section>
 

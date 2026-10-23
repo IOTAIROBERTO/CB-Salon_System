@@ -75,6 +75,12 @@ export const ponerDatosAlDia = async () => {
   if (nombre?.includes('Bórquez')) cambios.nombreSalon = nombre.replace('Bórquez', 'Borquez');
   if (s.direccion && !s.direccion.includes('entre') && s.direccion.includes('Saturnino Campoy')) cambios.direccion = DATOS_SALON.direccion;
   if (Object.keys(cambios).length) await guardarSettings(cambios);
+  // Octubre 2026: «Mascarilla en cabina» se llama «Mascarilla para el cabello» (más claro para las clientas)
+  const viejo = 'Mascarilla en cabina', nuevo = 'Mascarilla para el cabello';
+  const s06 = await db.servicios.get('s06') as any;
+  if (s06?.nombre === viejo) await db.servicios.update('s06', { nombre: nuevo } as any);
+  const listas = s.listasPrecios;
+  if (listas && JSON.stringify(listas).includes(viejo)) await guardarSettings({ listasPrecios: JSON.parse(JSON.stringify(listas).split(viejo).join(nuevo)) });
 };
 
 /** Agrega del catálogo base los servicios que falten, sin tocar precios capturados */

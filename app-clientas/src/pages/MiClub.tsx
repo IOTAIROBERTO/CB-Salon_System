@@ -2,7 +2,7 @@ import Encabezado from '@/components/Encabezado'
 import UnirmeClub from '@/components/UnirmeClub'
 import {
   ANIVERSARIO_PUNTOS, AVISO_GASTO, BENEFICIOS_NIVEL, CLAVES_REGALO, DIAS_PUNTOS_DOBLES, NIVELES, NOMBRE_CLUB, NOMBRE_NIVEL, REGALOS_NIVEL, REGLA_CANJE,
-  REGLAS_CLUB as R, beneficioCumple, montoCanje, multiplicador, pesos, textoSaldoPuntos, umbral
+  REGLAS_CLUB as R, montoCanje, montoTarjeta, multiplicador, pesos, textoSaldoPuntos, umbral
 } from '@/salon'
 
 // Las reglas salen de utils/lealtad.ts de CB Control. La tarjeta con puntos de cada clienta llega con el inicio de
@@ -98,10 +98,9 @@ export default function MiClub() {
                 ['Maquillaje social', n => BENEFICIOS_NIVEL[n].maquillaje ? `${BENEFICIOS_NIVEL[n].maquillaje}%` : '—'],
                 ['Corte y peinado', n => BENEFICIOS_NIVEL[n].cortePeinado ? `${BENEFICIOS_NIVEL[n].cortePeinado}%` : '—'],
                 ['Despunte de flequillo', n => BENEFICIOS_NIVEL[n].flequillo ? '1 al mes' : '—'],
-                ['Antojos: waffles, snacks y galletas', n => BENEFICIOS_NIVEL[n].antojosSeleccion ? `${BENEFICIOS_NIVEL[n].antojosSeleccion}%` : '—'],
-                ['Antojos: todo lo demás', n => BENEFICIOS_NIVEL[n].antojosResto ? `${BENEFICIOS_NIVEL[n].antojosResto}%` : '—'],
+                ['Antojos de comida (no incluye bebidas)', n => BENEFICIOS_NIVEL[n].antojosComida ? `${BENEFICIOS_NIVEL[n].antojosComida}%` : '—'],
                 ['Antojo y bebida de cortesía', n => BENEFICIOS_NIVEL[n].antojoCortesia ? '1 al mes' : '—'],
-                ['Extra en tarjeta de regalo', n => BENEFICIOS_NIVEL[n].tarjeta ? `+${BENEFICIOS_NIVEL[n].tarjeta}%` : '—']
+                ['Tarjeta de regalo con 1,000 de tus puntos', n => pesos(montoTarjeta(1000, n))]
               ] as [string, (n: (typeof NIVELES)[number]) => string][]).map(([k, f]) => (
                 <tr key={k} className="border-t border-marca-linea/70">
                   <td className="py-2.5 text-left text-xs text-marca-gris">{k}</td>
@@ -110,7 +109,7 @@ export default function MiClub() {
               ))}
             </tbody>
           </table>
-          <p className="mt-2 text-[11px] text-marca-gris">Los paquetes de novia no llevan descuento de nivel. Café, té caliente y agua son de cortesía para todas.</p>
+          <p className="mt-2 text-[11px] text-marca-gris">Tarjeta de regalo: si cambias tus puntos por una tarjeta para alguien más, desde Ámbar valen más dinero. Los paquetes de novia no llevan descuento de nivel. Café, té caliente y agua son de cortesía para todas.</p>
         </section>
 
         <section>
@@ -139,15 +138,11 @@ export default function MiClub() {
 
         <section>
           <p className="rotulo">3 · Celebraciones</p>
-          <h2 className="titulo mt-1 text-3xl">Gratis, y mejoran contigo</h2>
-          <p className="mt-4 text-xs uppercase tracking-[0.2em] text-marca-gris">Tu cumpleaños · puntos dobles todo el mes y además</p>
-          <dl className="mt-1 text-sm">
-            {NIVELES.map(n => (
-              <div key={n} className="flex justify-between gap-4 border-b border-marca-linea/70 py-2.5">
-                <dt className="text-marca-gris">{NOMBRE_NIVEL[n]}</dt>
-                <dd className="text-right text-marca-negro">{n === 'marfil' ? 'Puntos dobles' : beneficioCumple(n).titulo}</dd>
-              </div>
-            ))}
+          <h2 className="titulo mt-1 text-3xl">Gratis, para celebrarte</h2>
+          <dl className="mt-3 text-sm">
+            <div className="flex justify-between gap-4 border-b border-marca-linea/70 py-2.5">
+              <dt className="text-marca-gris">Tu cumpleaños</dt><dd className="text-right text-marca-negro">Una sorpresa y puntos dobles todo tu mes</dd>
+            </div>
           </dl>
           <p className="mt-5 text-xs uppercase tracking-[0.2em] text-marca-gris">Aniversario en el Club · si viniste en los últimos {R.aniversarioDias} días</p>
           <div className="mt-2 grid grid-cols-5 gap-1.5 text-center">
