@@ -99,6 +99,8 @@ export interface Cliente {
     // Círculo CB (programa de lealtad)
     referidaPor?: string; // id de la clienta que la recomendó
     canjes?: Canje[];
+    origen?: 'app' | 'bot' | 'salon'; // dónde se registró (app y bot: sola, por la API)
+    clubDesde?: string; // ISO: cuándo se unió al Club desde la app o el bot
 }
 
 export interface Cita {
@@ -132,6 +134,7 @@ export interface Cita {
     ubicacion?: string; // 'salon' o id de zona (utils/zonas); claves viejas: tucson, phoenix…
     pagadoConSaldo?: number; // Parte del cobro pagada con saldo a favor (ya contó como ingreso al venderse la tarjeta)
     atiendeId?: string; // Quién la atiende en la agenda ('cristina' o id de empleado)
+    origen?: 'app' | 'bot'; // agendada por la clienta (llega «pendiente» hasta que el salón la confirma)
 }
 
 export interface Venta {
@@ -218,6 +221,18 @@ export interface Compra {
 
 /** Consentimiento firmado: la foto del formato en papel o la aceptación en la app */
 /** Tarjeta de regalo impresa: se vende con folio y la clienta la activa como saldo a favor */
+/** Aviso para el salón: lo que hacen las clientas solas (citas, registros al Club, pedidos), en tiempo real */
+export interface Aviso {
+    id: string;
+    fecha: string; // ISO
+    tipo: 'cita' | 'club' | 'pedido' | 'sistema';
+    titulo: string;
+    detalle?: string;
+    refId?: string; // id de la cita, clienta o pedido
+    clienteId?: string;
+    leido?: boolean;
+}
+
 export interface TarjetaRegalo {
     id: string;
     folio: string; // en mayúsculas, sin espacios
@@ -304,6 +319,7 @@ export class SalonDatabase extends Dexie {
     consentimientos!: Table<Consentimiento>;
     tarjetasRegalo!: Table<TarjetaRegalo>;
     movimientosSaldo!: Table<MovimientoSaldo>;
+    avisos!: Table<Aviso>;
 
     // New Tables
     documentos!: Table<SalonDocument>;
@@ -351,6 +367,9 @@ export class SalonDatabase extends Dexie {
             tarjetasRegalo: 'id, folio, fechaVenta',
             movimientosSaldo: 'id, clienteId, fecha'
         });
+        this.version(5).stores({
+            avisos: 'id, fecha, tipo, leido'
+        });
 
         this.cloud.configure({
             databaseUrl: DEXIE_CLOUD_URL,
@@ -394,7 +413,7 @@ export class SalonDatabase extends Dexie {
 const TABLAS_DEL_SALON = new Set([
     'clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos', 'configuracion',
     'empleados', 'campanas', 'plantillas', 'automatizaciones', 'empleadoEvents',
-    'proveedores', 'compras', 'consentimientos', 'tarjetasRegalo', 'movimientosSaldo'
+    'proveedores', 'compras', 'consentimientos', 'tarjetasRegalo', 'movimientosSaldo', 'avisos'
 ]);
 
 let realmSalonId: string | undefined;

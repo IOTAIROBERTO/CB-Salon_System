@@ -1,0 +1,172 @@
+// API de la app de clientas (Cloudflare Pages Functions, misma dirección que la app: /api/...).
+// Lee y escribe la base de CB Control con Dexie Cloud; reutiliza el motor de agenda de CB Control,
+// así la app ofrece exactamente los mismos horarios libres que ve el salón.
+import { AGENDA_INICIAL, DUENA, horariosLibres, type Bloqueo, type ConfigAgenda, type Persona } from '../../salon-control-app/src/utils/agenda';
+import { guardar, leer, uno, type EnvDexie } from './dexie';
+import { avisarSalon, type EnvWhatsApp } from './whatsapp';
+
+export type Env = EnvDexie & EnvWhatsApp;
+
+// Hermosillo no cambia de horario: UTC−7 todo el año. El motor compara fechas «locales»; en el servidor (UTC)
+// se le pasa la hora de Hermosillo como si fuera UTC.
+const ahoraHermosillo = () => new Date(Date.now() - 7 * 3600 * 1000);
+const hoyHermosillo = () => ahoraHermosillo().toISOString().slice(0, 10);
+const masDias = (f: string, n: number) => { const d = new Date(`${f}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const tel10 = (t = '') => String(t).replace(/\D/g, '').slice(-10);
+const id = (p: string) => `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+const fechaLegible = (f: string) => new Date(`${f}T12:00:00Z`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+const FECHA = /^\d{4}-\d{2}-\d{2}$/, HORA = /^\d{2}:\d{2}$/;
+
+class ErrorCliente extends Error { constructor(msg: string, public status = 400) { super(msg); } }
+
+const json = (datos: unknown, status = 200) => new Response(JSON.stringify(datos), {
+  status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
+});
+
+// ponytail: límite por instancia en memoria (8 envíos cada 10 min por IP); pasar a Rate Limiting de Cloudflare si hay abuso
+const envios = new Map<string, number[]>();
+function limitar(ip: string) {
+  const ahora = Date.now(), lista = (envios.get(ip) || []).filter(t => ahora - t < 10 * 60 * 1000);
+  if (lista.length >= 8) throw new ErrorCliente('Demasiados intentos. Espera unos minutos o escríbenos por WhatsApp.', 429);
+  lista.push(ahora); envios.set(ip, lista);
+}
+
+/** Lo que el motor de agenda necesita, igual que useAgenda en CB Control */
+async function cargarAgenda(env: Env) {
+  const [settings, servicios, empleados, eventos] = await Promise.all([
+    uno<any>(env, 'configuracion', 'settings'), leer<any>(env, 'servicios'), leer<any>(env, 'empleados'), leer<any>(env, 'empleadoEvents')
+  ]);
+  const guardada: ConfigAgenda = { ...AGENDA_INICIAL, ...(settings?.agenda || {}) };
+  const deEmpleados: Bloqueo[] = eventos.filter(e => e.tipo === 'vacaciones' || e.tipo === 'dia_inhabit')
+    .map(e => ({ id: `ev_${e.id}`, personaId: e.empleadoId, desde: e.fechaInicio, hasta: e.fechaFin }));
+  const personas: Persona[] = [{ id: DUENA, nombre: 'Cristina' },
+    ...empleados.filter(e => e.activo && e.tomaCitas).map(e => ({ id: e.id, nombre: e.nombre, categorias: e.categoriasAgenda }))];
+  return {
+    realmId: settings?.realmId as string, config: { ...guardada, bloqueos: [...(guardada.bloqueos || []), ...deEmpleados] },
+    personas, servicios: servicios.filter(s => !s.archivado)
+  };
+}
+
+const libresDelDia = async (env: Env, ag: Awaited<ReturnType<typeof cargarAgenda>>, fecha: string, servicioId: string) =>
+  horariosLibres({ fecha, servicioId, personas: ag.personas, citas: await leer(env, 'citas', { fecha }), servicios: ag.servicios,
+    config: ag.config, ahora: ahoraHermosillo() });
+
+/** GET /api/disponibilidad?servicioId=s17&desde=2027-01-04&dias=7 → horas libres por día (sin nombres de nadie) */
+async function disponibilidad(env: Env, url: URL) {
+  const servicioId = url.searchParams.get('servicioId') || '';
+  const desde = url.searchParams.get('desde') || hoyHermosillo();
+  const dias = Math.min(Math.max(Number(url.searchParams.get('dias')) || 7, 1), 14);
+  if (!FECHA.test(desde)) throw new ErrorCliente('Fecha inválida');
+  const ag = await cargarAgenda(env);
+  const s = ag.servicios.find(x => x.id === servicioId);
+  if (!s) throw new ErrorCliente('Ese servicio no se agenda en línea');
+  const fechas = Array.from({ length: dias }, (_, i) => masDias(desde, i));
+  const res = await Promise.all(fechas.map(async fecha => ({
+    fecha, horas: [...new Set((await libresDelDia(env, ag, fecha, servicioId)).map(h => h.hora))]
+  })));
+  return json({ servicio: { id: s.id, nombre: s.nombre, duracion: s.duracion, precio: s.precioSugerido, anticipo: s.anticipoSugerido || 0 }, dias: res });
+}
+
+interface DatosClienta { nombre?: string; telefono?: string; cumple?: string; recomendo?: string; sitio?: string }
+
+function validarClienta(b: DatosClienta) {
+  if (b.sitio) throw new ErrorCliente('No se pudo enviar');   // campo trampa para robots
+  const nombre = String(b.nombre || '').trim().replace(/\s+/g, ' ');
+  if (nombre.length < 3 || nombre.length > 80) throw new ErrorCliente('Escribe tu nombre completo');
+  const telefono = tel10(b.telefono);
+  if (telefono.length !== 10) throw new ErrorCliente('Escribe tu teléfono de 10 dígitos');
+  const cumple = b.cumple && FECHA.test(b.cumple) ? b.cumple : undefined;
+  return { nombre, telefono, cumple, recomendo: tel10(b.recomendo) };
+}
+
+/** Busca a la clienta por teléfono; si no existe la crea.
+ *  Sin verificar el teléfono (eso llega con el código por WhatsApp), una ficha que ya existe NO se modifica:
+ *  lo que pidió (Club, cumpleaños, recomendación) se anota en el aviso y el salón lo aplica en CB Control. */
+async function clientaPorTelefono(env: Env, realmId: string, d: ReturnType<typeof validarClienta>, club: boolean) {
+  const clientes = await leer<any>(env, 'clientes');
+  const existente = clientes.find(c => tel10(c.telefono) === d.telefono);
+  const recomendadora = d.recomendo.length === 10 ? clientes.find(c => tel10(c.telefono) === d.recomendo && c.id !== existente?.id) : undefined;
+  if (existente) {
+    const pide = [
+      existente.nombre !== d.nombre ? `escribió el nombre «${d.nombre}»` : '',
+      club && !existente.clubDesde ? 'pide unirse al Club' : '',
+      d.cumple && existente.cumple !== d.cumple ? `cumpleaños ${d.cumple}` : '',
+      recomendadora && !existente.referidaPor ? `dice que la recomendó ${recomendadora.nombre}` : ''
+    ].filter(Boolean);
+    return { cliente: existente, nueva: false, pendiente: pide.length ? `Ya estaba registrada; ${pide.join(', ')} (revisar y aplicar en su ficha)` : '' };
+  }
+  const cliente = {
+    id: id('cli'), nombre: d.nombre, telefono: d.telefono, cumple: d.cumple, activo: true, fechaRegistro: new Date().toISOString(),
+    origen: 'app', clubDesde: club ? new Date().toISOString() : undefined, referidaPor: recomendadora?.id, realmId
+  };
+  await guardar(env, 'clientes', [cliente]);
+  return { cliente, nueva: true, pendiente: '' };
+}
+
+async function aviso(env: Env, ctx: ExecutionContext, realmId: string, a: { tipo: string; titulo: string; detalle: string; refId?: string; clienteId?: string }) {
+  // El aviso no debe impedir la cita o el registro: si falla, queda en el registro de Cloudflare y lo que importa ya se guardó
+  try { await guardar(env, 'avisos', [{ id: id('avi'), fecha: new Date().toISOString(), leido: false, realmId, ...a }]); }
+  catch (e) { console.log('aviso', (e as Error).message); }
+  ctx.waitUntil(avisarSalon(env, `${a.titulo}. ${a.detalle}`));
+}
+
+/** POST /api/citas → la cita queda «pendiente» (ya aparta el horario) hasta que el salón la confirma */
+async function crearCita(env: Env, ctx: ExecutionContext, body: any) {
+  const d = validarClienta(body);
+  const { servicioId, fecha, hora } = body;
+  if (!FECHA.test(fecha) || !HORA.test(hora)) throw new ErrorCliente('Elige fecha y hora');
+  const notas = String(body.notas || '').trim().slice(0, 500);
+  const ag = await cargarAgenda(env);
+  if (!ag.realmId) throw new Error('Sin realm del salón en configuración');
+  const s = ag.servicios.find(x => x.id === servicioId);
+  if (!s) throw new ErrorCliente('Ese servicio no se agenda en línea');
+  const libre = (await libresDelDia(env, ag, fecha, servicioId)).find(h => h.hora === hora);
+  if (!libre) throw new ErrorCliente('Ese horario se acaba de ocupar. Elige otro, por favor.', 409);
+  const { cliente, pendiente } = await clientaPorTelefono(env, ag.realmId, d, !!body.club);
+  const cita = {
+    id: id('cita_app'), clienteId: cliente.id, servicioId, fecha, hora, estado: 'pendiente', notas: notas || undefined,
+    montoAnticipo: s.anticipoSugerido || 0, anticipoConfirmado: false, atiendeId: libre.personaId, origen: 'app', realmId: ag.realmId
+  };
+  await guardar(env, 'citas', [cita]);
+  await aviso(env, ctx, ag.realmId, {
+    tipo: 'cita', titulo: `Nueva cita desde la app: ${cliente.nombre}`,
+    detalle: `${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${notas ? ` · «${notas}»` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
+    refId: cita.id, clienteId: cliente.id
+  });
+  return json({ ok: true, cita: { id: cita.id, fecha, hora, servicio: s.nombre, anticipo: cita.montoAnticipo } }, 201);
+}
+
+/** POST /api/club → alta al Club sin pasar por WhatsApp */
+async function unirseClub(env: Env, ctx: ExecutionContext, body: any) {
+  const d = validarClienta(body);
+  const settings = await uno<any>(env, 'configuracion', 'settings');
+  if (!settings?.realmId) throw new Error('Sin realm del salón en configuración');
+  const { cliente, nueva, pendiente } = await clientaPorTelefono(env, settings.realmId, d, true);
+  await aviso(env, ctx, settings.realmId, {
+    tipo: 'club', titulo: `${nueva ? 'Nueva clienta en el Club' : 'Pide unirse al Club'}: ${cliente.nombre}`,
+    detalle: nueva
+      ? `Tel. ${d.telefono}${d.cumple ? ` · cumpleaños ${fechaLegible(d.cumple).split(', ')[1]}` : ''}${cliente.referidaPor ? ' · llegó recomendada' : ''}`
+      : `Tel. ${d.telefono} · ${pendiente || 'ya estaba registrada y en el Club'}`,
+    clienteId: cliente.id, refId: cliente.id
+  });
+  return json({ ok: true }, 201);   // misma respuesta para teléfonos nuevos y registrados: no revela quién es clienta
+}
+
+export async function atender(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const url = new URL(request.url);
+  const ruta = url.pathname.replace(/^\/api\/?/, '').replace(/\/$/, '');
+  try {
+    if (request.method === 'GET' && ruta === 'salud') return json({ ok: true, hoy: hoyHermosillo() });
+    if (request.method === 'GET' && ruta === 'disponibilidad') return await disponibilidad(env, url);
+    if (request.method === 'POST' && (ruta === 'citas' || ruta === 'club')) {
+      limitar(request.headers.get('CF-Connecting-IP') || 'local');
+      const body = await request.json().catch(() => { throw new ErrorCliente('Datos inválidos'); });
+      return ruta === 'citas' ? await crearCita(env, ctx, body) : await unirseClub(env, ctx, body);
+    }
+    return json({ error: 'No encontrado' }, 404);
+  } catch (e) {
+    if (e instanceof ErrorCliente) return json({ error: e.message }, e.status);
+    console.log('API', ruta, (e as Error).message);
+    return json({ error: 'No pudimos completar tu solicitud. Intenta de nuevo o escríbenos por WhatsApp.' }, 503);
+  }
+}

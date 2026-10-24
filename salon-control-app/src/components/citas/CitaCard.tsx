@@ -209,6 +209,11 @@ export default function CitaCard({
               <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoColor(cita.estado)}`}>
                 {cita.estado.charAt(0).toUpperCase() + cita.estado.slice(1)}
               </span>
+              {(cita as { origen?: string }).origen && (
+                <span className="px-2 py-1 rounded-full text-[10px] uppercase tracking-[0.18em] bg-marca-negro text-marca-dorado">
+                  Desde la {(cita as { origen?: string }).origen === 'bot' ? 'WhatsApp' : 'app'}
+                </span>
+              )}
             </div>
           )}
 

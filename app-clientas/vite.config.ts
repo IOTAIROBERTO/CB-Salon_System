@@ -10,7 +10,9 @@ export default defineConfig({
   server: {
     port: 3002,
     host: true,
-    fs: { allow: ['..'] }
+    fs: { allow: ['..'] },
+    // En desarrollo la API corre aparte con «npx wrangler pages dev» (puerto 8788)
+    proxy: { '/api': 'http://127.0.0.1:8788' }
   },
   build: { outDir: 'dist', sourcemap: false },
   resolve: {

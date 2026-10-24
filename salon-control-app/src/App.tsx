@@ -29,6 +29,7 @@ import { useObservable } from "dexie-react-hooks";
 import { db } from "./db/db";
 import { useRolSalon, NOMBRE_ROL } from "./db/salon";
 import { LoginSalon, PantallaSinSalon } from "./components/auth/AccesoSalon";
+import Bandeja from "./components/avisos/Bandeja";
 
 // Páginas solo para la dueña (la empleada no las ve en el menú ni por URL)
 const SOLO_DUENA = new Set(["/reportes", "/configuracion"]);
@@ -114,10 +115,13 @@ function Marco() {
 
   const menu = (
     <div className="flex h-full flex-col">
-      <Link to="/citas" className="flex items-center gap-3 px-6 pb-8 pt-7" title="Cristina Borquez Beauty Salon">
-        <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-10 w-auto" />
-        <span className="font-display text-2xl leading-none text-white">CB <em className="text-marca-dorado">Control</em></span>
-      </Link>
+      <div className="flex items-center justify-between pb-8 pl-6 pr-3 pt-7">
+        <Link to="/citas" className="flex items-center gap-3" title="Cristina Borquez Beauty Salon">
+          <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-10 w-auto" />
+          <span className="font-display text-2xl leading-none text-white">CB <em className="text-marca-dorado">Control</em></span>
+        </Link>
+        <span className="hidden lg:block"><Bandeja /></span>
+      </div>
       <nav className="flex-1 space-y-7 overflow-y-auto px-3 pb-6">
         {secciones.map(s => (
           <div key={s.titulo}>
@@ -162,9 +166,12 @@ function Marco() {
           <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-8 w-auto" />
           <span className="text-[11px] uppercase tracking-[0.26em] text-marca-champan">{actual?.label ?? "CB Control"}</span>
         </Link>
-        <button onClick={() => setMenuAbierto(true)} className="rounded-md p-2 hover:bg-white/10" aria-label="Abrir menú">
-          <Menu size={22} strokeWidth={1.5} />
-        </button>
+        <div className="flex items-center gap-1">
+          <Bandeja />
+          <button onClick={() => setMenuAbierto(true)} className="rounded-md p-2 hover:bg-white/10" aria-label="Abrir menú">
+            <Menu size={22} strokeWidth={1.5} />
+          </button>
+        </div>
       </header>
       <div className={`fixed inset-0 z-50 lg:hidden ${menuAbierto ? "" : "pointer-events-none"}`}>
         <div onClick={() => setMenuAbierto(false)} className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${menuAbierto ? "opacity-100" : "opacity-0"}`} />

@@ -14,3 +14,7 @@ android/.gradle/
 android/local.properties
 *.keystore
 *.jks
+
+# Cloudflare (wrangler): caché local y secretos de desarrollo, nunca al repo
+.wrangler/
+.dev.vars
