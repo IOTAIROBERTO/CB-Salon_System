@@ -14,6 +14,9 @@ async function llamar<T>(ruta: string, init?: RequestInit): Promise<T> {
   return datos as T
 }
 
+export interface ServicioEnLinea { id: string; nombre: string; categoria: string; precio: number; anticipo: number; duracion: number }
+export const serviciosEnLinea = () => llamar<{ servicios: ServicioEnLinea[] }>('servicios').then(r => r.servicios)
+
 export interface DiaLibre { fecha: string; horas: string[] }
 export const disponibilidad = (servicioId: string, dias = 14) =>
   llamar<{ dias: DiaLibre[]; servicio: { anticipo: number } }>(`disponibilidad?servicioId=${encodeURIComponent(servicioId)}&dias=${dias}`)

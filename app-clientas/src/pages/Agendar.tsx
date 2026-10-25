@@ -3,13 +3,13 @@ import { Check, MessageCircle } from 'lucide-react'
 import Encabezado from '@/components/Encabezado'
 import { NOMBRE_CLUB, POLITICAS, SERVICIOS, enlaceWhatsApp, nombreCategoria, pesos, type Servicio } from '@/salon'
 import { fechaCumple } from '@/components/UnirmeClub'
-import { crearCita, disponibilidad, misDatos, recordarDatos, type DiaLibre } from '@/api'
+import { crearCita, disponibilidad, misDatos, recordarDatos, serviciosEnLinea, type DiaLibre } from '@/api'
 
 // Agenda en tiempo real: los horarios salen del mismo motor que usa CB Control (API /api/disponibilidad) y la cita
 // se aparta al enviar; llega «pendiente» a CB Control y a la bandeja de avisos para que el salón la confirme.
 // Si la API no responde, queda WhatsApp como respaldo.
 const ORDEN = ['color', 'corte', 'tratamiento', 'maquillaje', 'peinado']   // el color primero: es la especialidad
-const categorias = [...new Set(SERVICIOS.map(s => s.categoria))].sort((a, b) => (ORDEN.indexOf(a) + 1 || 99) - (ORDEN.indexOf(b) + 1 || 99))
+const categoriasDe = (lista: Servicio[]) => [...new Set(lista.map(s => s.categoria))].sort((a, b) => (ORDEN.indexOf(a) + 1 || 99) - (ORDEN.indexOf(b) + 1 || 99))
 
 const horas = (min: number) => min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ''}` : `${min} min`
 
@@ -25,6 +25,10 @@ const ics = (c: { fecha: string; hora: string; servicio: string }, minutos = 60)
 }
 
 export default function Agendar() {
+  // Catálogo vivo de CB Control; mientras carga (o si la API falla) se muestra el de la app
+  const [catalogo, setCatalogo] = useState<Servicio[] | null>(null)
+  useEffect(() => { serviciosEnLinea().then(l => setCatalogo(l.length ? l : SERVICIOS)).catch(() => setCatalogo(SERVICIOS)) }, [])
+  const categorias = categoriasDe(catalogo || [])
   const [elegido, setElegido] = useState<Servicio | null>(null)
   const [datos, setDatos] = useState(misDatos)
   const [fecha, setFecha] = useState('')
@@ -86,11 +90,12 @@ export default function Agendar() {
         ))}
       </nav>
       <main className="space-y-10 px-6 pb-8">
+        {!catalogo && <p className="text-sm text-marca-gris">Cargando servicios…</p>}
         {categorias.map(cat => (
           <section key={cat} id={`cat-${cat}`} className="scroll-mt-16">
             <p className="rotulo">{nombreCategoria(cat)}</p>
             <div className="mt-2">
-              {SERVICIOS.filter(s => s.categoria === cat).map(s => {
+              {(catalogo || []).filter(s => s.categoria === cat).map(s => {
                 const activo = elegido?.id === s.id
                 return (
                   <button key={s.id} onClick={() => { setLista(null); setElegido(s) }}

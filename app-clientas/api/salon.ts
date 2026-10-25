@@ -51,6 +51,16 @@ const libresDelDia = async (env: Env, ag: Awaited<ReturnType<typeof cargarAgenda
   horariosLibres({ fecha, servicioId, personas: ag.personas, citas: await leer(env, 'citas', { fecha }), servicios: ag.servicios,
     config: ag.config, ahora: ahoraHermosillo() });
 
+/** Servicios que se agendan en línea: el catálogo vivo de CB Control (sin archivados, sin precio ni los de fuera de la ciudad) */
+const enLinea = (s: any) => !s.archivado && Number(s.precioSugerido) > 0 && !/for[aá]neo|destino/i.test(s.nombre || '');
+
+/** GET /api/servicios → catálogo vivo con precios «desde» (lo mismo que ve el salón en CB Control) */
+async function servicios(env: Env) {
+  const lista = (await leer<any>(env, 'servicios')).filter(enLinea)
+    .map(s => ({ id: s.id, nombre: s.nombre, categoria: s.categoria, precio: s.precioSugerido, anticipo: s.anticipoSugerido || 0, duracion: s.duracion || 60 }));
+  return new Response(JSON.stringify({ servicios: lista }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+}
+
 /** GET /api/disponibilidad?servicioId=s17&desde=2027-01-04&dias=7 → horas libres por día (sin nombres de nadie) */
 async function disponibilidad(env: Env, url: URL) {
   const servicioId = url.searchParams.get('servicioId') || '';
@@ -58,7 +68,7 @@ async function disponibilidad(env: Env, url: URL) {
   const dias = Math.min(Math.max(Number(url.searchParams.get('dias')) || 7, 1), 14);
   if (!FECHA.test(desde)) throw new ErrorCliente('Fecha inválida');
   const ag = await cargarAgenda(env);
-  const s = ag.servicios.find(x => x.id === servicioId);
+  const s = ag.servicios.find(x => x.id === servicioId && enLinea(x));
   if (!s) throw new ErrorCliente('Ese servicio no se agenda en línea');
   const fechas = Array.from({ length: dias }, (_, i) => masDias(desde, i));
   const res = await Promise.all(fechas.map(async fecha => ({
@@ -118,10 +128,17 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any) {
   const notas = String(body.notas || '').trim().slice(0, 500);
   const ag = await cargarAgenda(env);
   if (!ag.realmId) throw new Error('Sin realm del salón en configuración');
-  const s = ag.servicios.find(x => x.id === servicioId);
+  const s = ag.servicios.find(x => x.id === servicioId && enLinea(x));
   if (!s) throw new ErrorCliente('Ese servicio no se agenda en línea');
   const libre = (await libresDelDia(env, ag, fecha, servicioId)).find(h => h.hora === hora);
   if (!libre) throw new ErrorCliente('Ese horario se acaba de ocupar. Elige otro, por favor.', 409);
+  // Mientras no se verifique el teléfono (código por WhatsApp, fase 2): pocas citas abiertas por teléfono y por día,
+  // para que nadie pueda apartar toda la agenda con datos inventados
+  const abiertas = (await leer<any>(env, 'citas', { estado: 'pendiente' })).filter(c => c.origen === 'app');
+  const clientas = await leer<any>(env, 'clientes');
+  const suyas = abiertas.filter(c => tel10(clientas.find(x => x.id === c.clienteId)?.telefono) === d.telefono);
+  if (suyas.length >= 2) throw new ErrorCliente('Ya tienes citas por confirmar. Te escribimos por WhatsApp para confirmarlas.', 429);
+  if (abiertas.filter(c => c.fecha === fecha).length >= 6) throw new ErrorCliente('Ese día ya tiene varias solicitudes por confirmar. Escríbenos por WhatsApp y te buscamos lugar.', 429);
   const { cliente, pendiente } = await clientaPorTelefono(env, ag.realmId, d, !!body.club);
   const cita = {
     id: id('cita_app'), clienteId: cliente.id, servicioId, fecha, hora, estado: 'pendiente', notas: notas || undefined,
@@ -157,6 +174,7 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
   const ruta = url.pathname.replace(/^\/api\/?/, '').replace(/\/$/, '');
   try {
     if (request.method === 'GET' && ruta === 'salud') return json({ ok: true, hoy: hoyHermosillo() });
+    if (request.method === 'GET' && ruta === 'servicios') return await servicios(env);
     if (request.method === 'GET' && ruta === 'disponibilidad') return await disponibilidad(env, url);
     if (request.method === 'POST' && (ruta === 'citas' || ruta === 'club')) {
       limitar(request.headers.get('CF-Connecting-IP') || 'local');
