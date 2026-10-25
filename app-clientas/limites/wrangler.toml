@@ -1,0 +1,13 @@
+# Contadores atómicos (Durable Object) para los topes de la entrada con código de la app de clientas.
+name = "cb-limites"
+main = "index.ts"
+compatibility_date = "2025-10-01"
+workers_dev = false
+
+[[durable_objects.bindings]]
+name = "CONTADOR"
+class_name = "Contador"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Contador"]

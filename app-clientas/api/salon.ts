@@ -10,14 +10,18 @@ import { guardar, leer, uno, type EnvDexie } from './dexie';
 import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
 import { DIAS_SESION, MIN_RETO, codigoNuevo, firmar, huellaCodigo, leerFirmado, type Reto, type Sesion } from './sesion';
 
-export type Env = EnvDexie & EnvWhatsApp & { SESION_SECRETO?: string; ACCESOS?: KVNamespace };
+export type Env = EnvDexie & EnvWhatsApp & { SESION_SECRETO?: string; LIMITES?: DurableObjectNamespace };
 
-/** Contador compartido entre instancias (KV) para los topes de la entrada con código; sin KV (pruebas) usa la memoria */
-async function contar(env: Env, clave: string, segundos: number) {
-  if (!env.ACCESOS) { const l = (envios.get(clave) || []).filter(t => Date.now() - t < segundos * 1000); l.push(Date.now()); envios.set(clave, l); return l.length; }
-  const n = Number(await env.ACCESOS.get(clave)) + 1;
-  await env.ACCESOS.put(clave, String(n), { expirationTtl: Math.max(60, segundos) });
-  return n;
+/** ¿Se permite una vez más? Contador atómico en Durable Object (ventana fija: al llegar al tope deja de sumar);
+ *  sin el binding (pruebas locales) usa la memoria de la instancia */
+async function permitido(env: Env, clave: string, limite: number, segundos: number) {
+  if (!env.LIMITES) {
+    const l = (envios.get(clave) || []).filter(t => Date.now() - t < segundos * 1000);
+    if (l.length >= limite) return false;
+    l.push(Date.now()); envios.set(clave, l); return true;
+  }
+  const r = await env.LIMITES.get(env.LIMITES.idFromName(clave)).fetch('https://contador/', { method: 'POST', body: JSON.stringify({ limite, segundos }) });
+  return ((await r.json()) as { permitido: boolean }).permitido;
 }
 
 // Hermosillo no cambia de horario: UTC−7 todo el año. El motor compara fechas «locales»; en el servidor (UTC)
@@ -213,11 +217,12 @@ async function unirseClub(env: Env, ctx: ExecutionContext, body: any, sesion: Se
 
 /** POST /api/acceso/codigo → manda un código de 6 dígitos por WhatsApp y devuelve el «reto» firmado (misma respuesta
  *  sea o no clienta, para no revelar quién lo es) */
-async function pedirCodigo(env: Env, body: any) {
+async function pedirCodigo(env: Env, body: any, ip: string) {
   const tel = tel10(body?.telefono);
   if (tel.length !== 10) throw new ErrorCliente('Escribe tu teléfono de 10 dígitos');
   if (!whatsappListo(env) || !env.SESION_SECRETO) throw new ErrorCliente('La entrada con código se activa en cuanto el WhatsApp del salón quede conectado. Muy pronto.', 503);
-  if (await contar(env, `codigo:${tel}`, 15 * 60) > 3 || await contar(env, `codigo-dia:${tel}`, 24 * 3600) > 10)
+  // Por teléfono y conexión (un tercero no le gasta los intentos a la clienta desde otra red) y un tope diario por teléfono
+  if (!await permitido(env, `codigo:${tel}:${ip}`, 3, 15 * 60) || !await permitido(env, `codigo-dia:${tel}`, 10, 24 * 3600))
     throw new ErrorCliente('Ya te mandamos varios códigos. Espera unos minutos.', 429);
   const codigo = codigoNuevo();
   const reto = await firmar({ tipo: 'reto', tel, huella: await huellaCodigo(codigo, tel, env.SESION_SECRETO), vence: Date.now() + MIN_RETO * 60000 } satisfies Reto, env.SESION_SECRETO);
@@ -230,12 +235,11 @@ async function verificarCodigo(env: Env, body: any) {
   if (!env.SESION_SECRETO) throw new ErrorCliente('La entrada con código aún no está activa.', 503);
   const reto = await leerFirmado<Reto>(body?.reto, env.SESION_SECRETO);
   if (!reto || reto.tipo !== 'reto') throw new ErrorCliente('El código venció. Pide uno nuevo.', 401);
-  if (env.ACCESOS && await env.ACCESOS.get(`usado:${reto.huella}`)) throw new ErrorCliente('Ese código ya se usó. Pide uno nuevo.', 401);
-  if (await contar(env, `intento:${reto.huella}`, MIN_RETO * 60) > 5 || await contar(env, `intento-tel:${reto.tel}`, 3600) > 10)
+  if (!await permitido(env, `intento:${reto.huella}`, 5, MIN_RETO * 60) || !await permitido(env, `intento-tel:${reto.tel}`, 10, 3600))
     throw new ErrorCliente('Demasiados intentos. Pide un código nuevo en unos minutos.', 429);
   const codigo = String(body?.codigo || '').replace(/\D/g, '');
   if (codigo.length !== 6 || await huellaCodigo(codigo, reto.tel, env.SESION_SECRETO) !== reto.huella) throw new ErrorCliente('Código incorrecto', 401);
-  await env.ACCESOS?.put(`usado:${reto.huella}`, '1', { expirationTtl: MIN_RETO * 60 + 60 });   // un solo uso
+  if (!await permitido(env, `usado:${reto.huella}`, 1, MIN_RETO * 60 + 60)) throw new ErrorCliente('Ese código ya se usó. Pide uno nuevo.', 401);   // un solo uso, atómico
   const sesion = await firmar({ tipo: 'sesion', tel: reto.tel, vence: Date.now() + DIAS_SESION * 86400000 } satisfies Sesion, env.SESION_SECRETO);
   return json({ sesion, telefono: reto.tel });
 }
@@ -288,11 +292,12 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
     if (request.method === 'GET' && ruta === 'disponibilidad') return await disponibilidad(env, url);
     if (request.method === 'GET' && ruta === 'mi-club') return await miClub(env, await sesionDe(request, env));
     if (request.method === 'POST' && ['citas', 'club', 'acceso/codigo', 'acceso/verificar'].includes(ruta)) {
-      limitar(request.headers.get('CF-Connecting-IP') || 'local');
+      const ip = request.headers.get('CF-Connecting-IP') || 'local';
+      limitar(ip);
       const body: any = await request.json().catch(() => { throw new ErrorCliente('Datos inválidos'); });
       if (ruta === 'acceso/verificar') return await verificarCodigo(env, body);
       limitar(`tel:${tel10(body?.telefono)}`);   // también por teléfono destino (mismos 8 cada 10 min)
-      if (ruta === 'acceso/codigo') return await pedirCodigo(env, body);
+      if (ruta === 'acceso/codigo') return await pedirCodigo(env, body, ip);
       const sesion = await sesionDe(request, env);
       return ruta === 'citas' ? await crearCita(env, ctx, body, sesion) : await unirseClub(env, ctx, body, sesion);
     }
