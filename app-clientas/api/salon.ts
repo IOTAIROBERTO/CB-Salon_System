@@ -113,11 +113,12 @@ async function clientaPorTelefono(env: Env, realmId: string, d: ReturnType<typeo
   return { cliente, nueva: true, pendiente: '' };
 }
 
-async function aviso(env: Env, ctx: ExecutionContext, realmId: string, a: { tipo: string; titulo: string; detalle: string; refId?: string; clienteId?: string }) {
+async function aviso(env: Env, ctx: ExecutionContext, realmId: string, a: { tipo: string; titulo: string; detalle: string; refId?: string; clienteId?: string },
+  op: { id?: string; whatsapp?: boolean } = {}) {
   // El aviso no debe impedir la cita o el registro: si falla, queda en el registro de Cloudflare y lo que importa ya se guardó
-  try { await guardar(env, 'avisos', [{ id: id('avi'), fecha: new Date().toISOString(), leido: false, realmId, ...a }]); }
+  try { await guardar(env, 'avisos', [{ id: op.id || id('avi'), fecha: new Date().toISOString(), leido: false, realmId, ...a }]); }
   catch (e) { console.log('aviso', (e as Error).message); }
-  ctx.waitUntil(avisarSalon(env, `${a.titulo}. ${a.detalle}`));
+  if (op.whatsapp !== false) ctx.waitUntil(avisarSalon(env, `${a.titulo}. ${a.detalle}`));
 }
 
 /** POST /api/citas → la cita queda «pendiente» (ya aparta el horario) hasta que el salón la confirma */
@@ -132,16 +133,19 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any) {
   if (!s) throw new ErrorCliente('Ese servicio no se agenda en línea');
   const libre = (await libresDelDia(env, ag, fecha, servicioId)).find(h => h.hora === hora);
   if (!libre) throw new ErrorCliente('Ese horario se acaba de ocupar. Elige otro, por favor.', 409);
-  // Mientras no se verifique el teléfono (código por WhatsApp, fase 2): un teléfono con 2 citas por confirmar ya no
-  // aparta más horarios; la solicitud llega solo como aviso. La respuesta es la misma para no revelar nada del número.
+  // Mientras no se verifique el teléfono (código por WhatsApp, fase 2), dos topes para que nadie aparte la agenda con
+  // datos inventados: 2 citas por confirmar por teléfono y 6 por día desde la app. Al pasarlos no se rechaza (así nadie
+  // bloquea un día ni se revela nada de un número): la solicitud llega como aviso sin apartar horario, uno por teléfono
+  // y día (se sobrescribe), sin WhatsApp ni notas de texto libre.
   const abiertas = (await leer<any>(env, 'citas', { estado: 'pendiente' })).filter(c => c.origen === 'app');
   const clientas = await leer<any>(env, 'clientes');
   const deEseTelefono = abiertas.filter(c => tel10(clientas.find(x => x.id === c.clienteId)?.telefono) === d.telefono).length;
-  if (deEseTelefono >= 2) {
+  const deEseDia = abiertas.filter(c => c.fecha === fecha).length;
+  if (deEseTelefono >= 2 || deEseDia >= 6) {
     await aviso(env, ctx, ag.realmId, {
       tipo: 'cita', titulo: `Solicitud sin apartar: ${d.nombre}`,
-      detalle: `Tel. ${d.telefono} ya tiene ${deEseTelefono} citas por confirmar. Pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${notas ? ` · «${notas}»` : ''}. Revisar antes de agendar.`
-    });
+      detalle: `Tel. ${d.telefono} pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}. ${deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: revisar antes de agendar.`
+    }, { id: `avi_sin_${d.telefono}_${hoyHermosillo()}`, whatsapp: false });
     return json({ ok: true, cita: { id: '', fecha, hora, servicio: s.nombre, anticipo: s.anticipoSugerido || 0 } }, 201);
   }
   const { cliente, pendiente } = await clientaPorTelefono(env, ag.realmId, d, !!body.club);
