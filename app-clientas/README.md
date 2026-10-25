@@ -66,3 +66,25 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
   el teléfono; tarjeta del Club con puntos, nivel y saldo; catálogo de productos; la solicitud de cita llega directo
   a CB Control para que Cristina o Roberto la confirmen.
 - **Fase 4 · Notificaciones y Play**: recordatorios de cita, anticipo y campañas; publicación en Google Play.
+
+## API y automatización (Cloudflare)
+
+- **`/api`** (Pages Functions, misma dirección de la app): `servicios`, `disponibilidad`, `citas`, `club`, `acceso/codigo`,
+  `acceso/verificar`, `mi-club`. Código en `api/` y `functions/api/`. Lee y escribe la base de CB Control (Dexie Cloud).
+- **`avisos/`**: Worker `cb-avisos` que corre cada 10 minutos y manda por WhatsApp la confirmación de la cita (cuando el
+  salón la confirma en CB Control) y el recordatorio del día anterior. Publicar: `npx wrangler deploy --config avisos/wrangler.toml`.
+- **Secretos** (Cloudflare, nunca en el repo), en el proyecto de Pages `cristinaborquez-app` y en el Worker `cb-avisos`:
+  `DEXIE_CLIENT_ID`, `DEXIE_CLIENT_SECRET`, `SESION_SECRETO` (solo Pages), `WA_TOKEN`, `WA_PHONE_ID`, `WA_AVISOS`
+  (números del salón que reciben avisos, separados por coma, con 52 adelante). Opcional en el Worker:
+  `RECORDATORIOS=todas` para recordar también las citas que agenda el salón a mano.
+- **Pruebas locales**: `npx wrangler pages dev dist --binding DEXIE_URL=…` contra una base falsa; Vite manda `/api` al puerto 8788.
+
+## Plantillas de WhatsApp (darlas de alta en Meta → WhatsApp Manager → Plantillas, idioma Español (MEX))
+
+| Nombre | Categoría | Texto (las variables van entre llaves dobles) |
+|---|---|---|
+| `codigo_acceso` | Autenticación | Plantilla de código de Meta con botón «Copiar código». Tu código para entrar a tu Club Cristina Borquez es {{1}}. |
+| `cita_recibida` | Utilidad | Hola, {{1}}. Recibimos tu solicitud de {{2}} para el {{3}} a las {{4}}. Te confirmamos en breve. Cristina Borquez Beauty Salon. |
+| `cita_confirmada` | Utilidad | ¡Listo, {{1}}! Tu cita de {{2}} quedó confirmada para el {{3}} a las {{4}}. {{5}} Te esperamos en Plaza Galilea, planta alta. |
+| `recordatorio_cita` | Utilidad | Hola, {{1}}. Te recordamos tu cita de {{2}} mañana, {{3}}, a las {{4}}. Si necesitas cambiarla, respóndenos aquí. |
+| `aviso_salon` | Utilidad | Aviso de CB Control: {{1}} |

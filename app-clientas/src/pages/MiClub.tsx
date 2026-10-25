@@ -1,8 +1,9 @@
 import Encabezado from '@/components/Encabezado'
 import UnirmeClub from '@/components/UnirmeClub'
+import TarjetaClub from '@/components/TarjetaClub'
 import {
   ANIVERSARIO_PUNTOS, AVISO_GASTO, BENEFICIOS_NIVEL, CLAVES_REGALO, DIAS_PUNTOS_DOBLES, NIVELES, NOMBRE_CLUB, NOMBRE_NIVEL, REGALOS_NIVEL, REGLA_CANJE,
-  REGLAS_CLUB as R, montoCanje, montoTarjeta, multiplicador, pesos, textoSaldoPuntos, umbral
+  REGLAS_CLUB as R, montoCanje, montoTarjeta, multiplicador, pesos, umbral
 } from '@/salon'
 
 // Las reglas salen de utils/lealtad.ts de CB Control. La tarjeta con puntos de cada clienta llega con el inicio de
@@ -21,20 +22,7 @@ export default function MiClub() {
     <>
       <Encabezado rotulo="Membresía" titulo={NOMBRE_CLUB} bajada="Cinco niveles con los colores de la casa. Mientras más tiempo eres clienta, más rinde cada visita." />
       <main className="space-y-10 px-6 pb-8">
-        <div className="relative aspect-[1.586] overflow-hidden rounded-xl bg-gradient-to-br from-[#2B2B2B] via-[#151515] to-[#0B0B0B] p-6 text-white shadow-[0_24px_48px_-24px_rgba(17,17,17,0.6)]">
-          <img src="./icons/monograma.svg" alt="" className="absolute -bottom-10 -right-8 h-48 opacity-[0.12]" />
-          <div className="absolute inset-0 bg-[linear-gradient(115deg,transparent_40%,rgba(255,255,255,0.06)_50%,transparent_60%)]" />
-          <div className="relative flex h-full flex-col">
-            <div className="flex items-start justify-between">
-              <img src="./icons/monograma.svg" alt="" className="h-8" />
-              <p className="rotulo text-marca-dorado">Club</p>
-            </div>
-            <div className="mt-auto">
-              <p className="font-display text-2xl">Tu tarjeta, muy pronto aquí</p>
-              <p className="mt-1 max-w-[17rem] text-xs leading-relaxed text-white/60">Entrarás con tu teléfono y verás tu nivel y tu saldo en pesos, por ejemplo: «{textoSaldoPuntos(1240)}»</p>
-            </div>
-          </div>
-        </div>
+        <TarjetaClub />
 
         <UnirmeClub />
 

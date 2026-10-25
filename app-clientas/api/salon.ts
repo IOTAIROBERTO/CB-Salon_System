@@ -2,19 +2,24 @@
 // Lee y escribe la base de CB Control con Dexie Cloud; reutiliza el motor de agenda de CB Control,
 // así la app ofrece exactamente los mismos horarios libres que ve el salón.
 import { AGENDA_INICIAL, DUENA, horariosLibres, type Bloqueo, type ConfigAgenda, type Persona } from '../../salon-control-app/src/utils/agenda';
+import {
+  NOMBRE_NIVEL, beneficiosDisponibles, costoPuntos, datosBeneficio, estadoCirculo, parametrosDe, permanentesDe, siguienteNivel, textoSaldoPuntos
+} from '../../salon-control-app/src/utils/lealtad';
+import { saldoDe } from '../../salon-control-app/src/utils/saldo';
 import { guardar, leer, uno, type EnvDexie } from './dexie';
-import { avisarSalon, type EnvWhatsApp } from './whatsapp';
+import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
+import { DIAS_SESION, MIN_RETO, codigoNuevo, firmar, huellaCodigo, leerFirmado, type Reto, type Sesion } from './sesion';
 
-export type Env = EnvDexie & EnvWhatsApp;
+export type Env = EnvDexie & EnvWhatsApp & { SESION_SECRETO?: string };
 
 // Hermosillo no cambia de horario: UTC−7 todo el año. El motor compara fechas «locales»; en el servidor (UTC)
 // se le pasa la hora de Hermosillo como si fuera UTC.
-const ahoraHermosillo = () => new Date(Date.now() - 7 * 3600 * 1000);
-const hoyHermosillo = () => ahoraHermosillo().toISOString().slice(0, 10);
-const masDias = (f: string, n: number) => { const d = new Date(`${f}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-const tel10 = (t = '') => String(t).replace(/\D/g, '').slice(-10);
+export const ahoraHermosillo = () => new Date(Date.now() - 7 * 3600 * 1000);
+export const hoyHermosillo = () => ahoraHermosillo().toISOString().slice(0, 10);
+export const masDias = (f: string, n: number) => { const d = new Date(`${f}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+export const tel10 = (t = '') => String(t).replace(/\D/g, '').slice(-10);
 const id = (p: string) => `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-const fechaLegible = (f: string) => new Date(`${f}T12:00:00Z`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+export const fechaLegible = (f: string) => new Date(`${f}T12:00:00Z`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 const FECHA = /^\d{4}-\d{2}-\d{2}$/, HORA = /^\d{2}:\d{2}$/;
 
 class ErrorCliente extends Error { constructor(msg: string, public status = 400) { super(msg); } }
@@ -95,10 +100,18 @@ function validarClienta(b: DatosClienta) {
 /** Busca a la clienta por teléfono; si no existe la crea.
  *  Sin verificar el teléfono (eso llega con el código por WhatsApp), una ficha que ya existe NO se modifica:
  *  lo que pidió (Club, cumpleaños, recomendación) se anota en el aviso y el salón lo aplica en CB Control. */
-async function clientaPorTelefono(env: Env, realmId: string, d: ReturnType<typeof validarClienta>, club: boolean) {
+async function clientaPorTelefono(env: Env, realmId: string, d: ReturnType<typeof validarClienta>, club: boolean, verificada = false) {
   const clientes = await leer<any>(env, 'clientes');
   const existente = clientes.find(c => tel10(c.telefono) === d.telefono);
   const recomendadora = d.recomendo.length === 10 ? clientes.find(c => tel10(c.telefono) === d.recomendo && c.id !== existente?.id) : undefined;
+  if (existente && verificada) {   // entró con su código: su ficha sí se actualiza (sin borrar nada de lo capturado)
+    const cambios: any = {};
+    if (club && !existente.clubDesde) cambios.clubDesde = new Date().toISOString();
+    if (d.cumple && !existente.cumple) cambios.cumple = d.cumple;
+    if (recomendadora && !existente.referidaPor) cambios.referidaPor = recomendadora.id;
+    if (Object.keys(cambios).length) await guardar(env, 'clientes', [{ ...existente, ...cambios }]);
+    return { cliente: { ...existente, ...cambios }, nueva: false, pendiente: '' };
+  }
   if (existente) {
     const pide = [
       existente.nombre !== d.nombre ? `escribió el nombre «${d.nombre}»` : '',
@@ -125,8 +138,8 @@ async function aviso(env: Env, ctx: ExecutionContext, realmId: string, a: { tipo
 }
 
 /** POST /api/citas → la cita queda «pendiente» (ya aparta el horario) hasta que el salón la confirma */
-async function crearCita(env: Env, ctx: ExecutionContext, body: any) {
-  const d = validarClienta(body);
+async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Sesion | null) {
+  const d = validarClienta(sesion ? { ...body, telefono: sesion.tel } : body);
   const { servicioId, fecha, hora } = body;
   if (!FECHA.test(fecha) || !HORA.test(hora)) throw new ErrorCliente('Elige fecha y hora');
   const notas = String(body.notas || '').trim().slice(0, 500);
@@ -146,7 +159,7 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any) {
   const deEseDia = abiertas.filter(c => c.fecha === fecha).length;
   const respuesta = (citaId: string) =>   // misma respuesta en todos los casos: no revela nada del número ni de los topes
     json({ ok: true, cita: { id: citaId, fecha, hora, servicio: s.nombre, anticipo: s.anticipoSugerido || 0 } }, 201);
-  if (deEseTelefono >= 2 || deEseDia >= 6) {
+  if (!sesion && (deEseTelefono >= 2 || deEseDia >= 6)) {   // con teléfono verificado no aplican los topes
     // Cada solicitud de más es su propio aviso (id al azar: nada se reemplaza), sin WhatsApp ni notas libres;
     // pasado el tope diario se descarta en silencio (la respuesta no cambia)
     if (avisosDeMas.dia !== hoyHermosillo()) { avisosDeMas.dia = hoyHermosillo(); avisosDeMas.cuantos = 0; }
@@ -157,12 +170,14 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any) {
     }, { whatsapp: false });
     return respuesta('');
   }
-  const { cliente, pendiente } = await clientaPorTelefono(env, ag.realmId, d, !!body.club);
+  const { cliente, pendiente } = await clientaPorTelefono(env, ag.realmId, d, !!body.club, !!sesion);
   const cita = {
     id: id('cita_app'), clienteId: cliente.id, servicioId, fecha, hora, estado: 'pendiente', notas: notas || undefined,
     montoAnticipo: s.anticipoSugerido || 0, anticipoConfirmado: false, atiendeId: libre.personaId, origen: 'app', realmId: ag.realmId
   };
   await guardar(env, 'citas', [cita]);
+  // A la clienta: «recibimos tu solicitud» (cuando el WhatsApp del salón esté conectado)
+  ctx.waitUntil(plantilla(env, d.telefono, 'cita_recibida', [d.nombre.split(' ')[0], s.nombre, fechaLegible(fecha), hora]));
   await aviso(env, ctx, ag.realmId, {
     tipo: 'cita', titulo: `Nueva cita desde la app: ${cliente.nombre}`,
     detalle: `${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${notas ? ` · «${notas}»` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
@@ -172,11 +187,11 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any) {
 }
 
 /** POST /api/club → alta al Club sin pasar por WhatsApp */
-async function unirseClub(env: Env, ctx: ExecutionContext, body: any) {
-  const d = validarClienta(body);
+async function unirseClub(env: Env, ctx: ExecutionContext, body: any, sesion: Sesion | null) {
+  const d = validarClienta(sesion ? { ...body, telefono: sesion.tel } : body);
   const settings = await uno<any>(env, 'configuracion', 'settings');
   if (!settings?.realmId) throw new Error('Sin realm del salón en configuración');
-  const { cliente, nueva, pendiente } = await clientaPorTelefono(env, settings.realmId, d, true);
+  const { cliente, nueva, pendiente } = await clientaPorTelefono(env, settings.realmId, d, true, !!sesion);
   await aviso(env, ctx, settings.realmId, {
     tipo: 'club', titulo: `${nueva ? 'Nueva clienta en el Club' : 'Pide unirse al Club'}: ${cliente.nombre}`,
     detalle: nueva
@@ -187,6 +202,69 @@ async function unirseClub(env: Env, ctx: ExecutionContext, body: any) {
   return json({ ok: true }, 201);   // misma respuesta para teléfonos nuevos y registrados: no revela quién es clienta
 }
 
+/** POST /api/acceso/codigo → manda un código de 6 dígitos por WhatsApp y devuelve el «reto» firmado (misma respuesta
+ *  sea o no clienta, para no revelar quién lo es) */
+async function pedirCodigo(env: Env, body: any) {
+  const tel = tel10(body?.telefono);
+  if (tel.length !== 10) throw new ErrorCliente('Escribe tu teléfono de 10 dígitos');
+  if (!whatsappListo(env) || !env.SESION_SECRETO) throw new ErrorCliente('La entrada con código se activa en cuanto el WhatsApp del salón quede conectado. Muy pronto.', 503);
+  const codigo = codigoNuevo();
+  const reto = await firmar({ tipo: 'reto', tel, huella: await huellaCodigo(codigo, tel, env.SESION_SECRETO), vence: Date.now() + MIN_RETO * 60000 } satisfies Reto, env.SESION_SECRETO);
+  if (!await plantilla(env, tel, 'codigo_acceso', [codigo], codigo)) throw new ErrorCliente('No pudimos mandarte el código. Revisa tu número o escríbenos por WhatsApp.', 502);
+  return json({ reto });
+}
+
+/** POST /api/acceso/verificar → con el código correcto devuelve la sesión firmada (90 días en ese celular) */
+async function verificarCodigo(env: Env, body: any) {
+  if (!env.SESION_SECRETO) throw new ErrorCliente('La entrada con código aún no está activa.', 503);
+  const reto = await leerFirmado<Reto>(body?.reto, env.SESION_SECRETO);
+  if (!reto || reto.tipo !== 'reto') throw new ErrorCliente('El código venció. Pide uno nuevo.', 401);
+  limitar(`verificar:${reto.tel}`);   // 8 intentos cada 10 min por teléfono
+  const codigo = String(body?.codigo || '').replace(/\D/g, '');
+  if (codigo.length !== 6 || await huellaCodigo(codigo, reto.tel, env.SESION_SECRETO) !== reto.huella) throw new ErrorCliente('Código incorrecto', 401);
+  const sesion = await firmar({ tipo: 'sesion', tel: reto.tel, vence: Date.now() + DIAS_SESION * 86400000 } satisfies Sesion, env.SESION_SECRETO);
+  return json({ sesion, telefono: reto.tel });
+}
+
+async function sesionDe(request: Request, env: Env) {
+  const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!token || !env.SESION_SECRETO) return null;
+  const s = await leerFirmado<Sesion>(token, env.SESION_SECRETO);
+  return s?.tipo === 'sesion' ? s : null;
+}
+
+/** GET /api/mi-club → su tarjeta con puntos, nivel, saldo, beneficios y próximas citas (mismas reglas que CB Control) */
+async function miClub(env: Env, sesion: Sesion | null) {
+  if (!sesion) throw new ErrorCliente('Entra con tu teléfono para ver tu Club', 401);
+  const [settings, clientes, servicios] = await Promise.all([uno<any>(env, 'configuracion', 'settings'), leer<any>(env, 'clientes'), leer<any>(env, 'servicios')]);
+  const cliente = clientes.find(c => tel10(c.telefono) === sesion.tel);
+  if (!cliente) return json({ registrada: false });
+  const [citas, ventas, saldo] = await Promise.all([
+    leer<any>(env, 'citas', { clienteId: cliente.id }), leer<any>(env, 'ventas', { clienteId: cliente.id }), leer<any>(env, 'movimientosSaldo', { clienteId: cliente.id })
+  ]);
+  const p = parametrosDe(settings), hoy = ahoraHermosillo();
+  // Las recomendaciones se cuentan con las citas de sus amigas
+  const amigas = clientes.filter(c => c.referidaPor === cliente.id);
+  const citasAmigas = amigas.length ? (await Promise.all(amigas.map(a => leer<any>(env, 'citas', { clienteId: a.id })))).flat() : [];
+  const todas = [...citas, ...citasAmigas];
+  const e = estadoCirculo(cliente, todas, ventas, clientes, servicios, p, hoy, saldo);
+  const sig = siguienteNivel(e.puntosNivel, p);
+  const nombreServicio = (sid: string) => servicios.find(s => s.id === sid)?.nombre || 'Servicio';
+  return json({
+    registrada: true, nombre: String(cliente.nombre).split(' ')[0], enClub: !!cliente.clubDesde || e.activa,
+    nivel: e.nivel, nombreNivel: NOMBRE_NIVEL[e.nivel], puntos: e.puntos, puntosNivel: e.puntosNivel,
+    siguiente: sig && { nivel: NOMBRE_NIVEL[sig.nivel], falta: sig.falta },
+    saldoTexto: textoSaldoPuntos(e.puntos, p), saldoFavor: saldoDe(saldo, cliente.id),
+    permanentes: permanentesDe(e.nivel, p),
+    disponibles: [...new Set(beneficiosDisponibles(cliente, e.nivel, clientes, todas, servicios, hoy, p, e.puntos))]
+      .map(k => ({ clave: k, titulo: datosBeneficio(k, e.nivel).titulo, puntos: costoPuntos(k) })),
+    movimientos: e.movimientos.slice(-8).reverse(),
+    proximas: citas.filter(c => c.fecha >= hoyHermosillo() && !['cancelada', 'completada'].includes(c.estado))
+      .sort((a, b) => `${a.fecha}${a.hora}`.localeCompare(`${b.fecha}${b.hora}`))
+      .map(c => ({ fecha: c.fecha, hora: c.hora, servicio: nombreServicio(c.servicioId), estado: c.estado }))
+  });
+}
+
 export async function atender(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const ruta = url.pathname.replace(/^\/api\/?/, '').replace(/\/$/, '');
@@ -194,11 +272,15 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
     if (request.method === 'GET' && ruta === 'salud') return json({ ok: true, hoy: hoyHermosillo() });
     if (request.method === 'GET' && ruta === 'servicios') return await servicios(env);
     if (request.method === 'GET' && ruta === 'disponibilidad') return await disponibilidad(env, url);
-    if (request.method === 'POST' && (ruta === 'citas' || ruta === 'club')) {
+    if (request.method === 'GET' && ruta === 'mi-club') return await miClub(env, await sesionDe(request, env));
+    if (request.method === 'POST' && ['citas', 'club', 'acceso/codigo', 'acceso/verificar'].includes(ruta)) {
       limitar(request.headers.get('CF-Connecting-IP') || 'local');
       const body: any = await request.json().catch(() => { throw new ErrorCliente('Datos inválidos'); });
+      if (ruta === 'acceso/verificar') return await verificarCodigo(env, body);
       limitar(`tel:${tel10(body?.telefono)}`);   // también por teléfono destino (mismos 8 cada 10 min)
-      return ruta === 'citas' ? await crearCita(env, ctx, body) : await unirseClub(env, ctx, body);
+      if (ruta === 'acceso/codigo') return await pedirCodigo(env, body);
+      const sesion = await sesionDe(request, env);
+      return ruta === 'citas' ? await crearCita(env, ctx, body, sesion) : await unirseClub(env, ctx, body, sesion);
     }
     return json({ error: 'No encontrado' }, 404);
   } catch (e) {

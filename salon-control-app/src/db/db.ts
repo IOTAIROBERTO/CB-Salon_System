@@ -135,6 +135,8 @@ export interface Cita {
     pagadoConSaldo?: number; // Parte del cobro pagada con saldo a favor (ya contó como ingreso al venderse la tarjeta)
     atiendeId?: string; // Quién la atiende en la agenda ('cristina' o id de empleado)
     origen?: 'app' | 'bot'; // agendada por la clienta (llega «pendiente» hasta que el salón la confirma)
+    avisoConfirmacion?: string; // ISO: cuándo se le mandó la confirmación por WhatsApp (Worker cb-avisos)
+    recordatorio?: string; // ISO: cuándo se le mandó el recordatorio del día anterior
 }
 
 export interface Venta {
