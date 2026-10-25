@@ -13,17 +13,6 @@ const categoriasDe = (lista: Servicio[]) => [...new Set(lista.map(s => s.categor
 
 const horas = (min: number) => min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ''}` : `${min} min`
 
-/** Archivo de calendario para que la clienta guarde su cita (hora de Hermosillo) */
-const ics = (c: { fecha: string; hora: string; servicio: string }, minutos = 60) => {
-  const ini = `${c.fecha.replace(/-/g, '')}T${c.hora.replace(':', '')}00`
-  const finD = new Date(`${c.fecha}T${c.hora}:00Z`); finD.setUTCMinutes(finD.getUTCMinutes() + minutos)
-  const fin = finD.toISOString().replace(/[-:]/g, '').slice(0, 15)
-  const txt = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cristina Borquez//App//ES', 'BEGIN:VEVENT', `UID:${ini}-${Math.random().toString(36).slice(2)}@cristinaborquez`,
-    `DTSTART;TZID=America/Hermosillo:${ini}`, `DTEND;TZID=America/Hermosillo:${fin}`, `SUMMARY:${c.servicio} · Cristina Borquez Beauty Salon`,
-    'LOCATION:Plaza Galilea\\, planta alta\\, Av. Saturnino Campoy 869\\, Hermosillo', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n')
-  return `data:text/calendar;charset=utf-8,${encodeURIComponent(txt)}`
-}
-
 export default function Agendar() {
   // Catálogo vivo de CB Control; mientras carga (o si la API falla) se muestra el de la app
   const [catalogo, setCatalogo] = useState<Servicio[] | null>(null)
@@ -40,7 +29,7 @@ export default function Agendar() {
   const [cargando, setCargando] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState('')
-  const [lista, setLista] = useState<{ fecha: string; hora: string; servicio: string; anticipo: number; porConfirmar?: boolean } | null>(null)
+  const [lista, setLista] = useState<{ fecha: string; hora: string; servicio: string; anticipo: number } | null>(null)
   const formulario = useRef<HTMLElement>(null)
 
   const cargarHorarios = (s: Servicio) => {
@@ -62,7 +51,7 @@ export default function Agendar() {
     try {
       const r = await crearCita({ servicioId: elegido.id, fecha, hora, ...datos, notas, club, sitio: trampa })
       recordarDatos(datos)
-      setLista({ ...r.cita, porConfirmar: r.porConfirmar })
+      setLista(r.cita)
       setTimeout(() => formulario.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch (e) {
       const err = e as { message: string; status?: number }
@@ -185,12 +174,12 @@ export default function Agendar() {
             )}
             <input className="hidden" tabIndex={-1} autoComplete="off" value={trampa} onChange={e => setTrampa(e.target.value)} aria-hidden="true" />
             <p className="border-l border-marca-dorado pl-3 text-xs leading-relaxed text-marca-gris">
-              Tu horario queda apartado al enviar; te confirmamos por WhatsApp y te mandamos el anticipo{elegido.anticipo ? ` (${pesos(elegido.anticipo)})` : ''}.
+              Al enviar, tu solicitud llega al salón y te confirmamos por WhatsApp y te mandamos el anticipo{elegido.anticipo ? ` (${pesos(elegido.anticipo)})` : ''}.
               Los precios son desde: el final se confirma en tu valoración. {POLITICAS.cambios}
             </p>
             {error && <p className="rounded-sm bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
             <button onClick={enviar} disabled={enviando || !hora} className="boton w-full disabled:opacity-40">
-              {enviando ? 'Apartando tu horario…' : hora ? `Apartar ${hora}` : 'Elige día y hora'}
+              {enviando ? 'Enviando…' : hora ? `Pedir ${hora}` : 'Elige día y hora'}
             </button>
             {(error || (dias === null && !cargando)) && (
               <a href={enlaceWhatsApp(mensajeWhatsApp)} className="boton-claro w-full"><MessageCircle size={16} strokeWidth={1.5} /> Mejor por WhatsApp</a>
@@ -201,15 +190,12 @@ export default function Agendar() {
         {lista && (
           <section ref={formulario} className="tarjeta aparece scroll-mt-6 space-y-4 p-6 text-center">
             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-marca-negro text-marca-dorado"><Check size={22} /></span>
-            <p className="rotulo">{lista.porConfirmar ? 'Solicitud recibida' : 'Horario apartado'}</p>
+            <p className="rotulo">Solicitud recibida</p>
             <h2 className="titulo text-3xl">¡Listo, {datos.nombre.split(' ')[0]}!</h2>
             <p className="text-sm leading-relaxed text-marca-gris">
               {lista.servicio} · {new Date(`${lista.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })} a las {lista.hora}.
-              {lista.porConfirmar
-                ? 'Tu solicitud quedó por confirmar: te escribimos por WhatsApp para apartar tu horario.'
-                : `Te confirmamos por WhatsApp${lista.anticipo ? ` y te mandamos el anticipo de ${pesos(lista.anticipo)}` : ''}.`}
+              Te confirmamos tu cita por WhatsApp{lista.anticipo ? ` y te mandamos el anticipo de ${pesos(lista.anticipo)}` : ''}.
             </p>
-            {!lista.porConfirmar && <a href={ics(lista, elegido?.duracion)} download="cita-cristina-borquez.ics" className="boton-claro w-full">Agregar a mi calendario</a>}
             <button onClick={() => { setLista(null); setElegido(null); setHora(''); setFecha('') }} className="text-xs uppercase tracking-[0.2em] text-marca-dorado-prof">Agendar otra cita</button>
           </section>
         )}

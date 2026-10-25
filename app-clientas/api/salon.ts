@@ -141,18 +141,15 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any) {
   const clientas = await leer<any>(env, 'clientes');
   const deEseTelefono = abiertas.filter(c => tel10(clientas.find(x => x.id === c.clienteId)?.telefono) === d.telefono).length;
   const deEseDia = abiertas.filter(c => c.fecha === fecha).length;
+  const respuesta = (citaId: string) =>   // misma respuesta en todos los casos: no revela nada del número ni de los topes
+    json({ ok: true, cita: { id: citaId, fecha, hora, servicio: s.nombre, anticipo: s.anticipoSugerido || 0 } }, 201);
   if (deEseTelefono >= 2 || deEseDia >= 6) {
-    // Un aviso por teléfono y día al que se van SUMANDO las solicitudes (nunca se reemplaza lo que ya había), máximo 5
-    const avisoId = `avi_sin_${d.telefono}_${hoyHermosillo()}`;
-    const linea = `${d.nombre} pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}`;
-    const previo = await uno<any>(env, 'avisos', avisoId).catch(() => null);
-    const lineas = [...(previo?.lineas || []), linea].slice(0, 5);
-    try {
-      await guardar(env, 'avisos', [{ ...(previo || {}), id: avisoId, fecha: new Date().toISOString(), leido: false, realmId: ag.realmId, tipo: 'cita',
-        titulo: `Solicitudes por confirmar a mano (tel. ${d.telefono})`, lineas,
-        detalle: `${lineas.join(' | ')}. ${deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: revisar y agendar a mano.` }]);
-    } catch (e) { console.log('aviso', (e as Error).message); }
-    return json({ ok: true, porConfirmar: true, cita: { id: '', fecha, hora, servicio: s.nombre, anticipo: s.anticipoSugerido || 0 } }, 202);
+    // Cada solicitud de más es su propio aviso (id al azar: nada se reemplaza), sin WhatsApp ni notas libres
+    await aviso(env, ctx, ag.realmId, {
+      tipo: 'cita', titulo: `Solicitud por confirmar a mano: ${d.nombre}`,
+      detalle: `Tel. ${d.telefono} pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}. ${deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: no se apartó el horario.`
+    }, { whatsapp: false });
+    return respuesta('');
   }
   const { cliente, pendiente } = await clientaPorTelefono(env, ag.realmId, d, !!body.club);
   const cita = {
@@ -165,7 +162,7 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any) {
     detalle: `${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${notas ? ` · «${notas}»` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
     refId: cita.id, clienteId: cliente.id
   });
-  return json({ ok: true, cita: { id: cita.id, fecha, hora, servicio: s.nombre, anticipo: cita.montoAnticipo } }, 201);
+  return respuesta(cita.id);
 }
 
 /** POST /api/club → alta al Club sin pasar por WhatsApp */
@@ -193,7 +190,8 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
     if (request.method === 'GET' && ruta === 'disponibilidad') return await disponibilidad(env, url);
     if (request.method === 'POST' && (ruta === 'citas' || ruta === 'club')) {
       limitar(request.headers.get('CF-Connecting-IP') || 'local');
-      const body = await request.json().catch(() => { throw new ErrorCliente('Datos inválidos'); });
+      const body: any = await request.json().catch(() => { throw new ErrorCliente('Datos inválidos'); });
+      limitar(`tel:${tel10(body?.telefono)}`);   // también por teléfono destino (mismos 8 cada 10 min)
       return ruta === 'citas' ? await crearCita(env, ctx, body) : await unirseClub(env, ctx, body);
     }
     return json({ error: 'No encontrado' }, 404);
