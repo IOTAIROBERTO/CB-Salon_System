@@ -25,6 +25,9 @@ const json = (datos: unknown, status = 200) => new Response(JSON.stringify(datos
 
 // ponytail: límite por instancia en memoria (8 envíos cada 10 min por IP); pasar a Rate Limiting de Cloudflare si hay abuso
 const envios = new Map<string, number[]>();
+// ponytail: tope diario de avisos «por confirmar a mano» en memoria de la instancia; pasar a Durable Object o KV si hay abuso
+const avisosDeMas = { dia: '', cuantos: 0 };
+const TOPE_AVISOS_DE_MAS = 20;
 function limitar(ip: string) {
   const ahora = Date.now(), lista = (envios.get(ip) || []).filter(t => ahora - t < 10 * 60 * 1000);
   if (lista.length >= 8) throw new ErrorCliente('Demasiados intentos. Espera unos minutos o escríbenos por WhatsApp.', 429);
@@ -144,7 +147,10 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any) {
   const respuesta = (citaId: string) =>   // misma respuesta en todos los casos: no revela nada del número ni de los topes
     json({ ok: true, cita: { id: citaId, fecha, hora, servicio: s.nombre, anticipo: s.anticipoSugerido || 0 } }, 201);
   if (deEseTelefono >= 2 || deEseDia >= 6) {
-    // Cada solicitud de más es su propio aviso (id al azar: nada se reemplaza), sin WhatsApp ni notas libres
+    // Cada solicitud de más es su propio aviso (id al azar: nada se reemplaza), sin WhatsApp ni notas libres;
+    // pasado el tope diario se descarta en silencio (la respuesta no cambia)
+    if (avisosDeMas.dia !== hoyHermosillo()) { avisosDeMas.dia = hoyHermosillo(); avisosDeMas.cuantos = 0; }
+    if (++avisosDeMas.cuantos > TOPE_AVISOS_DE_MAS) return respuesta('');
     await aviso(env, ctx, ag.realmId, {
       tipo: 'cita', titulo: `Solicitud por confirmar a mano: ${d.nombre}`,
       detalle: `Tel. ${d.telefono} pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}. ${deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: no se apartó el horario.`
