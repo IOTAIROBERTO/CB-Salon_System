@@ -132,13 +132,18 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any) {
   if (!s) throw new ErrorCliente('Ese servicio no se agenda en línea');
   const libre = (await libresDelDia(env, ag, fecha, servicioId)).find(h => h.hora === hora);
   if (!libre) throw new ErrorCliente('Ese horario se acaba de ocupar. Elige otro, por favor.', 409);
-  // Mientras no se verifique el teléfono (código por WhatsApp, fase 2): pocas citas abiertas por teléfono y por día,
-  // para que nadie pueda apartar toda la agenda con datos inventados
+  // Mientras no se verifique el teléfono (código por WhatsApp, fase 2): un teléfono con 2 citas por confirmar ya no
+  // aparta más horarios; la solicitud llega solo como aviso. La respuesta es la misma para no revelar nada del número.
   const abiertas = (await leer<any>(env, 'citas', { estado: 'pendiente' })).filter(c => c.origen === 'app');
   const clientas = await leer<any>(env, 'clientes');
-  const suyas = abiertas.filter(c => tel10(clientas.find(x => x.id === c.clienteId)?.telefono) === d.telefono);
-  if (suyas.length >= 2) throw new ErrorCliente('Ya tienes citas por confirmar. Te escribimos por WhatsApp para confirmarlas.', 429);
-  if (abiertas.filter(c => c.fecha === fecha).length >= 6) throw new ErrorCliente('Ese día ya tiene varias solicitudes por confirmar. Escríbenos por WhatsApp y te buscamos lugar.', 429);
+  const deEseTelefono = abiertas.filter(c => tel10(clientas.find(x => x.id === c.clienteId)?.telefono) === d.telefono).length;
+  if (deEseTelefono >= 2) {
+    await aviso(env, ctx, ag.realmId, {
+      tipo: 'cita', titulo: `Solicitud sin apartar: ${d.nombre}`,
+      detalle: `Tel. ${d.telefono} ya tiene ${deEseTelefono} citas por confirmar. Pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${notas ? ` · «${notas}»` : ''}. Revisar antes de agendar.`
+    });
+    return json({ ok: true, cita: { id: '', fecha, hora, servicio: s.nombre, anticipo: s.anticipoSugerido || 0 } }, 201);
+  }
   const { cliente, pendiente } = await clientaPorTelefono(env, ag.realmId, d, !!body.club);
   const cita = {
     id: id('cita_app'), clienteId: cliente.id, servicioId, fecha, hora, estado: 'pendiente', notas: notas || undefined,
