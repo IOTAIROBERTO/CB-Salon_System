@@ -10,7 +10,15 @@ import { guardar, leer, uno, type EnvDexie } from './dexie';
 import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
 import { DIAS_SESION, MIN_RETO, codigoNuevo, firmar, huellaCodigo, leerFirmado, type Reto, type Sesion } from './sesion';
 
-export type Env = EnvDexie & EnvWhatsApp & { SESION_SECRETO?: string };
+export type Env = EnvDexie & EnvWhatsApp & { SESION_SECRETO?: string; ACCESOS?: KVNamespace };
+
+/** Contador compartido entre instancias (KV) para los topes de la entrada con código; sin KV (pruebas) usa la memoria */
+async function contar(env: Env, clave: string, segundos: number) {
+  if (!env.ACCESOS) { const l = (envios.get(clave) || []).filter(t => Date.now() - t < segundos * 1000); l.push(Date.now()); envios.set(clave, l); return l.length; }
+  const n = Number(await env.ACCESOS.get(clave)) + 1;
+  await env.ACCESOS.put(clave, String(n), { expirationTtl: Math.max(60, segundos) });
+  return n;
+}
 
 // Hermosillo no cambia de horario: UTC−7 todo el año. El motor compara fechas «locales»; en el servidor (UTC)
 // se le pasa la hora de Hermosillo como si fuera UTC.
@@ -108,9 +116,10 @@ async function clientaPorTelefono(env: Env, realmId: string, d: ReturnType<typeo
     const cambios: any = {};
     if (club && !existente.clubDesde) cambios.clubDesde = new Date().toISOString();
     if (d.cumple && !existente.cumple) cambios.cumple = d.cumple;
-    if (recomendadora && !existente.referidaPor) cambios.referidaPor = recomendadora.id;
     if (Object.keys(cambios).length) await guardar(env, 'clientes', [{ ...existente, ...cambios }]);
-    return { cliente: { ...existente, ...cambios }, nueva: false, pendiente: '' };
+    // La recomendación en una ficha que ya existía la aprueba el salón (no se acredita sola)
+    const pendiente = recomendadora && !existente.referidaPor ? `dice que la recomendó ${recomendadora.nombre} (revisar y aplicar en su ficha)` : '';
+    return { cliente: { ...existente, ...cambios }, nueva: false, pendiente };
   }
   if (existente) {
     const pide = [
@@ -159,7 +168,7 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
   const deEseDia = abiertas.filter(c => c.fecha === fecha).length;
   const respuesta = (citaId: string) =>   // misma respuesta en todos los casos: no revela nada del número ni de los topes
     json({ ok: true, cita: { id: citaId, fecha, hora, servicio: s.nombre, anticipo: s.anticipoSugerido || 0 } }, 201);
-  if (!sesion && (deEseTelefono >= 2 || deEseDia >= 6)) {   // con teléfono verificado no aplican los topes
+  if (sesion ? deEseTelefono >= 4 : (deEseTelefono >= 2 || deEseDia >= 6)) {   // con teléfono verificado: hasta 4 por confirmar y sin tope por día
     // Cada solicitud de más es su propio aviso (id al azar: nada se reemplaza), sin WhatsApp ni notas libres;
     // pasado el tope diario se descarta en silencio (la respuesta no cambia)
     if (avisosDeMas.dia !== hoyHermosillo()) { avisosDeMas.dia = hoyHermosillo(); avisosDeMas.cuantos = 0; }
@@ -177,7 +186,7 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
   };
   await guardar(env, 'citas', [cita]);
   // A la clienta: «recibimos tu solicitud» (cuando el WhatsApp del salón esté conectado)
-  ctx.waitUntil(plantilla(env, d.telefono, 'cita_recibida', [d.nombre.split(' ')[0], s.nombre, fechaLegible(fecha), hora]));
+  if (sesion) ctx.waitUntil(plantilla(env, d.telefono, 'cita_recibida', [d.nombre.split(' ')[0], s.nombre, fechaLegible(fecha), hora]));
   await aviso(env, ctx, ag.realmId, {
     tipo: 'cita', titulo: `Nueva cita desde la app: ${cliente.nombre}`,
     detalle: `${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${notas ? ` · «${notas}»` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
@@ -208,6 +217,8 @@ async function pedirCodigo(env: Env, body: any) {
   const tel = tel10(body?.telefono);
   if (tel.length !== 10) throw new ErrorCliente('Escribe tu teléfono de 10 dígitos');
   if (!whatsappListo(env) || !env.SESION_SECRETO) throw new ErrorCliente('La entrada con código se activa en cuanto el WhatsApp del salón quede conectado. Muy pronto.', 503);
+  if (await contar(env, `codigo:${tel}`, 15 * 60) > 3 || await contar(env, `codigo-dia:${tel}`, 24 * 3600) > 10)
+    throw new ErrorCliente('Ya te mandamos varios códigos. Espera unos minutos.', 429);
   const codigo = codigoNuevo();
   const reto = await firmar({ tipo: 'reto', tel, huella: await huellaCodigo(codigo, tel, env.SESION_SECRETO), vence: Date.now() + MIN_RETO * 60000 } satisfies Reto, env.SESION_SECRETO);
   if (!await plantilla(env, tel, 'codigo_acceso', [codigo], codigo)) throw new ErrorCliente('No pudimos mandarte el código. Revisa tu número o escríbenos por WhatsApp.', 502);
@@ -219,9 +230,12 @@ async function verificarCodigo(env: Env, body: any) {
   if (!env.SESION_SECRETO) throw new ErrorCliente('La entrada con código aún no está activa.', 503);
   const reto = await leerFirmado<Reto>(body?.reto, env.SESION_SECRETO);
   if (!reto || reto.tipo !== 'reto') throw new ErrorCliente('El código venció. Pide uno nuevo.', 401);
-  limitar(`verificar:${reto.tel}`);   // 8 intentos cada 10 min por teléfono
+  if (env.ACCESOS && await env.ACCESOS.get(`usado:${reto.huella}`)) throw new ErrorCliente('Ese código ya se usó. Pide uno nuevo.', 401);
+  if (await contar(env, `intento:${reto.huella}`, MIN_RETO * 60) > 5 || await contar(env, `intento-tel:${reto.tel}`, 3600) > 10)
+    throw new ErrorCliente('Demasiados intentos. Pide un código nuevo en unos minutos.', 429);
   const codigo = String(body?.codigo || '').replace(/\D/g, '');
   if (codigo.length !== 6 || await huellaCodigo(codigo, reto.tel, env.SESION_SECRETO) !== reto.huella) throw new ErrorCliente('Código incorrecto', 401);
+  await env.ACCESOS?.put(`usado:${reto.huella}`, '1', { expirationTtl: MIN_RETO * 60 + 60 });   // un solo uso
   const sesion = await firmar({ tipo: 'sesion', tel: reto.tel, vence: Date.now() + DIAS_SESION * 86400000 } satisfies Sesion, env.SESION_SECRETO);
   return json({ sesion, telefono: reto.tel });
 }

@@ -1,0 +1,10 @@
+# Configuración de Cloudflare Pages para la app de clientas (proyecto «cristinaborquez-app»).
+# Los secretos (DEXIE_*, SESION_SECRETO, WA_*) no van aquí: se ponen con «npx wrangler pages secret put».
+name = "cristinaborquez-app"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-10-01"
+
+# Intentos de entrada con código (compartidos entre instancias): un solo uso por código y tope de intentos
+[[kv_namespaces]]
+binding = "ACCESOS"
+id = "b64a16282cc841df83124c1b217c016b"
