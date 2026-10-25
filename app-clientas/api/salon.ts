@@ -142,11 +142,17 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any) {
   const deEseTelefono = abiertas.filter(c => tel10(clientas.find(x => x.id === c.clienteId)?.telefono) === d.telefono).length;
   const deEseDia = abiertas.filter(c => c.fecha === fecha).length;
   if (deEseTelefono >= 2 || deEseDia >= 6) {
-    await aviso(env, ctx, ag.realmId, {
-      tipo: 'cita', titulo: `Solicitud sin apartar: ${d.nombre}`,
-      detalle: `Tel. ${d.telefono} pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}. ${deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: revisar antes de agendar.`
-    }, { id: `avi_sin_${d.telefono}_${hoyHermosillo()}`, whatsapp: false });
-    return json({ ok: true, cita: { id: '', fecha, hora, servicio: s.nombre, anticipo: s.anticipoSugerido || 0 } }, 201);
+    // Un aviso por teléfono y día al que se van SUMANDO las solicitudes (nunca se reemplaza lo que ya había), máximo 5
+    const avisoId = `avi_sin_${d.telefono}_${hoyHermosillo()}`;
+    const linea = `${d.nombre} pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}`;
+    const previo = await uno<any>(env, 'avisos', avisoId).catch(() => null);
+    const lineas = [...(previo?.lineas || []), linea].slice(0, 5);
+    try {
+      await guardar(env, 'avisos', [{ ...(previo || {}), id: avisoId, fecha: new Date().toISOString(), leido: false, realmId: ag.realmId, tipo: 'cita',
+        titulo: `Solicitudes por confirmar a mano (tel. ${d.telefono})`, lineas,
+        detalle: `${lineas.join(' | ')}. ${deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: revisar y agendar a mano.` }]);
+    } catch (e) { console.log('aviso', (e as Error).message); }
+    return json({ ok: true, porConfirmar: true, cita: { id: '', fecha, hora, servicio: s.nombre, anticipo: s.anticipoSugerido || 0 } }, 202);
   }
   const { cliente, pendiente } = await clientaPorTelefono(env, ag.realmId, d, !!body.club);
   const cita = {

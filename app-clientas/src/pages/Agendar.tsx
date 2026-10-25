@@ -40,7 +40,7 @@ export default function Agendar() {
   const [cargando, setCargando] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState('')
-  const [lista, setLista] = useState<{ fecha: string; hora: string; servicio: string; anticipo: number } | null>(null)
+  const [lista, setLista] = useState<{ fecha: string; hora: string; servicio: string; anticipo: number; porConfirmar?: boolean } | null>(null)
   const formulario = useRef<HTMLElement>(null)
 
   const cargarHorarios = (s: Servicio) => {
@@ -62,7 +62,7 @@ export default function Agendar() {
     try {
       const r = await crearCita({ servicioId: elegido.id, fecha, hora, ...datos, notas, club, sitio: trampa })
       recordarDatos(datos)
-      setLista(r.cita)
+      setLista({ ...r.cita, porConfirmar: r.porConfirmar })
       setTimeout(() => formulario.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch (e) {
       const err = e as { message: string; status?: number }
@@ -201,13 +201,15 @@ export default function Agendar() {
         {lista && (
           <section ref={formulario} className="tarjeta aparece scroll-mt-6 space-y-4 p-6 text-center">
             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-marca-negro text-marca-dorado"><Check size={22} /></span>
-            <p className="rotulo">Horario apartado</p>
+            <p className="rotulo">{lista.porConfirmar ? 'Solicitud recibida' : 'Horario apartado'}</p>
             <h2 className="titulo text-3xl">¡Listo, {datos.nombre.split(' ')[0]}!</h2>
             <p className="text-sm leading-relaxed text-marca-gris">
               {lista.servicio} · {new Date(`${lista.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })} a las {lista.hora}.
-              Te confirmamos por WhatsApp{lista.anticipo ? ` y te mandamos el anticipo de ${pesos(lista.anticipo)}` : ''}.
+              {lista.porConfirmar
+                ? 'Tu solicitud quedó por confirmar: te escribimos por WhatsApp para apartar tu horario.'
+                : `Te confirmamos por WhatsApp${lista.anticipo ? ` y te mandamos el anticipo de ${pesos(lista.anticipo)}` : ''}.`}
             </p>
-            <a href={ics(lista, elegido?.duracion)} download="cita-cristina-borquez.ics" className="boton-claro w-full">Agregar a mi calendario</a>
+            {!lista.porConfirmar && <a href={ics(lista, elegido?.duracion)} download="cita-cristina-borquez.ics" className="boton-claro w-full">Agregar a mi calendario</a>}
             <button onClick={() => { setLista(null); setElegido(null); setHora(''); setFecha('') }} className="text-xs uppercase tracking-[0.2em] text-marca-dorado-prof">Agendar otra cita</button>
           </section>
         )}

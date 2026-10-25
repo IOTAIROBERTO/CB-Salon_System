@@ -22,7 +22,7 @@ export const disponibilidad = (servicioId: string, dias = 14) =>
   llamar<{ dias: DiaLibre[]; servicio: { anticipo: number } }>(`disponibilidad?servicioId=${encodeURIComponent(servicioId)}&dias=${dias}`)
 
 export const crearCita = (datos: object) =>
-  llamar<{ cita: { id: string; fecha: string; hora: string; servicio: string; anticipo: number } }>('citas', { method: 'POST', body: JSON.stringify(datos) })
+  llamar<{ porConfirmar?: boolean; cita: { id: string; fecha: string; hora: string; servicio: string; anticipo: number } }>('citas', { method: 'POST', body: JSON.stringify(datos) })
 
 export const unirmeClub = (datos: object) =>
   llamar<{ ok: boolean }>('club', { method: 'POST', body: JSON.stringify(datos) })
