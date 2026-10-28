@@ -9,6 +9,14 @@ import { useRolSalon } from '../../db/salon';
 // Solo la dueña ve la lista: en ese calendario también hay pendientes personales.
 export interface EventoGoogle { id: string; titulo: string; desde: string; hasta: string }
 
+/** Anota que la cita adopta el evento (solo una dueña puede escribir configuracion: el Worker solo confía en esto) */
+export async function registrarAdopcion(citaId: string, eventoId: string) {
+  const actual = (await db.configuracion.get('eventosGoogleAdopciones')) as any;
+  const vigentes = new Set((((await db.configuracion.get('eventosGoogle')) as any)?.eventos || []).map((e: EventoGoogle) => e.id));
+  const mapa = Object.fromEntries(Object.entries<string>(actual?.mapa || {}).filter(([, ev]) => vigentes.has(ev)));   // ya adoptados: fuera
+  await db.configuracion.put({ id: 'eventosGoogleAdopciones', mapa: { ...mapa, [citaId]: eventoId } } as any);
+}
+
 const fechaCorta = (f: string) => new Date(`${f.slice(0, 10)}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
 
 export default function EventosGoogle({ onRegistrar }: { onRegistrar: (e: EventoGoogle) => void }) {

@@ -29,6 +29,8 @@ const tablas: Record<string, any[]> = {
     { id: 'c4', clienteId: 'k1', servicioId: 's1', fecha: dia(-1), hora: '09:00', estado: 'confirmada' }
   ]
 };
+// Todo lo del salón vive en su realm; lo de otros realms (cuentas ajenas) no debe usarse nunca
+for (const [t, filas] of Object.entries(tablas)) if (!['members', 'realms'].includes(t)) for (const f of filas) f.realmId ??= 'rlm1';
 const marca = (cbId: string, firma = 'vieja') => ({ private: { cb: '1', cbId, firma } });
 const hora = (f: string, h: string) => ({ dateTime: `${f}T${h}:00-07:00` });
 let n = 0;
@@ -144,7 +146,8 @@ assert.equal(google['cristina@gmail.com'].find(e => e.id === 'g1').summary, 'Cit
 tablas.citas = tablas.citas.filter(c => c.id !== 'c8' && c.id !== 'c11');
 google['cristina@gmail.com'] = google['cristina@gmail.com'].filter(e => !['cita:c8', 'cita:c11'].includes(e.extendedProperties?.private?.cbId));
 
-// La dueña sí: su cita adopta el evento de la lista
+// La dueña sí: CB Control anota la adopción en configuración (solo ella puede escribirla) y su cita adopta el evento
+tablas.configuracion.push({ id: 'eventosGoogleAdopciones', mapa: { c9: 'g1' }, realmId: 'rlm1' });
 tablas.citas.push({ id: 'c9', clienteId: 'k1', servicioId: 's1', fecha: manana, hora: '15:00', estado: 'confirmada', googleAdoptar: 'g1', owner: 'u-cris', realmId: 'rlm1' });
 llamadas.length = 0;
 const adopcion = await espejo(env);
@@ -159,5 +162,11 @@ assert.deepEqual(tablas.configuracion.find(f => f.id === 'eventosGoogle').evento
 // Si el evento ya no está en Google (ni en la lista), se crea la copia normal
 tablas.citas.push({ id: 'c10', clienteId: 'k1', servicioId: 's1', fecha: pasado, hora: '12:00', estado: 'confirmada', googleAdoptar: 'borrado', owner: 'u-rob', realmId: 'rlm1' });
 assert.equal((await espejo(env)).creados, 1);
+
+// Una cita en el realm privado de una cuenta ajena no se copia a Google (ni aunque «pida» adoptar)
+tablas.citas.push({ id: 'ajena', clienteId: 'k1', servicioId: 's1', fecha: pasado, hora: '16:00', estado: 'confirmada', realmId: 'u-ajeno', owner: 'u-ajeno', googleAdoptar: 'g3' });
+tablas.configuracion.push({ id: 'eventosGoogleAdopciones-falso', mapa: { ajena: 'g3' }, realmId: 'u-ajeno' });
+await espejo(env);
+assert.ok(!Object.values(google).flat().some((e: any) => e?.extendedProperties?.private?.cbId === 'cita:ajena'));
 
 console.log('google ok');

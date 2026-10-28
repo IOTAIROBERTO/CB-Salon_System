@@ -17,9 +17,11 @@ export default function useCitas() {
   const servicios = useLiveQuery(() => db.servicios.toArray()) || [];
 
   // --- CRUD ---
-  const saveCita = async (formData: any) => {
+  /** Guarda la cita y devuelve su id */
+  const saveCita = async (formData: any): Promise<string> => {
     if (formData.id) {
       await db.citas.update(formData.id, formData);
+      return formData.id;
     } else {
       const id = `cita_${Date.now()}`;
       const newCita: any = {
@@ -28,6 +30,7 @@ export default function useCitas() {
         estado: formData.estado || "pendiente",   // las que vienen de Google ya estaban acordadas: confirmadas
       };
       await db.citas.add(newCita);
+      return id;
     }
   };
 

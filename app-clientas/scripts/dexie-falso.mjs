@@ -19,6 +19,8 @@ const tablas = {
   empleados: [], empleadoEvents: [], avisos: [], ventas: [], movimientosSaldo: []
 };
 
+for (const filas of Object.values(tablas)) for (const f of filas) f.realmId ??= 'rlm-local';   // la API solo lee el realm del salón
+
 createServer((req, res) => {
   const url = new URL(req.url, 'http://local');
   const enviar = (d, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(d === null ? '' : JSON.stringify(d)); };

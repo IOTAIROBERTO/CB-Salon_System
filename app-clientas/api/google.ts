@@ -175,20 +175,16 @@ export function planCalendario(calendario: string, quiero: Map<string, Deseado>,
 const conMarca = (d: Deseado, cuerpo: object) =>
   ({ ...cuerpo, extendedProperties: { private: { cb: '1', cbId: d.cbId, firma: d.firma } } });
 
-/** Citas (por id) cuyo `googleAdoptar` se respeta: el evento está en la lista vigente y la cita la creó una dueña
- *  (rol «duena» en el salón o dueña del realm). Solo consulta la base si alguna cita pide adoptar. */
+/** Citas (por id) cuyo `googleAdoptar` se respeta: la relación cita → evento está en configuracion/eventosGoogleAdopciones
+ *  (la escribe CB Control al «Registrar como cita»; solo una dueña puede escribir configuracion, las auxiliares no) y el
+ *  evento sigue en la lista «De Google, sin registrar». Solo consulta la base si alguna cita pide adoptar. */
 async function adopcionesPermitidas(env: EnvDexie, citas: any[]) {
   const piden = citas.filter(c => c.googleAdoptar);
   if (!piden.length) return new Set<string>();
-  const [lista, miembros, realms] = await Promise.all([
-    uno<any>(env, 'configuracion', 'eventosGoogle'), leer<any>(env, 'members'), leer<any>(env, 'realms').catch(() => [] as any[])
-  ]);
+  const [lista, adopciones] = await Promise.all([uno<any>(env, 'configuracion', 'eventosGoogle'), uno<any>(env, 'configuracion', 'eventosGoogleAdopciones')]);
   const enLista = new Set<string>((lista?.eventos || []).map((e: any) => e.id));
-  // Dueña DEL REALM DE LA CITA (cada usuario es dueño de su realm privado: no basta con ser dueño de alguno)
-  const esDuena = (userId: string, realmId: string) => !!userId && !!realmId && (
-    miembros.some(m => m.realmId === realmId && m.userId === userId && (m.roles || []).includes('duena')) ||
-    realms.some(rl => rl.realmId === realmId && rl.owner === userId));
-  return new Set(piden.filter(c => enLista.has(c.googleAdoptar) && esDuena(c.owner, c.realmId)).map(c => c.id as string));
+  const mapa: Record<string, string> = adopciones?.mapa || {};
+  return new Set(piden.filter(c => mapa[c.id] === c.googleAdoptar && enLista.has(c.googleAdoptar)).map(c => c.id as string));
 }
 
 /** Copia a Google las citas activas desde hoy y los días de apoyo/vacaciones del equipo, y lo ocupado en Google a
@@ -205,8 +201,8 @@ export async function espejo(env: EnvGoogle & EnvDexie) {
   const principal = env.GOOGLE_CALENDARIO!;
   const calendarioDe = (empleadoId?: string) => empleados.find(e => e.id === empleadoId)?.googleCalendarId?.trim() || principal;
   const deseados: Deseado[] = [];
-  // Adoptar un evento de Google solo si sigue en la lista «De Google, sin registrar» y la cita la creó una dueña: así
-  // nadie con permiso de editar citas puede hacer que el Worker sobrescriba otro evento de Cristina
+  // Adoptar un evento de Google solo si una dueña lo pidió (registro que solo ella escribe) y sigue en la lista: así nadie
+  // con permiso de editar citas puede hacer que el Worker sobrescriba otro evento de Cristina
   const adoptables = await adopcionesPermitidas(env, citas);
 
   for (const c of citas.filter(c => c.fecha >= hoy && c.hora)) {

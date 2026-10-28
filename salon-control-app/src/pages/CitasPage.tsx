@@ -8,7 +8,7 @@ import CitaModal from "../components/citas/CitaModal";
 import CobroModal from "../components/citas/CobroModal";
 import ReagendarModal from "../components/citas/ReagendarModal";
 import CalendarioGoogle from "../components/citas/CalendarioGoogle";
-import EventosGoogle, { type EventoGoogle } from "../components/citas/EventosGoogle";
+import EventosGoogle, { registrarAdopcion, type EventoGoogle } from "../components/citas/EventosGoogle";
 
 export default function CitasPage() {
   const {
@@ -141,7 +141,7 @@ export default function CitasPage() {
           clientes={clientes}
           servicios={servicios}
           onClose={() => setDesdeGoogle(null)}
-          onSave={saveCita}
+          onSave={async (datos) => { const ev = desdeGoogle; const id = await saveCita(datos); await registrarAdopcion(id, ev.id); }}
           inicial={{ fecha: desdeGoogle.desde.slice(0, 10), hora: desdeGoogle.desde.slice(11, 16), notas: desdeGoogle.titulo, estado: "confirmada", googleAdoptar: desdeGoogle.id }}
         />
       )}

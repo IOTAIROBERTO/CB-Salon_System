@@ -18,6 +18,7 @@ const tablas: Record<string, any[]> = {
     { id: 's07', nombre: 'Retoque de raíz', precioSugerido: 550, duracion: 90, descripcionApp: 'Color solo en la raíz que creció.', descripcion: 'Nota interna: 27 de 54 cobros' }],
   empleados: [], empleadoEvents: [], clientes: [], citas: [], avisos: [], fotos: []
 };
+for (const filas of Object.values(tablas)) for (const f of filas) f.realmId ??= 'r';
 const whatsapp: string[] = [];
 globalThis.fetch = (async (entrada: any, init: any = {}) => {
   const url = new URL(String(entrada));
@@ -40,6 +41,12 @@ const post = (env: object, ruta: string, cuerpo: object, token?: string) => aten
 }), env as any, ctx);
 const ana = (tel: string) => ({ nombre: 'Ana López', telefono: tel });
 const cita = (tel: string, extra = {}) => ({ ...ana(tel), servicioId: 's1', fecha: lunes, hora: '10:00', ...extra });
+
+// Una cita en el realm privado de una cuenta ajena no ocupa horarios de la app
+tablas.citas.push({ id: 'ajena', clienteId: 'x', servicioId: 's1', fecha: lunes, hora: '10:00', estado: 'confirmada', realmId: 'u-ajeno' });
+const libres = await (await atender(new Request(`https://app/api/disponibilidad?servicioId=s1&desde=${lunes}&dias=1`), base as any, ctx)).json();
+assert.ok(libres.dias[0].horas.includes('10:00'));
+tablas.citas = tablas.citas.filter(c => c.id !== 'ajena');
 
 // Sin secreto de Turnstile no se pide (como hoy en producción)
 assert.equal((await post(base, 'club', ana('6620000001'))).status, 201);
@@ -108,13 +115,14 @@ const settings = tablas.configuracion[0];
 Object.assign(settings, { telefono: '662 555 0101', agenda: { horario: { '0': null, '1': { abre: '09:00', cierra: '18:00' }, '2': { abre: '09:00', cierra: '18:00' },
   '3': { abre: '09:00', cierra: '18:00' }, '4': { abre: '09:00', cierra: '18:00' }, '5': { abre: '09:00', cierra: '18:00' }, '6': { abre: '10:00', cierra: '14:00' } } },
   circulo: { ...PARAMETROS_CIRCULO, bienvenida: 250 } });
-tablas.inventario = [{ id: 'i1', nombre: 'Dumplings', categoria: 'Antojos', precio: 120, costo: 55 }];
+tablas.inventario = [{ id: 'i1', nombre: 'Dumplings', categoria: 'Antojos', precio: 120, costo: 55, realmId: 'r' }, { id: 'i2', nombre: 'Waffles con miel', categoria: 'Antojos', precio: 1, realmId: 'u-ajeno' }];
 const vivo = await (await atender(new Request('https://app/api/salon'), base as any, ctx)).json();
 assert.equal(vivo.salon.whatsapp, '526625550101');
 assert.equal(vivo.salon.horario, 'Lunes a viernes de 09:00 a 18:00; sábado de 10:00 a 14:00. Servicios solo con cita; los domingos se abre únicamente para citas.');
 assert.equal(vivo.club.bienvenida, 250);
 assert.equal(vivo.antojos.find((a: any) => a.nombre === 'Dumplings').precio, 120);
 assert.ok(!JSON.stringify(vivo).includes('costo'));
+assert.equal(vivo.antojos.find((a: any) => a.nombre === 'Waffles con miel').precio, 40);   // el precio de un realm ajeno no cuenta
 tablas.configuracion[0] = { id: 'settings', realmId: 'r' };
 
 // Recordatorio al salón: citas de la app sin confirmar después de 2 h, cada 4 h, solo de 9 a 21 h (Hermosillo, UTC−7)

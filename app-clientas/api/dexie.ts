@@ -36,15 +36,30 @@ async function pedir(env: EnvDexie, ruta: string, init: RequestInit = {}) {
   return texto ? JSON.parse(texto) : null;
 }
 
-/** Todos los objetos de una tabla, con filtros de igualdad (?campo=valor) */
-export async function leer<T = any>(env: EnvDexie, tabla: string, filtros: Record<string, string> = {}): Promise<T[]> {
-  const q = new URLSearchParams(filtros).toString();
-  const res = await pedir(env, `/all/${encodeURIComponent(tabla)}${q ? `?${q}` : ''}`);
-  return Array.isArray(res) ? res : (res?.data ?? []);
+// Solo datos del espacio (realm) del salón. Cualquiera puede crear cuenta en CB Control y escribir en su realm privado:
+// la API y el Worker leen con permiso global y no deben ver ni usar esos datos (citas falsas, copias a Google, WhatsApp).
+// El realm del salón es el de configuracion/settings; sin él, no se devuelve nada (falla cerrado).
+let salon: { realm: string; vence: number; url: string } | null = null;
+async function realmSalon(env: EnvDexie) {
+  if (salon && salon.url === base(env) && salon.vence > Date.now()) return salon.realm;
+  const s = await pedir(env, '/all/configuracion/settings');
+  if (!s?.realmId) throw new Error('Sin realm del salón en configuración');
+  salon = { realm: s.realmId, vence: Date.now() + 5 * 60 * 1000, url: base(env) };
+  return salon.realm;
 }
 
-export const uno = <T = any>(env: EnvDexie, tabla: string, id: string): Promise<T | null> =>
-  pedir(env, `/all/${encodeURIComponent(tabla)}/${encodeURIComponent(id)}`);
+/** Todos los objetos de una tabla del salón, con filtros de igualdad (?campo=valor) */
+export async function leer<T = any>(env: EnvDexie, tabla: string, filtros: Record<string, string> = {}): Promise<T[]> {
+  const q = new URLSearchParams(filtros).toString();
+  const [res, realm] = await Promise.all([pedir(env, `/all/${encodeURIComponent(tabla)}${q ? `?${q}` : ''}`), realmSalon(env)]);
+  return (Array.isArray(res) ? res : (res?.data ?? [])).filter((f: any) => f?.realmId === realm);
+}
+
+/** Un objeto del salón por id (null si no existe o es de otro realm) */
+export async function uno<T = any>(env: EnvDexie, tabla: string, id: string): Promise<T | null> {
+  const [f, realm] = await Promise.all([pedir(env, `/all/${encodeURIComponent(tabla)}/${encodeURIComponent(id)}`), realmSalon(env)]);
+  return f && f.realmId === realm ? f : null;
+}
 
 /** Crea o reemplaza objetos (cada uno con realmId) */
 export const guardar = (env: EnvDexie, tabla: string, objetos: object[]) =>

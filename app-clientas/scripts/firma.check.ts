@@ -17,6 +17,8 @@ const tablas: Record<string, any[]> = {
   ],
   avisos: [], ventas: [], movimientosSaldo: [], configuracion: [{ id: 'settings', realmId: 'r' }]
 };
+for (const filas of Object.values(tablas)) for (const f of filas) f.realmId ??= 'r';
+tablas.consentimientos.push({ id: `firma_${hex(3)}`, clienteId: 'k1', estado: 'pendiente', vence: pronto, fotos: false, redes: 'no', fecha: ayer, realmId: 'u-ajeno' });
 globalThis.fetch = (async (entrada: any, init: any = {}) => {
   const url = new URL(String(entrada));
   const resp = (d: unknown, status = 200) => new Response(d === null ? null : JSON.stringify(d), { status });
@@ -40,6 +42,7 @@ const bien = { datosSalud: true, salud: [1, 4, 99, -1, 'x', 4], fotos: false, re
 assert.equal((await api('firma/cualquier-cosa')).status, 404);
 assert.equal((await api(`firma/firma_${hex(9)}`)).status, 404);
 assert.equal((await api(`firma/${VENCIDO}`)).status, 410);
+assert.equal((await api(`firma/firma_${hex(3)}`)).status, 404);   // de un realm ajeno: como si no existiera
 
 // Enlace válido: nombre, servicio y fecha de la cita
 const ver = await api(`firma/${ID}`);
