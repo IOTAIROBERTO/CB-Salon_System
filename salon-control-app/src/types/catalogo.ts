@@ -9,5 +9,6 @@ export interface ServicioFormData {
   tiempoProceso?: number;
   tiempoCierre?: number;
   descripcion?: string; // lo que ve la clienta en «Más info» de la app
+  categoria?: string; // agrupa el servicio en la app y en las listas (utils/precios: CATEGORIAS)
 }
 

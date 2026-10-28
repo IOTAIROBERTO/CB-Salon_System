@@ -7,7 +7,6 @@ import {
 } from '../../salon-control-app/src/utils/lealtad';
 import { saldoDe } from '../../salon-control-app/src/utils/saldo';
 import { CHECKS_CLIENTA, OPCIONES_REDES, VERSION_CONSENTIMIENTO, textoFirmado } from '../../salon-control-app/src/utils/consentimiento';
-import { DESCRIPCIONES_SERVICIO } from '../../salon-control-app/src/data/descripcionesServicios';
 import { guardar, leer, uno, type EnvDexie } from './dexie';
 import { calendariosAgenda, ocupadoGoogle, type EnvGoogle } from './google';
 import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
@@ -39,16 +38,18 @@ const FECHA = /^\d{4}-\d{2}-\d{2}$/, HORA = /^\d{2}:\d{2}$/;
 
 class ErrorCliente extends Error { constructor(msg: string, public status = 400) { super(msg); } }
 
-/** Cloudflare Turnstile («no soy robot»): con TURNSTILE_SECRETO se exige el token del formulario; sin él no se pide
- *  (así se enciende cuando la app ya trae la llave pública). Quien ya confirmó su teléfono con el código no lo necesita. */
-async function verificarHumano(env: Env, token: unknown, ip: string) {
-  if (!env.TURNSTILE_SECRETO) return;
+/** Cloudflare Turnstile («no soy robot»): con TURNSTILE_SECRETO se revisa el token del formulario; sin él todo pasa
+ *  (así se enciende cuando la app ya trae la llave pública). Quien ya confirmó su teléfono con el código no lo necesita.
+ *  Si no pasa (robot, o un celular donde el widget no carga), la cita y el Club no se rechazan: llegan como aviso
+ *  «por confirmar a mano», sin apartar horario ni crear ficha. Así un robot no aparta nada y una clienta real no se pierde. */
+async function esHumano(env: Env, token: unknown, ip: string) {
+  if (!env.TURNSTILE_SECRETO) return true;
   const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
     method: 'POST', body: new URLSearchParams({ secret: env.TURNSTILE_SECRETO, response: String(token || ''), remoteip: ip })
   });
-  if (!((await r.json()) as { success?: boolean }).success)
-    throw new ErrorCliente('No pudimos confirmar que no eres un robot. Recarga la página e intenta de nuevo.', 403);
+  return !!((await r.json()) as { success?: boolean }).success;
 }
+const SIN_ROBOT = 'no pasó el «no soy robot»';
 
 const json = (datos: unknown, status = 200) => new Response(JSON.stringify(datos), {
   status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -95,7 +96,7 @@ const enLinea = (s: any) => !s.archivado && Number(s.precioSugerido) > 0 && !/fo
 async function servicios(env: Env) {
   const lista = (await leer<any>(env, 'servicios')).filter(enLinea)
     .map(s => ({ id: s.id, nombre: s.nombre, categoria: s.categoria || 'otros', precio: s.precioSugerido, anticipo: s.anticipoSugerido || 0, duracion: s.duracion || 60,
-      descripcion: s.descripcion || DESCRIPCIONES_SERVICIO[s.id] || '' }));
+      descripcion: s.descripcion || '' }));   // la escribe Cristina en Catálogo (sin texto, no hay «Más info»)
   return new Response(JSON.stringify({ servicios: lista }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
 }
 
@@ -187,7 +188,7 @@ const fotosDe = (f: unknown) => (Array.isArray(f) ? f : []).slice(0, 4).map(Stri
   .filter(x => /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(x) && x.length < 600_000);
 
 /** POST /api/citas → la cita queda «pendiente» (ya aparta el horario) hasta que el salón la valora y confirma */
-async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Sesion | null) {
+async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Sesion | null, sinApartar = '') {
   const d = validarClienta(sesion ? { ...body, telefono: sesion.tel } : body);
   const { servicioId, fecha, hora } = body;
   if (!FECHA.test(fecha) || !HORA.test(hora)) throw new ErrorCliente('Elige fecha y hora');
@@ -210,14 +211,14 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
   const deEseDia = abiertas.filter(c => c.fecha === fecha).length;
   const respuesta = (citaId: string) =>   // misma respuesta en todos los casos: no revela nada del número ni de los topes
     json({ ok: true, cita: { id: citaId, fecha, hora, servicio: s.nombre, anticipo: s.anticipoSugerido || 0 } }, 201);
-  if (sesion ? deEseTelefono >= 4 : (deEseTelefono >= 2 || deEseDia >= 6)) {   // con teléfono verificado: hasta 4 por confirmar y sin tope por día
+  if (sinApartar || (sesion ? deEseTelefono >= 4 : (deEseTelefono >= 2 || deEseDia >= 6))) {   // con teléfono verificado: hasta 4 por confirmar y sin tope por día
     // Cada solicitud de más es su propio aviso (id al azar: nada se reemplaza), sin WhatsApp ni notas libres;
     // pasado el tope diario se descarta en silencio (la respuesta no cambia)
     if (avisosDeMas.dia !== hoyHermosillo()) { avisosDeMas.dia = hoyHermosillo(); avisosDeMas.cuantos = 0; }
     if (++avisosDeMas.cuantos > TOPE_AVISOS_DE_MAS) return respuesta('');
     await aviso(env, ctx, ag.realmId, {
       tipo: 'cita', titulo: `Solicitud por confirmar a mano: ${d.nombre}`,
-      detalle: `Tel. ${d.telefono} pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}. ${deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: no se apartó el horario.`
+      detalle: `Tel. ${d.telefono} pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}. ${sinApartar ? `La solicitud ${sinApartar}` : deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: no se apartó el horario.`
     }, { whatsapp: false });
     return respuesta('');
   }
@@ -250,10 +251,15 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
 }
 
 /** POST /api/club → alta al Club sin pasar por WhatsApp */
-async function unirseClub(env: Env, ctx: ExecutionContext, body: any, sesion: Sesion | null) {
+async function unirseClub(env: Env, ctx: ExecutionContext, body: any, sesion: Sesion | null, sinVerificar = '') {
   const d = validarClienta(sesion ? { ...body, telefono: sesion.tel } : body);
   const settings = await uno<any>(env, 'configuracion', 'settings');
   if (!settings?.realmId) throw new Error('Sin realm del salón en configuración');
+  if (sinVerificar) {   // sin crear ni tocar fichas: el salón decide (misma respuesta)
+    await aviso(env, ctx, settings.realmId, { tipo: 'club', titulo: `Pide unirse al Club, por confirmar a mano: ${d.nombre}`,
+      detalle: `Tel. ${d.telefono}. La solicitud ${sinVerificar}: no se creó su ficha.` }, { whatsapp: false });
+    return json({ ok: true }, 201);
+  }
   const { cliente, nueva, pendiente } = await clientaPorTelefono(env, settings.realmId, d, true, !!sesion);
   await aviso(env, ctx, settings.realmId, {
     tipo: 'club', titulo: `${nueva ? 'Nueva clienta en el Club' : 'Pide unirse al Club'}: ${cliente.nombre}`,
@@ -419,9 +425,13 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
       // en ese momento y reintenta). Se revisa antes del «no soy robot» para que su token sirva para pedir el código.
       if (ruta === 'citas' && !sesion && whatsappListo(env) && env.SESION_SECRETO)
         throw new ErrorCliente('Para apartar tu horario, confirma tu teléfono con el código que te mandamos por WhatsApp.', 428);
-      if (!sesion) await verificarHumano(env, body?.turnstile, ip);
-      if (ruta === 'acceso/codigo') return await pedirCodigo(env, body, ip);
-      return ruta === 'citas' ? await crearCita(env, ctx, body, sesion) : await unirseClub(env, ctx, body, sesion);
+      const humano = !!sesion || await esHumano(env, body?.turnstile, ip);
+      if (ruta === 'acceso/codigo') {   // cada código es un WhatsApp que cuesta: aquí sí se rechaza
+        if (!humano) throw new ErrorCliente('No pudimos confirmar que no eres un robot. Recarga la página e intenta de nuevo.', 403);
+        return await pedirCodigo(env, body, ip);
+      }
+      const motivo = humano ? '' : SIN_ROBOT;
+      return ruta === 'citas' ? await crearCita(env, ctx, body, sesion, motivo) : await unirseClub(env, ctx, body, sesion, motivo);
     }
     return json({ error: 'No encontrado' }, 404);
   } catch (e) {

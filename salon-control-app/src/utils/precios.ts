@@ -25,7 +25,7 @@ export interface ListasPrecios {
 
 interface ServicioP { nombre: string; categoria?: string; precioSugerido: number; anticipoSugerido: number; archivado?: boolean }
 
-const CATEGORIAS: Record<string, string> = {
+export const CATEGORIAS: Record<string, string> = {
   corte: 'Corte', tratamiento: 'Tratamiento', color: 'Color', peinado: 'Peinado', maquillaje: 'Maquillaje'
 };
 export const nombreCategoria = (c?: string) => (c && (CATEGORIAS[c] ?? c.charAt(0).toUpperCase() + c.slice(1))) || '';

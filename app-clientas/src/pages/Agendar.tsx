@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Camera, Check, MessageCircle, X } from 'lucide-react'
 import Encabezado from '@/components/Encabezado'
-import { DESCRIPCIONES_SERVICIO, NOMBRE_CLUB, POLITICAS_RESERVA, SERVICIOS, enlaceWhatsApp, nombreCategoria, pesos, type Servicio } from '@/salon'
+import { NOMBRE_CLUB, POLITICAS_RESERVA, SERVICIOS, enlaceWhatsApp, nombreCategoria, pesos, type Servicio } from '@/salon'
 import { reducirFoto } from '@/fotos'
 import { fechaCumple } from '@/components/UnirmeClub'
 import { crearCita, disponibilidad, misDatos, pedirCodigo, recordarDatos, serviciosEnLinea, sesion, verificarCodigo, type DiaLibre } from '@/api'
@@ -44,7 +44,7 @@ export default function Agendar() {
   const [fotos, setFotos] = useState<string[]>([])
   const [subiendo, setSubiendo] = useState(false)
   const pideValoracion = elegido?.categoria === 'color'
-  const descripcion = (s: Servicio) => s.descripcion || DESCRIPCIONES_SERVICIO[s.id] || ''
+  const descripcion = (s: Servicio) => s.descripcion || ''   // la escribe Cristina en Catálogo
   const agregarFotos = async (lista: FileList | null) => {
     if (!lista) return
     setSubiendo(true); setError('')

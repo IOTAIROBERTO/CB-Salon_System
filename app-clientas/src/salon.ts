@@ -4,7 +4,6 @@ import { DATOS_SALON, POLITICAS, POLITICAS_RESERVA } from '@salon/data/datosSalo
 import catalogo from '@salon/data/servicios_dataset.json'
 
 export { DATOS_SALON, POLITICAS, POLITICAS_RESERVA }
-export { DESCRIPCIONES_SERVICIO } from '@salon/data/descripcionesServicios'
 export { MENU_ANTOJOS, CORTESIAS_SIEMPRE } from '@salon/data/menuAntojos'
 export {
   NOMBRE_CIRCULO as NOMBRE_CLUB, NOMBRE_NIVEL, NIVELES, BENEFICIOS_NIVEL, REGALOS_NIVEL, CLAVES_REGALO, ANIVERSARIO_PUNTOS, DIAS_PUNTOS_DOBLES,

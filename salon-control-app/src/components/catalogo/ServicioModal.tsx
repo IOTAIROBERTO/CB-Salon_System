@@ -1,4 +1,5 @@
 import { X, Save } from 'lucide-react';
+import { CATEGORIAS } from '../../utils/precios';
 import { type Servicio, type ServicioFormData } from '../../types/catalogo';
 import { validateServicioForm, generateServicioId } from '../../utils/catalogoUtils';
 
@@ -77,6 +78,15 @@ export default function ServicioModal({
                 placeholder="Ej: Corte de cabello"
                 required
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Categoría *</label>
+              <select value={formData.categoria || ''} onChange={(e) => updateFormData('categoria', e.target.value)} required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                <option value="" disabled>Elige una</option>
+                {Object.entries(CATEGORIAS).map(([clave, nombre]) => <option key={clave} value={clave}>{nombre}</option>)}
+              </select>
             </div>
 
             <div>

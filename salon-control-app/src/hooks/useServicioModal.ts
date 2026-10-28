@@ -8,7 +8,8 @@ const INITIAL_FORM_DATA: ServicioFormData = {
   comision: 0,
   duracion: 60,
   tiempoProceso: 0,
-  tiempoCierre: 0
+  tiempoCierre: 0,
+  categoria: ''
 };
 
 export const useServicioModal = () => {
@@ -31,7 +32,8 @@ export const useServicioModal = () => {
       duracion: servicio.duracion || 60,
       tiempoProceso: servicio.tiempoProceso || 0,
       tiempoCierre: servicio.tiempoCierre || 0,
-      descripcion: servicio.descripcion || ''
+      descripcion: servicio.descripcion || '',
+      categoria: servicio.categoria || ''
     });
     setEditingServicio(servicio);
     setIsModalOpen(true);

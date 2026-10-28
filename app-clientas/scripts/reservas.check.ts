@@ -14,7 +14,7 @@ while (new Date(`${lunes}T12:00:00Z`).getUTCDay() !== 1) lunes = dia(Math.round(
 const tablas: Record<string, any[]> = {
   configuracion: [{ id: 'settings', realmId: 'r' }],
   servicios: [{ id: 's1', nombre: 'Corte de cabello', categoria: 'corte', precioSugerido: 500, duracion: 60 },
-    { id: 's07', nombre: 'Retoque de raíz', precioSugerido: 550, duracion: 90 }],
+    { id: 's07', nombre: 'Retoque de raíz', precioSugerido: 550, duracion: 90, descripcion: 'Color solo en la raíz que creció.' }],
   empleados: [], empleadoEvents: [], clientes: [], citas: [], avisos: [], fotos: []
 };
 const whatsapp: string[] = [];
@@ -43,13 +43,19 @@ const cita = (tel: string, extra = {}) => ({ ...ana(tel), servicioId: 's1', fech
 // Sin secreto de Turnstile no se pide (como hoy en producción)
 assert.equal((await post(base, 'club', ana('6620000001'))).status, 201);
 
-// Con secreto: sin token o con uno falso se rechaza y no se guarda nada; con el bueno pasa
+// Con secreto: sin token o con uno falso no se rechaza a nadie, pero nada se aparta ni se crea: llega como aviso
+// «por confirmar a mano» (misma respuesta). Pedir código sí se rechaza (cada WhatsApp cuesta). Con el token bueno pasa.
 const conRobot = { ...base, TURNSTILE_SECRETO: 's' };
-const antes = tablas.clientes.length;
-assert.equal((await post(conRobot, 'club', ana('6620000002'))).status, 403);
-assert.equal((await post(conRobot, 'club', { ...ana('6620000002'), turnstile: 'robot' })).status, 403);
+const antes = { clientes: tablas.clientes.length, citas: tablas.citas.length, avisos: tablas.avisos.length };
+assert.equal((await post(conRobot, 'club', ana('6620000002'))).status, 201);
+assert.equal((await post(conRobot, 'club', { ...ana('6620000002'), turnstile: 'robot' })).status, 201);
+const sinRobot = await post(conRobot, 'citas', cita('6620000002', { turnstile: 'robot' }));
+assert.equal(sinRobot.status, 201);
+assert.equal((await sinRobot.json()).cita.id, '');
 assert.equal((await post(conRobot, 'acceso/codigo', { telefono: '6620000002' })).status, 403);
-assert.equal(tablas.clientes.length, antes);
+assert.equal(tablas.clientes.length, antes.clientes);
+assert.equal(tablas.citas.length, antes.citas);
+assert.equal(tablas.avisos.filter(a => /por confirmar a mano/.test(a.titulo) && /no soy robot/.test(a.detalle)).length, 3);
 assert.equal((await post(conRobot, 'club', { ...ana('6620000002'), turnstile: 'humana' })).status, 201);
 assert.equal((await post(conRobot, 'citas', cita('6620000003', { turnstile: 'humana' }))).status, 201);
 
@@ -74,7 +80,7 @@ const paraHoy = await post(base, 'citas', cita('6620000005', { fecha: dia(0) }))
 assert.equal(paraHoy.status, 400);
 assert.match((await paraHoy.json()).error, /WhatsApp/);
 
-// Catálogo: descripción de «Más info» (la de CB Control o la de respaldo) y categoría «otros» si falta
+// Catálogo: descripción de «Más info» (la que escribe Cristina en CB Control) y categoría «otros» si falta
 const catalogo = (await (await atender(new Request('https://app/api/servicios'), base as any, ctx)).json()).servicios;
 assert.equal(catalogo.find((x: any) => x.id === 's07').descripcion.startsWith('Color solo en la raíz'), true);
 assert.equal(catalogo.find((x: any) => x.id === 's07').categoria, 'otros');
