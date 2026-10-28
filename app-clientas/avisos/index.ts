@@ -81,8 +81,8 @@ export async function avisosAlCelular(env: Env, ahora = Date.now()) {
 }
 
 /** Cada minuto: primero los avisos al celular (pocas consultas, no deben esperar) y luego el espejo de Google. Comparten
- *  las 50 consultas por vuelta del plan gratis (Cloudflare junta en una sola vuelta los horarios del mismo minuto): si el
- *  espejo llega al límite, lo que falte se escribe en la vuelta siguiente, como ya hace con su tope de escrituras. */
+ *  las 50 consultas por vuelta del plan gratis: si el espejo llega al límite, lo que falte se escribe en la vuelta
+ *  siguiente, como ya hace con su tope de escrituras. */
 async function cadaMinuto(env: Env) {
   console.log('celular', JSON.stringify(await avisosAlCelular(env).catch(e => ({ error: (e as Error).message }))));
   console.log('google', JSON.stringify(await espejo(env)));
