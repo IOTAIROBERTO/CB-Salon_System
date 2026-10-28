@@ -256,15 +256,27 @@ export interface MovimientoSaldo {
     puntos?: number; // puntos canjeados (origen 'club'): de aquí se descuentan, no de la clienta
 }
 
+/** Consentimiento: en papel (foto del formato firmado) o firmado en la app de clientas con un enlace personal.
+ *  Sin `estado` = registrado en papel. Uno 'pendiente' no da ningún permiso: su id (firma_…) es el enlace. */
 export interface Consentimiento {
     id: string;
     clienteId: string;
     citaId?: string;
-    fecha: string; // ISO
+    fecha: string; // ISO: cuándo se firmó (o se pidió, si está pendiente)
     imagen?: string; // JPG reducido (data URL) del formato firmado
     fotos: boolean; // ¿Se le pueden tomar fotos de antes y después?
     redes: 'con_rostro' | 'sin_rostro' | 'no'; // ¿Se pueden publicar en redes?
     notas?: string;
+    estado?: 'pendiente' | 'firmado';
+    vence?: string; // ISO, para el enlace pendiente
+    // Firmado en la app (utils/consentimiento: RespuestasConsentimiento)
+    salud?: number[];
+    marketing?: boolean;
+    nombreFirma?: string;
+    tutor?: string;
+    firma?: string; // PNG (data URL)
+    firmadoEn?: string;
+    evidencia?: { ip?: string; agente?: string; version: string; huella: string };
 }
 
 // Marketing Interfaces

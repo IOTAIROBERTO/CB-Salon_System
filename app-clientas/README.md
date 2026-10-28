@@ -70,7 +70,8 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
 ## API y automatización (Cloudflare)
 
 - **`/api`** (Pages Functions, misma dirección de la app): `servicios`, `disponibilidad`, `citas`, `club`, `acceso/codigo`,
-  `acceso/verificar`, `mi-club`. Código en `api/` y `functions/api/`. Lee y escribe la base de CB Control (Dexie Cloud).
+  `acceso/verificar`, `mi-club`, `firma/<id>` (consentimiento con enlace personal que crea CB Control; pantalla `#/firmar/<id>`,
+  sin entrar al Club). Código en `api/` y `functions/api/`. Lee y escribe la base de CB Control (Dexie Cloud).
 - **`avisos/`**: Worker `cb-avisos` que corre cada 10 minutos y manda por WhatsApp la confirmación de la cita (cuando el
   salón la confirma en CB Control) y el recordatorio del día anterior; y cada minuto copia las citas a Google Calendar.
   Publicar: `npx wrangler deploy --config avisos/wrangler.toml`.
@@ -78,7 +79,8 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
   `DEXIE_CLIENT_ID`, `DEXIE_CLIENT_SECRET`, `SESION_SECRETO` (solo Pages), `WA_TOKEN`, `WA_PHONE_ID`, `WA_AVISOS`
   (números del salón que reciben avisos, separados por coma, con 52 adelante), `GOOGLE_CUENTA_SERVICIO`, `GOOGLE_CALENDARIO`.
   Opcional en el Worker: `RECORDATORIOS=todas` para recordar también las citas que agenda el salón a mano.
-- **Pruebas locales**: `npx wrangler pages dev dist --binding DEXIE_URL=…` contra una base falsa; Vite manda `/api` al puerto 8788.
+- **Pruebas locales**: `npm run build`, luego `npm run dexie:falso` (base falsa, puerto 8799) y `npm run api:local` (app + API en
+  8788; enlace de prueba `/#/firmar/firma_00000000000000000000000000000001`). Pruebas: `scripts/*.check.ts` (comando en cada archivo).
   Google simulado: `npx esbuild scripts/google.check.ts --bundle --platform=node --format=esm --log-level=warning | node --input-type=module`.
 
 ## Google Calendar (`api/google.ts`)

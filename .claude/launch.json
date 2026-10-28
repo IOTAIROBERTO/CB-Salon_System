@@ -22,6 +22,18 @@
         "dev"
       ],
       "port": 3002
+    },
+    {
+      "name": "dexie-falso",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "app-clientas", "run", "dexie:falso"],
+      "port": 8799
+    },
+    {
+      "name": "api-clientas-local",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "app-clientas", "run", "api:local"],
+      "port": 8788
     }
   ]
 }

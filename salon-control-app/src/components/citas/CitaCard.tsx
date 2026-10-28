@@ -18,7 +18,9 @@ import {
   Cake,
   FileSignature,
   MapPin,
+  Smartphone,
 } from "lucide-react";
+import PedirFirma from "../clientes/PedirFirma";
 import { zonasDe, nombreUbicacion, SALON } from "../../utils/zonas";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../../db/db";
@@ -71,6 +73,7 @@ export default function CitaCard({
 
   const [anticipoInput, setAnticipoInput] = useState(cita.montoAnticipo?.toString() || "");
   const [isEditingAnticipo, setIsEditingAnticipo] = useState(false);
+  const [pidiendoFirma, setPidiendoFirma] = useState(false);
 
   const cliente = clientes.find((c) => c.id === cita.clienteId)?.nombre || "Cliente no encontrado";
   const clienteData = clientes.find((c) => c.id === cita.clienteId);
@@ -535,10 +538,20 @@ export default function CitaCard({
                   fecha: cita.fecha
                 })}
                 className="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded"
-                title="Imprimir consentimiento informado"
+                title="Imprimir consentimiento informado (sin celular)"
               >
                 <FileSignature size={16} />
               </button>
+              <button
+                onClick={() => setPidiendoFirma(true)}
+                className="text-purple-600 hover:text-purple-900 p-1 hover:bg-purple-50 rounded"
+                title="Firmar consentimiento en la app (WhatsApp o QR)"
+              >
+                <Smartphone size={16} />
+              </button>
+              {pidiendoFirma && clienteData && (
+                <PedirFirma clienteId={clienteData.id} citaId={cita.id} nombre={clienteData.nombre} telefono={clienteData.telefono} onClose={() => setPidiendoFirma(false)} />
+              )}
               <button
                 onClick={onOpenEdit}
                 className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"

@@ -5,6 +5,7 @@ import Inicio from './pages/Inicio'
 import Agendar from './pages/Agendar'
 import Productos from './pages/Productos'
 import MiClub from './pages/MiClub'
+import Firmar from './pages/Firmar'
 
 const PESTANAS = [
   { a: '/', texto: 'Inicio', Icono: Home },
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/agendar" element={<Agendar />} />
           <Route path="/productos" element={<Productos />} />
           <Route path="/club" element={<MiClub />} />
+          <Route path="/firmar/:id" element={<Firmar />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

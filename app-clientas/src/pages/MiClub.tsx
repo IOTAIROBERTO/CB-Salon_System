@@ -6,8 +6,9 @@ import {
   REGLAS_CLUB as R, montoCanje, montoTarjeta, multiplicador, pesos, umbral
 } from '@/salon'
 
-// Las reglas salen de utils/lealtad.ts de CB Control. La tarjeta con puntos de cada clienta llega con el inicio de
-// sesión por teléfono (fase 3); por ahora la pantalla explica el programa y el alta sale por WhatsApp.
+// Las reglas salen de utils/lealtad.ts de CB Control. Arriba, la tarjeta de cada clienta (TarjetaClub): entra con su
+// teléfono y un código por WhatsApp (se activa cuando el WhatsApp oficial del salón esté conectado) y ve puntos,
+// regalos, citas y consentimientos por firmar.
 const ESTILO: Record<string, string> = {
   marfil: 'bg-white text-marca-negro border border-marca-linea',
   miel: 'bg-gradient-to-br from-[#F1E2C2] to-[#E2C68F] text-marca-negro',

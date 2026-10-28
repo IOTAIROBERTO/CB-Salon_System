@@ -50,10 +50,17 @@ export async function verificarCodigo(reto: string, codigo: string) {
   return r
 }
 
+/** Consentimiento con enlace personal (firma_…): no pide entrar al Club */
+export interface DatosFirma { nombre: string; servicio?: string; fecha?: string; hora?: string }
+export const firmaPendiente = (id: string) => llamar<DatosFirma>(`firma/${encodeURIComponent(id)}`)
+export const enviarFirma = (id: string, datos: object) =>
+  llamar<{ ok: boolean }>(`firma/${encodeURIComponent(id)}`, { method: 'POST', body: JSON.stringify(datos) })
+
 export interface MiClub {
   registrada: boolean; nombre?: string; enClub?: boolean; nivel?: string; nombreNivel?: string; puntos?: number; puntosNivel?: number
   siguiente?: { nivel: string; falta: number } | null; saldoTexto?: string; saldoFavor?: number; permanentes?: string[]
   disponibles?: { clave: string; titulo: string; puntos: number }[]; movimientos?: { fecha: string; concepto: string; puntos: number }[]
   proximas?: { fecha: string; hora: string; servicio: string; estado: string }[]
+  porFirmar?: { id: string; servicio?: string; fecha?: string }[]
 }
 export const miClub = () => llamar<MiClub>('mi-club')

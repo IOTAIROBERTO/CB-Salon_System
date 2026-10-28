@@ -11,7 +11,7 @@ export interface Formato {
 }
 
 export const FORMATOS: Formato[] = [
-  { archivo: 'consentimiento-informado.pdf', titulo: 'Consentimiento informado', descripcion: 'Se firma en cada servicio químico; incluye los permisos de fotos. Desde cada cita se imprime prellenado y la foto del firmado se guarda en la ficha de la clienta.', grupo: 'Clientas y legal' },
+  { archivo: 'consentimiento-informado.pdf', titulo: 'Consentimiento informado', descripcion: 'Se firma en cada servicio químico; incluye los permisos de fotos. Lo normal es firmarlo en la app con el enlace personal (botón del celular en la cita o en su ficha). Sin celular: desde la cita se imprime prellenado y la foto del firmado se guarda en la ficha de la clienta.', grupo: 'Clientas y legal' },
   { archivo: 'autorizacion-de-imagen.pdf', titulo: 'Autorización de uso de imagen', descripcion: 'Para modelos, sesiones de fotos y clientas que salen en redes.', grupo: 'Clientas y legal' },
   { archivo: 'aviso-de-privacidad.pdf', titulo: 'Aviso de privacidad', descripcion: 'Simplificado para tener a la vista e integral para entregar.', grupo: 'Clientas y legal' },
   { archivo: 'tarjeta-de-cuidados.pdf', titulo: 'Tarjeta de cuidados en casa', descripcion: 'Se entrega con cada servicio de color (A6).', grupo: 'Clientas y legal' },

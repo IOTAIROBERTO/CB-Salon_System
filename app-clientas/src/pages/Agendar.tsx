@@ -69,7 +69,7 @@ export default function Agendar() {
 
   return (
     <>
-      <Encabezado rotulo="Paso 1 de 2 · Servicio" titulo="Agenda tu cita" bajada="Elige tu servicio, el día y la hora: tu lugar queda apartado al momento." />
+      <Encabezado rotulo="Paso 1 de 2 · Servicio" titulo="Agenda tu cita" bajada="Elige tu servicio, el día y la hora. Ves los horarios libres en tiempo real y tu lugar queda apartado al enviar." />
       <nav className="sticky top-0 z-[5] -mt-2 mb-4 flex gap-2 overflow-x-auto bg-marca-marfil/90 px-6 py-3 backdrop-blur-md [scrollbar-width:none]">
         {categorias.map(cat => (
           <button key={cat} onClick={() => document.getElementById(`cat-${cat}`)?.scrollIntoView({ behavior: 'smooth' })}
@@ -195,6 +195,7 @@ export default function Agendar() {
             <p className="text-sm leading-relaxed text-marca-gris">
               {lista.servicio} · {new Date(`${lista.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })} a las {lista.hora}.
               Te confirmamos tu cita por WhatsApp{lista.anticipo ? ` y te mandamos el anticipo de ${pesos(lista.anticipo)}` : ''}.
+              Si tu servicio lo pide, también te llega tu consentimiento para firmarlo aquí en la app.
             </p>
             <button onClick={() => { setLista(null); setElegido(null); setHora(''); setFecha('') }} className="text-xs uppercase tracking-[0.2em] text-marca-dorado-prof">Agendar otra cita</button>
           </section>

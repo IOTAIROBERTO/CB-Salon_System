@@ -6,6 +6,7 @@ import {
   NOMBRE_NIVEL, beneficiosDisponibles, costoPuntos, datosBeneficio, estadoCirculo, parametrosDe, permanentesDe, siguienteNivel, textoSaldoPuntos
 } from '../../salon-control-app/src/utils/lealtad';
 import { saldoDe } from '../../salon-control-app/src/utils/saldo';
+import { CHECKS_CLIENTA, OPCIONES_REDES, VERSION_CONSENTIMIENTO, textoFirmado } from '../../salon-control-app/src/utils/consentimiento';
 import { guardar, leer, uno, type EnvDexie } from './dexie';
 import { calendariosAgenda, ocupadoGoogle, type EnvGoogle } from './google';
 import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
@@ -248,6 +249,60 @@ async function verificarCodigo(env: Env, body: any) {
   return json({ sesion, telefono: reto.tel });
 }
 
+// ---------- Consentimiento firmado en la app ----------
+// CB Control crea el consentimiento «pendiente» con id firma_ + 32 hex al azar y se lo manda a la clienta (WhatsApp o QR):
+// ese id es el enlace, así firma sin entrar al Club. Vence en 7 días y sirve una vez.
+const ID_FIRMA = /^firma_[a-f0-9]{32}$/;
+const limpio = (s: unknown, max = 80) => String(s || '').trim().replace(/\s+/g, ' ').slice(0, max);
+
+async function pendienteDeFirma(env: Env, id: string) {
+  const c = ID_FIRMA.test(id) ? await uno<any>(env, 'consentimientos', id) : null;
+  if (!c) throw new ErrorCliente('Este enlace no es válido. Pide uno nuevo al salón.', 404);
+  if (c.estado === 'firmado') throw new ErrorCliente('Este consentimiento ya está firmado. ¡Gracias!', 409);
+  if (c.estado !== 'pendiente' || !c.vence || c.vence < new Date().toISOString()) throw new ErrorCliente('Este enlace venció. Pide uno nuevo al salón.', 410);
+  return c;
+}
+
+/** GET /api/firma/<id> → datos para mostrar el formato (nombre, servicio y fecha de la cita) */
+async function verFirma(env: Env, id: string) {
+  const c = await pendienteDeFirma(env, id);
+  const [cliente, cita] = await Promise.all([uno<any>(env, 'clientes', c.clienteId), c.citaId ? uno<any>(env, 'citas', c.citaId) : null]);
+  const servicio = cita ? (await uno<any>(env, 'servicios', cita.servicioId))?.nombre : undefined;
+  return json({ nombre: cliente?.nombre || '', servicio, fecha: cita?.fecha, hora: cita?.hora });
+}
+
+/** POST /api/firma/<id> → guarda lo que marcó, su firma y la constancia (fecha, IP, dispositivo, huella del texto) */
+async function firmarConsentimiento(env: Env, ctx: ExecutionContext, id: string, b: any, request: Request) {
+  const c = await pendienteDeFirma(env, id);
+  if (b?.datosSalud !== true) throw new ErrorCliente('Para atenderte necesitamos tu permiso para usar tus datos de salud.');
+  const nombreFirma = limpio(b.nombreFirma);
+  if (nombreFirma.length < 3) throw new ErrorCliente('Escribe tu nombre completo');
+  const tutor = b.menor ? limpio(b.tutor) : undefined;
+  if (b.menor && (!tutor || tutor.length < 3)) throw new ErrorCliente('Escribe el nombre de la madre, padre o tutor');
+  const firma = String(b.firma || '');
+  if (!/^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(firma) || firma.length < 800 || firma.length > 250_000)
+    throw new ErrorCliente('Firma con tu dedo en el recuadro');
+  const fotos = b.fotos === true;
+  const respuestas = {
+    salud: [...new Set<number>((Array.isArray(b.salud) ? b.salud : []).map(Number))].filter(i => Number.isInteger(i) && i >= 0 && i < CHECKS_CLIENTA.length).sort((x, y) => x - y),
+    fotos, redes: fotos && ['con_rostro', 'sin_rostro'].includes(b.redes) ? b.redes as 'con_rostro' | 'sin_rostro' : 'no' as const,
+    marketing: b.marketing === true, nombreFirma, tutor
+  };
+  const firmadoEn = new Date().toISOString();
+  const huella = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(textoFirmado() + JSON.stringify(respuestas) + firma)))]
+    .map(x => x.toString(16).padStart(2, '0')).join('');
+  await guardar(env, 'consentimientos', [{
+    ...c, ...respuestas, estado: 'firmado', fecha: firmadoEn, firmadoEn, firma,
+    evidencia: { ip: request.headers.get('CF-Connecting-IP') || undefined, agente: limpio(request.headers.get('User-Agent'), 200), version: VERSION_CONSENTIMIENTO, huella }
+  }]);
+  await aviso(env, ctx, c.realmId, {
+    tipo: 'cita', titulo: `Consentimiento firmado en la app: ${nombreFirma}`,
+    detalle: `${respuestas.salud.length ? `Marcó ${respuestas.salud.length} punto(s) de salud: revisar antes del servicio. ` : ''}Fotos: ${fotos ? 'sí' : 'no'} · Redes: ${OPCIONES_REDES[respuestas.redes]}`,
+    refId: c.citaId, clienteId: c.clienteId
+  }, { whatsapp: false });
+  return json({ ok: true });
+}
+
 async function sesionDe(request: Request, env: Env) {
   const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   if (!token || !env.SESION_SECRETO) return null;
@@ -261,8 +316,9 @@ async function miClub(env: Env, sesion: Sesion | null) {
   const [settings, clientes, servicios] = await Promise.all([uno<any>(env, 'configuracion', 'settings'), leer<any>(env, 'clientes'), leer<any>(env, 'servicios')]);
   const cliente = clientes.find(c => tel10(c.telefono) === sesion.tel);
   if (!cliente) return json({ registrada: false });
-  const [citas, ventas, saldo] = await Promise.all([
-    leer<any>(env, 'citas', { clienteId: cliente.id }), leer<any>(env, 'ventas', { clienteId: cliente.id }), leer<any>(env, 'movimientosSaldo', { clienteId: cliente.id })
+  const [citas, ventas, saldo, consentimientos] = await Promise.all([
+    leer<any>(env, 'citas', { clienteId: cliente.id }), leer<any>(env, 'ventas', { clienteId: cliente.id }), leer<any>(env, 'movimientosSaldo', { clienteId: cliente.id }),
+    leer<any>(env, 'consentimientos', { clienteId: cliente.id })
   ]);
   const p = parametrosDe(settings), hoy = ahoraHermosillo();
   // Las recomendaciones se cuentan con las citas de sus amigas
@@ -283,7 +339,12 @@ async function miClub(env: Env, sesion: Sesion | null) {
     movimientos: e.movimientos.slice(-8).reverse(),
     proximas: citas.filter(c => c.fecha >= hoyHermosillo() && !['cancelada', 'completada'].includes(c.estado))
       .sort((a, b) => `${a.fecha}${a.hora}`.localeCompare(`${b.fecha}${b.hora}`))
-      .map(c => ({ fecha: c.fecha, hora: c.hora, servicio: nombreServicio(c.servicioId), estado: c.estado }))
+      .map(c => ({ fecha: c.fecha, hora: c.hora, servicio: nombreServicio(c.servicioId), estado: c.estado })),
+    // Consentimientos que el salón le pidió firmar (el mismo enlace que le llega por WhatsApp)
+    porFirmar: consentimientos.filter(c => c.estado === 'pendiente' && c.vence > new Date().toISOString()).map(c => {
+      const cita = citas.find(x => x.id === c.citaId);
+      return { id: c.id, servicio: cita ? nombreServicio(cita.servicioId) : undefined, fecha: cita?.fecha };
+    })
   });
 }
 
@@ -295,6 +356,13 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
     if (request.method === 'GET' && ruta === 'servicios') return await servicios(env);
     if (request.method === 'GET' && ruta === 'disponibilidad') return await disponibilidad(env, url);
     if (request.method === 'GET' && ruta === 'mi-club') return await miClub(env, await sesionDe(request, env));
+    const firma = ruta.match(/^firma\/([^/]+)$/);
+    if (firma && request.method === 'GET') return await verFirma(env, firma[1]);
+    if (firma && request.method === 'POST') {
+      limitar(request.headers.get('CF-Connecting-IP') || 'local');
+      const body: any = await request.json().catch(() => { throw new ErrorCliente('Datos inválidos'); });
+      return await firmarConsentimiento(env, ctx, firma[1], body, request);
+    }
     if (request.method === 'POST' && ['citas', 'club', 'acceso/codigo', 'acceso/verificar'].includes(ruta)) {
       const ip = request.headers.get('CF-Connecting-IP') || 'local';
       limitar(ip);

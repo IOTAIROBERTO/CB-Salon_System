@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 import { miClub, misDatos, pedirCodigo, salir, sesion, verificarCodigo, type MiClub } from '@/api'
 import { AVISO_GASTO, pesos } from '@/salon'
@@ -93,6 +94,13 @@ export default function TarjetaClub() {
       </div>
       <p className="border-l border-marca-dorado pl-3 text-sm leading-relaxed text-marca-grafito">{datos.saldoTexto}</p>
       {!!datos.saldoFavor && <p className="text-sm text-marca-gris">Saldo a favor: <span className="text-marca-negro">{pesos(datos.saldoFavor)}</span></p>}
+
+      {datos.porFirmar?.map(f => (
+        <Link key={f.id} to={`/firmar/${f.id}`} className="flex items-center justify-between gap-3 rounded-sm bg-white p-4 text-sm text-marca-grafito">
+          <span>Tienes un consentimiento por firmar{f.servicio ? ` para ${f.servicio}` : ''}{f.fecha ? ` (${fecha(f.fecha)})` : ''}.</span>
+          <span className="rotulo shrink-0 text-marca-dorado-prof">Firmar</span>
+        </Link>
+      ))}
 
       {!!datos.disponibles?.length && (
         <section>
