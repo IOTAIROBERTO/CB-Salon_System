@@ -7,10 +7,11 @@ import {
 } from '../../salon-control-app/src/utils/lealtad';
 import { saldoDe } from '../../salon-control-app/src/utils/saldo';
 import { guardar, leer, uno, type EnvDexie } from './dexie';
+import { ocupadoGoogle, type EnvGoogle } from './google';
 import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
 import { DIAS_SESION, MIN_RETO, codigoNuevo, firmar, huellaCodigo, leerFirmado, type Reto, type Sesion } from './sesion';
 
-export type Env = EnvDexie & EnvWhatsApp & { SESION_SECRETO?: string; LIMITES?: DurableObjectNamespace };
+export type Env = EnvDexie & EnvWhatsApp & EnvGoogle & { SESION_SECRETO?: string; LIMITES?: DurableObjectNamespace };
 
 /** ¿Se permite una vez más? Contador atómico en Durable Object (ventana fija: al llegar al tope deja de sumar);
  *  sin el binding (pruebas locales) usa la memoria de la instancia */
@@ -51,18 +52,24 @@ function limitar(ip: string) {
   lista.push(ahora); envios.set(ip, lista);
 }
 
-/** Lo que el motor de agenda necesita, igual que useAgenda en CB Control */
-async function cargarAgenda(env: Env) {
+/** Lo que el motor de agenda necesita, igual que useAgenda en CB Control, más lo ocupado en Google Calendar
+ *  entre `desde` y `hasta` (fin exclusivo), leído en el momento */
+async function cargarAgenda(env: Env, desde: string, hasta: string) {
   const [settings, servicios, empleados, eventos] = await Promise.all([
     uno<any>(env, 'configuracion', 'settings'), leer<any>(env, 'servicios'), leer<any>(env, 'empleados'), leer<any>(env, 'empleadoEvents')
   ]);
   const guardada: ConfigAgenda = { ...AGENDA_INICIAL, ...(settings?.agenda || {}) };
   const deEmpleados: Bloqueo[] = eventos.filter(e => e.tipo === 'vacaciones' || e.tipo === 'dia_inhabit')
     .map(e => ({ id: `ev_${e.id}`, personaId: e.empleadoId, desde: e.fechaInicio, hasta: e.fechaFin }));
+  const conCitas = empleados.filter(e => e.activo && e.tomaCitas);
   const personas: Persona[] = [{ id: DUENA, nombre: 'Cristina' },
-    ...empleados.filter(e => e.activo && e.tomaCitas).map(e => ({ id: e.id, nombre: e.nombre, categorias: e.categoriasAgenda }))];
+    ...conCitas.map(e => ({ id: e.id, nombre: e.nombre, categorias: e.categoriasAgenda }))];
+  const deGoogle = await ocupadoGoogle(env, [
+    { personaId: DUENA, calendario: env.GOOGLE_CALENDARIO || '' },
+    ...conCitas.filter(e => e.googleCalendarId?.trim()).map(e => ({ personaId: e.id, calendario: e.googleCalendarId.trim() }))
+  ], desde, hasta);
   return {
-    realmId: settings?.realmId as string, config: { ...guardada, bloqueos: [...(guardada.bloqueos || []), ...deEmpleados] },
+    realmId: settings?.realmId as string, config: { ...guardada, bloqueos: [...(guardada.bloqueos || []), ...deEmpleados, ...deGoogle] },
     personas, servicios: servicios.filter(s => !s.archivado)
   };
 }
@@ -87,7 +94,7 @@ async function disponibilidad(env: Env, url: URL) {
   const desde = url.searchParams.get('desde') || hoyHermosillo();
   const dias = Math.min(Math.max(Number(url.searchParams.get('dias')) || 7, 1), 14);
   if (!FECHA.test(desde)) throw new ErrorCliente('Fecha inválida');
-  const ag = await cargarAgenda(env);
+  const ag = await cargarAgenda(env, desde, masDias(desde, dias));
   const s = ag.servicios.find(x => x.id === servicioId && enLinea(x));
   if (!s) throw new ErrorCliente('Ese servicio no se agenda en línea');
   const fechas = Array.from({ length: dias }, (_, i) => masDias(desde, i));
@@ -156,7 +163,7 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
   const { servicioId, fecha, hora } = body;
   if (!FECHA.test(fecha) || !HORA.test(hora)) throw new ErrorCliente('Elige fecha y hora');
   const notas = String(body.notas || '').trim().slice(0, 500);
-  const ag = await cargarAgenda(env);
+  const ag = await cargarAgenda(env, fecha, masDias(fecha, 1));
   if (!ag.realmId) throw new Error('Sin realm del salón en configuración');
   const s = ag.servicios.find(x => x.id === servicioId && enLinea(x));
   if (!s) throw new ErrorCliente('Ese servicio no se agenda en línea');

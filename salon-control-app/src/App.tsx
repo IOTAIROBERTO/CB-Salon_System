@@ -22,7 +22,6 @@ import GaleriaPage from "./pages/GaleriaPage";
 import { useInitializeData } from "./hooks/useInitializeData";
 import { useMarketingAutomations } from "./hooks/useMarketingAutomations";
 import { useAutoBackup } from "./hooks/useAutoBackup";
-import { googleCalendarService } from "./services/googleCalendar";
 
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { useObservable } from "dexie-react-hooks";
@@ -88,7 +87,6 @@ function AppSalon() {
   // Inicialización y Carga de EmailJS
   useEffect(() => {
     loadEmailJS();
-    googleCalendarService.initialize();
   }, []);
 
   return (

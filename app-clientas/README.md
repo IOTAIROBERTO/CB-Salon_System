@@ -72,12 +72,41 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
 - **`/api`** (Pages Functions, misma dirección de la app): `servicios`, `disponibilidad`, `citas`, `club`, `acceso/codigo`,
   `acceso/verificar`, `mi-club`. Código en `api/` y `functions/api/`. Lee y escribe la base de CB Control (Dexie Cloud).
 - **`avisos/`**: Worker `cb-avisos` que corre cada 10 minutos y manda por WhatsApp la confirmación de la cita (cuando el
-  salón la confirma en CB Control) y el recordatorio del día anterior. Publicar: `npx wrangler deploy --config avisos/wrangler.toml`.
+  salón la confirma en CB Control) y el recordatorio del día anterior; y cada minuto copia las citas a Google Calendar.
+  Publicar: `npx wrangler deploy --config avisos/wrangler.toml`.
 - **Secretos** (Cloudflare, nunca en el repo), en el proyecto de Pages `cristinaborquez-app` y en el Worker `cb-avisos`:
   `DEXIE_CLIENT_ID`, `DEXIE_CLIENT_SECRET`, `SESION_SECRETO` (solo Pages), `WA_TOKEN`, `WA_PHONE_ID`, `WA_AVISOS`
-  (números del salón que reciben avisos, separados por coma, con 52 adelante). Opcional en el Worker:
-  `RECORDATORIOS=todas` para recordar también las citas que agenda el salón a mano.
+  (números del salón que reciben avisos, separados por coma, con 52 adelante), `GOOGLE_CUENTA_SERVICIO`, `GOOGLE_CALENDARIO`.
+  Opcional en el Worker: `RECORDATORIOS=todas` para recordar también las citas que agenda el salón a mano.
 - **Pruebas locales**: `npx wrangler pages dev dist --binding DEXIE_URL=…` contra una base falsa; Vite manda `/api` al puerto 8788.
+  Google simulado: `npx esbuild scripts/google.check.ts --bundle --platform=node --format=esm --log-level=warning | node --input-type=module`.
+
+## Google Calendar (`api/google.ts`)
+
+Conexión desde el servidor con una **cuenta de servicio** (sin ventanas de permiso ni tokens que venzan):
+
+- **Tiempo real para las clientas**: `/api/disponibilidad` y `/api/citas` leen en cada consulta lo que Cristina (y cada
+  auxiliar con «Google Calendar ID») tiene como **Ocupado** en Google y no ofrecen esos horarios. Lo marcado como
+  «Disponible», lo rechazado y las copias que hace CB Control no cuentan. Si Google falla, la agenda sigue sin esos bloqueos.
+- **Espejo CB Control → Google** (Worker `cb-avisos`, cada minuto): citas pendientes/confirmadas/en curso desde hoy y
+  vacaciones/apoyo del equipo. Cada evento lleva la marca privada `cb=1` con el id y una firma: solo se escribe lo que
+  cambió; lo cancelado o borrado sale de Google; las completadas se quedan. Una cita va al calendario de quien la atiende
+  (si tiene «Google Calendar ID»), si no al de Cristina.
+
+Puesta en marcha (una sola vez, proyecto de Google Cloud «CristinaBorquezSalon», con la Google Calendar API habilitada):
+
+1. Google Cloud → IAM y administración → Cuentas de servicio → **Crear cuenta de servicio** (p. ej. `cb-calendario`,
+   sin roles). En la cuenta → Claves → Agregar clave → **JSON**: se descarga un archivo. No subirlo al repo ni mandarlo por chat.
+2. Cristina, en Google Calendar (web) → su calendario → Configuración y uso compartido → **Compartir con personas
+   específicas** → el correo de la cuenta de servicio (`…@….iam.gserviceaccount.com`) → **Hacer cambios en eventos**.
+3. Secretos (desde `app-clientas/`, con el JSON descargado; luego borrar el archivo):
+   ```
+   Get-Content RUTA\llave.json -Raw | npx wrangler pages secret put GOOGLE_CUENTA_SERVICIO --project-name cristinaborquez-app
+   Get-Content RUTA\llave.json -Raw | npx wrangler secret put GOOGLE_CUENTA_SERVICIO --config avisos/wrangler.toml
+   npx wrangler pages secret put GOOGLE_CALENDARIO --project-name cristinaborquez-app
+   npx wrangler secret put GOOGLE_CALENDARIO --config avisos/wrangler.toml
+   ```
+   (`GOOGLE_CALENDARIO` = el Gmail de Cristina.) Publicar el Worker y hacer push (Pages vuelve a construir la app).
 
 ## Plantillas de WhatsApp (darlas de alta en Meta → WhatsApp Manager → Plantillas, idioma Español (MEX))
 

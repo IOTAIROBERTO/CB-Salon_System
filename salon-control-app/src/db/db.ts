@@ -70,10 +70,6 @@ export interface AppSettings {
         templateId: string;
         publicKey: string;
     };
-    googleCredentials?: {
-        clientId: string;
-        apiKey: string;
-    };
     // Respaldo automático: carpeta elegida por el usuario (el handle se guarda
     // tal cual, IndexedDB lo clona) y fecha ISO del último respaldo escrito.
     respaldoCarpeta?: FileSystemDirectoryHandle;

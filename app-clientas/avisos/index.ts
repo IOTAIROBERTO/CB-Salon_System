@@ -3,11 +3,13 @@
 // - recordatorio el día anterior a su cita confirmada.
 // Cada cita guarda la marca de lo que ya se le mandó, así nunca se repite. Sin los secretos de WhatsApp no hace nada.
 import { guardar, leer } from '../api/dexie';
+import { espejo } from '../api/google';
 import { plantilla, whatsappListo } from '../api/whatsapp';
 import { fechaLegible, hoyHermosillo, masDias, type Env as EnvApi } from '../api/salon';
 
 type Env = EnvApi & { RECORDATORIOS?: 'app' | 'todas' };   // 'todas': también las citas que agenda el salón a mano
 
+const CADA_MINUTO = '* * * * *';   // igual que en wrangler.toml
 const pesos = (n: number) => `$${Number(n || 0).toLocaleString('es-MX')}`;
 
 export async function revisar(env: Env) {
@@ -35,5 +37,9 @@ export async function revisar(env: Env) {
 }
 
 export default {
-  async scheduled(_evento: ScheduledController, env: Env, ctx: ExecutionContext) { ctx.waitUntil(revisar(env).then(r => console.log('avisos', JSON.stringify(r)))); }
+  // Cada minuto: espejo de citas en Google Calendar; cada 10: avisos por WhatsApp
+  async scheduled(evento: ScheduledController, env: Env, ctx: ExecutionContext) {
+    if (evento.cron === CADA_MINUTO) ctx.waitUntil(espejo(env).then(r => console.log('google', JSON.stringify(r))));
+    else ctx.waitUntil(revisar(env).then(r => console.log('avisos', JSON.stringify(r))));
+  }
 } satisfies ExportedHandler<Env>;

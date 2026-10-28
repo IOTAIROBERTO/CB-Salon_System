@@ -12,7 +12,8 @@ La galería pública vive en `/galeria/` y la página de reseñas en `/resenas/`
 - **Sin servidor propio.** Los datos viven en IndexedDB (Dexie) y se sincronizan con **Dexie Cloud**:
   inicio de sesión por código al correo, un solo salón compartido y roles dueña / empleada (`src/db/`).
 - La tabla `documentos` (archivos) es solo local.
-- Integraciones (EmailJS, Google Calendar, WhatsApp) se llaman desde el navegador (`src/services/`).
+- Integraciones (EmailJS, WhatsApp) se llaman desde el navegador (`src/services/`). Google Calendar va por el servidor
+  (`app-clientas/api/google.ts`: espejo de citas cada minuto y horarios ocupados en tiempo real para la app de clientas).
 - Los datos del negocio (ventas, finanzas) **nunca** van al repositorio: el sitio es público.
 - `dexie-cloud.key` es secreto y está en `.gitignore`.
 

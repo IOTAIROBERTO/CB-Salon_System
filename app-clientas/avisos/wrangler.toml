@@ -1,9 +1,10 @@
-# Worker con horario para los avisos automáticos a clientas (confirmación y recordatorio por WhatsApp).
-# Publicar: npx wrangler deploy --config avisos/wrangler.toml   ·   Secretos: los mismos de la app (DEXIE_*, WA_*)
+# Worker con horario: avisos automáticos a clientas (confirmación y recordatorio por WhatsApp, cada 10 min)
+# y espejo de citas en Google Calendar (cada minuto).
+# Publicar: npx wrangler deploy --config avisos/wrangler.toml   ·   Secretos: los mismos de la app (DEXIE_*, WA_*, GOOGLE_*)
 name = "cb-avisos"
 main = "index.ts"
 compatibility_date = "2025-10-01"
 workers_dev = false   # solo corre por horario: sin dirección pública
 
 [triggers]
-crons = ["*/10 * * * *"]
+crons = ["*/10 * * * *", "* * * * *"]

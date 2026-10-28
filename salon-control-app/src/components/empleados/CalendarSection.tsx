@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, EmpleadoEvent } from '../../db/db';
 import { Calendar, Plus, Trash2, Tag, CalendarDays, Clock, Briefcase, HelpCircle } from 'lucide-react';
-import { googleCalendarService } from '../../services/googleCalendar';
 import { formatDate } from '../../utils/clientesUtils';
 import { fechaLocalISO } from '../../utils/dateValidation';
 
@@ -25,35 +24,10 @@ export default function CalendarSection({ empleadoId, onClose }: CalendarSection
         descripcion: ''
     });
 
-    const syncEventToGoogle = async (eventId: string) => {
-        try {
-            if (!googleCalendarService.getSignInStatus()) return;
-            const event = await db.empleadoEvents.get(eventId);
-            if (!event) return;
-
-            const emp = await db.empleados.get(event.empleadoId);
-            if (!emp) return;
-
-            const calendarId = emp.googleCalendarId || 'primary';
-            const gEvent = googleCalendarService.empleadoEventToCalendarEvent(event, emp);
-
-            if (event.googleEventId) {
-                await googleCalendarService.updateEvent(event.googleEventId, gEvent, calendarId);
-            } else {
-                const gId = await googleCalendarService.createEvent(gEvent, calendarId);
-                if (gId) {
-                    await db.empleadoEvents.update(eventId, { googleEventId: gId });
-                }
-            }
-        } catch (e) {
-            console.error('Error syncing employee event:', e);
-        }
-    };
-
+    // Google Calendar se actualiza solo desde el servidor (Worker cb-avisos, cada minuto)
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const id = await db.empleadoEvents.add({ ...formData });
-        if (id) await syncEventToGoogle(id as string);
+        await db.empleadoEvents.add({ ...formData });
         setIsAdding(false);
         setFormData({
             empleadoId: empleadoId,
@@ -66,12 +40,6 @@ export default function CalendarSection({ empleadoId, onClose }: CalendarSection
 
     const handleDelete = async (id: string) => {
         if (confirm('¿Eliminar este evento del calendario?')) {
-            const event = await db.empleadoEvents.get(id);
-            if (event?.googleEventId && googleCalendarService.getSignInStatus()) {
-                const emp = await db.empleados.get(event.empleadoId);
-                const calendarId = emp?.googleCalendarId || 'primary';
-                await googleCalendarService.deleteEvent(event.googleEventId, calendarId);
-            }
             await db.empleadoEvents.delete(id);
         }
     };

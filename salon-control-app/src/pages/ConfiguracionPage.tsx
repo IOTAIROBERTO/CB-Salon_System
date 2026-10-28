@@ -3,7 +3,6 @@ import { Save, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import { emailMarketingService } from '../services/emailMarketingService';
 import { whatsappService } from '../services/whatsappService';
-import { googleCalendarService } from '../services/googleCalendar';
 import RespaldosTab from '../components/configuracion/RespaldosTab';
 import EquipoTab from '../components/configuracion/EquipoTab';
 import AgendaTab from '../components/configuracion/AgendaTab';
@@ -25,8 +24,7 @@ export default function ConfiguracionPage() {
         telefono: settings.telefono,
         direccion: settings.direccion,
         email: settings.email,
-        emailConfig: settings.emailConfig || { serviceId: '', templateId: '', publicKey: '' },
-        googleCredentials: settings.googleCredentials || { clientId: '', apiKey: '' }
+        emailConfig: settings.emailConfig || { serviceId: '', templateId: '', publicKey: '' }
       });
     }
   }, [settings]);
@@ -47,19 +45,6 @@ export default function ConfiguracionPage() {
     });
     await emailMarketingService.saveConfiguration(formData.emailConfig);
     showSavedMessage('Configuración Email Guardada');
-  };
-
-  const handleSaveGoogle = async () => {
-    await updateSettings({
-      googleCredentials: formData.googleCredentials
-    });
-    showSavedMessage('Configuración Google Calendar Guardada');
-  };
-
-  const handleGoogleSignIn = async () => {
-    const success = await googleCalendarService.signIn();
-    if (success) showSavedMessage('Google Calendar Conectado');
-    else alert('Error al conectar con Google Calendar');
   };
 
   const showSavedMessage = (msg: string) => {
@@ -240,78 +225,17 @@ export default function ConfiguracionPage() {
       )}
 
       {activeTab === 'google' && (
-        <div className="bg-white p-6 rounded-lg shadow space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-lg text-gray-800">Sincronización con Google Calendar</h3>
-            <div className="flex items-center gap-2">
-              <span className={`w-3 h-3 rounded-full ${googleCalendarService.getSignInStatus() ? 'bg-green-500' : 'bg-red-500'}`}></span>
-              <span className="text-sm font-medium">{googleCalendarService.getSignInStatus() ? 'Conectado' : 'Desconectado'}</span>
-            </div>
-          </div>
-
-          <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 text-sm text-purple-800 space-y-2">
-            <p className="font-bold">¿Cómo activar esta integración?</p>
-            <ol className="list-decimal ml-4 space-y-1">
-              <li>Ve a <a href="https://console.cloud.google.com/" target="_blank" className="underline font-bold">Google Cloud Console</a>.</li>
-              <li>Crea un proyecto y habilita la <strong>Google Calendar API</strong>.</li>
-              <li>En "APIs & Services &gt; Credentials", crea una <strong>API Key</strong> y un <strong>OAuth 2.0 Client ID</strong> (Web application).</li>
-              <li>Añade la URL de este sistema a los "Authorized JavaScript origins".</li>
-            </ol>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-              <input
-                type="text"
-                placeholder="Introducir API Key..."
-                className="w-full border rounded-xl p-2.5 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                value={formData.googleCredentials?.apiKey || ''}
-                onChange={e => setFormData({
-                  ...formData,
-                  googleCredentials: { ...formData.googleCredentials, apiKey: e.target.value }
-                })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
-              <input
-                type="text"
-                placeholder="xxxxxx.apps.googleusercontent.com"
-                className="w-full border rounded-xl p-2.5 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                value={formData.googleCredentials?.clientId || ''}
-                onChange={e => setFormData({
-                  ...formData,
-                  googleCredentials: { ...formData.googleCredentials, clientId: e.target.value }
-                })}
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-4 pt-2">
-            <button
-              onClick={handleSaveGoogle}
-              className="bg-purple-600 text-white px-6 py-2 rounded-xl flex items-center gap-2 hover:bg-purple-700 transition-all font-bold"
-            >
-              <Save size={18} /> Guardar Credenciales
-            </button>
-
-            <button
-              onClick={handleGoogleSignIn}
-              className="bg-white text-gray-700 border-2 border-gray-200 px-6 py-2 rounded-xl flex items-center gap-2 hover:bg-gray-50 transition-all font-bold"
-            >
-              <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" alt="Google" className="w-5 h-5" />
-              Conectar con Google
-            </button>
-          </div>
-
-          <div className="pt-6 border-t">
-            <h4 className="font-bold text-gray-800 mb-2">Información sobre Cristina y Auxiliares</h4>
-            <p className="text-sm text-gray-500">
-              Al conectar tu cuenta de Google, tus citas personales se sincronizarán con el calendario de <strong>cristinaeborquez@gmail.com</strong>.
-              Para las auxiliares, puedes especificar un ID de calendario diferente en la sección de gestión de empleados.
-            </p>
-          </div>
+        <div className="bg-white p-6 rounded-lg shadow space-y-4 text-sm text-gray-700">
+          <h3 className="font-semibold text-lg text-gray-800">Google Calendar</h3>
+          <p>
+            La conexión vive en el servidor: no hay que conectar nada desde este navegador ni volver a dar permiso.
+          </p>
+          <ul className="list-disc ml-5 space-y-1">
+            <li>Cada minuto se copian al Google Calendar de Cristina las citas activas (pendientes, confirmadas, en curso) y los días de vacaciones y apoyo del equipo. Si una cita se cancela o se borra aquí, también desaparece de Google.</li>
+            <li>La app de clientas consulta Google en el momento: lo que Cristina tenga como <strong>Ocupado</strong> en su calendario no se ofrece como horario libre. Lo marcado como <strong>Disponible</strong> (y lo que copia CB Control) no quita horarios.</li>
+            <li>Los cambios a una cita se hacen aquí; si se editan en Google, se reemplazan en la siguiente copia.</li>
+            <li>Auxiliar con calendario propio: que lo comparta con la cuenta de servicio del salón («Hacer cambios en eventos») y escribe su correo en Empleados → Google Calendar ID.</li>
+          </ul>
         </div>
       )}
     </div>

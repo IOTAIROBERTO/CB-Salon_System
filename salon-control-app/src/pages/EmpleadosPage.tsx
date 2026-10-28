@@ -396,7 +396,7 @@ export default function EmpleadosPage() {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Google Calendar ID</label>
                                         <input
                                             type="text"
-                                            placeholder="Nombre del calendario o ID"
+                                            placeholder="Su correo de Gmail (calendario compartido con el salón)"
                                             className="w-full p-2.5 border rounded-xl"
                                             value={formData.googleCalendarId}
                                             onChange={e => setFormData({ ...formData, googleCalendarId: e.target.value })}
