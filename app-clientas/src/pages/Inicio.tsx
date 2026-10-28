@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, Clock, Facebook, Instagram, MapPin, MessageCircle, Sparkles } from 'lucide-react'
 import AvisoInstalar from '@/components/AvisoInstalar'
-import { DATOS_SALON, ENLACE_FACEBOOK, ENLACE_INSTAGRAM, ENLACE_MAPA, NOMBRE_CLUB, enlaceWhatsApp } from '@/salon'
+import { ENLACE_FACEBOOK, ENLACE_INSTAGRAM, ENLACE_MAPA, NOMBRE_CLUB, enlaceWhatsApp } from '@/salon'
+import { useSalon } from '@/vivo'
 
 const TRABAJOS = [
   { foto: 'balayage-caramelo', nombre: 'Balayage' },
@@ -12,6 +13,7 @@ const TRABAJOS = [
 ]
 
 export default function Inicio() {
+  const DATOS_SALON = useSalon().salon   // en vivo de CB Control (Configuración y Agenda)
   return (
     <>
       <header className="relative flex h-[78svh] max-h-[46rem] min-h-[32rem] flex-col justify-end overflow-hidden bg-marca-negro px-6 pb-10 pt-[calc(env(safe-area-inset-top)+2rem)] text-white lg:h-[calc(100svh-4rem)] lg:max-h-[56rem] lg:px-0 lg:pb-20">

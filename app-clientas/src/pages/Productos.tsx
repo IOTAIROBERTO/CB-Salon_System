@@ -1,14 +1,16 @@
 import { MessageCircle } from 'lucide-react'
 import Encabezado from '@/components/Encabezado'
-import { BENEFICIOS_NIVEL, CORTESIAS_SIEMPRE, MENU_ANTOJOS, NOMBRE_CLUB, NOMBRE_NIVEL, POLITICAS, enlaceWhatsApp, pesos } from '@/salon'
+import { BENEFICIOS_NIVEL, CORTESIAS_SIEMPRE, NOMBRE_CLUB, NOMBRE_NIVEL, POLITICAS, enlaceWhatsApp, pesos } from '@/salon'
+import { useSalon } from '@/vivo'
 import { esComida } from '@salon/data/menuAntojos'
 
-// El menú de antojos sale de CB Control (data/menuAntojos.ts). El catálogo de productos vendrá del inventario por la API
-// (fase 3); mientras, se pregunta por WhatsApp.
-const grupos = [...new Set(MENU_ANTOJOS.map(a => a.grupo))]
+// El menú de antojos sale de CB Control (data/menuAntojos.ts) con los precios en vivo del Inventario (categoría Antojos).
+// El catálogo de productos vendrá del inventario por la API; mientras, se pregunta por WhatsApp.
 const B = BENEFICIOS_NIVEL
 
 export default function Productos() {
+  const MENU_ANTOJOS = useSalon().antojos
+  const grupos = [...new Set(MENU_ANTOJOS.map(a => a.grupo))]
   return (
     <>
       <Encabezado rotulo="Durante tu cita y en casa" titulo="Antojos y productos" bajada="Algo rico mientras te consentimos, y lo que usamos en el salón para cuidar tu color." />

@@ -50,6 +50,14 @@ export async function verificarCodigo(reto: string, codigo: string) {
   return r
 }
 
+/** Datos que se editan en CB Control y la app muestra (ver src/vivo.tsx) */
+export interface DatosSalonVivos {
+  salon: { nombre: string; telefono: string; whatsapp: string; direccion: string; comoLlegar: string; horario: string; email?: string }
+  club: import('@salon/utils/lealtad').ParametrosCirculo
+  antojos: import('@salon/data/menuAntojos').Antojo[]
+}
+export const salonEnVivo = () => llamar<DatosSalonVivos>('salon')
+
 /** Consentimiento con enlace personal (firma_…): no pide entrar al Club */
 export interface DatosFirma { nombre: string; servicio?: string; fecha?: string; hora?: string }
 export const firmaPendiente = (id: string) => llamar<DatosFirma>(`firma/${encodeURIComponent(id)}`)

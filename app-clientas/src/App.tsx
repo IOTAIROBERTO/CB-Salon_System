@@ -6,6 +6,7 @@ import Agendar from './pages/Agendar'
 import Productos from './pages/Productos'
 import MiClub from './pages/MiClub'
 import Firmar from './pages/Firmar'
+import { DatosVivos } from './vivo'
 
 const PESTANAS = [
   { a: '/', texto: 'Inicio', Icono: Home },
@@ -18,6 +19,7 @@ export default function App() {
   const { pathname } = useLocation()
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])   // cada pestaña abre desde arriba (con llaves: scrollTo ya devuelve una promesa)
   return (
+    <DatosVivos>
     <div className="mx-auto min-h-screen max-w-md bg-marca-marfil pb-24 shadow-[0_0_60px_rgba(17,17,17,0.06)] lg:max-w-none lg:pb-16 lg:pt-16 lg:shadow-none">
       {/* Computadora: barra arriba con las mismas pestañas (en el celular van abajo) */}
       <header className="fixed inset-x-0 top-0 z-20 hidden h-16 border-b border-marca-linea/60 bg-white/85 backdrop-blur-xl lg:block">
@@ -64,5 +66,6 @@ export default function App() {
         </div>
       </nav>
     </div>
+    </DatosVivos>
   )
 }

@@ -3,8 +3,9 @@ import UnirmeClub from '@/components/UnirmeClub'
 import TarjetaClub from '@/components/TarjetaClub'
 import {
   ANIVERSARIO_PUNTOS, AVISO_GASTO, BENEFICIOS_NIVEL, CLAVES_REGALO, DIAS_PUNTOS_DOBLES, NIVELES, NOMBRE_CLUB, NOMBRE_NIVEL, REGALOS_NIVEL, REGLA_CANJE,
-  REGLAS_CLUB as R, montoCanje, montoTarjeta, multiplicador, pesos, umbral
+  montoCanje, montoTarjeta, multiplicador, pesos, umbral
 } from '@/salon'
+import { useSalon } from '@/vivo'
 
 // Las reglas salen de utils/lealtad.ts de CB Control. Arriba, la tarjeta de cada clienta (TarjetaClub): entra con su
 // teléfono y un código por WhatsApp (se activa cuando el WhatsApp oficial del salón esté conectado) y ve puntos,
@@ -19,6 +20,7 @@ const ESTILO: Record<string, string> = {
 const DIAS = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados']
 
 export default function MiClub() {
+  const R = useSalon().club   // las reglas que se guardan en CB Control → Club, en vivo
   return (
     <>
       <Encabezado rotulo="Membresía" titulo={NOMBRE_CLUB} bajada="Cinco niveles con los colores de la casa. Mientras más tiempo eres clienta, más rinde cada visita." />
@@ -48,7 +50,7 @@ export default function MiClub() {
           </dl>
           <p className="mt-3 text-xs leading-relaxed text-marca-gris">
             * Si tu amiga agenda diseño de color, maquillaje social o de novia (tope de {pesos(R.referidaTope)}); con otro servicio ganas {R.referida} puntos.
-            Tus puntos valen dinero: cada punto vale {pesos(R.pesosPorPuntoCanje)} (1,000 puntos = {pesos(montoCanje(1000))}). {REGLA_CANJE}, desde {R.canjeMinimo} puntos.
+            Tus puntos valen dinero: cada punto vale {pesos(R.pesosPorPuntoCanje)} (1,000 puntos = {pesos(montoCanje(1000, R))}). {REGLA_CANJE}, desde {R.canjeMinimo} puntos.
           </p>
         </section>
 
@@ -63,7 +65,7 @@ export default function MiClub() {
             {NIVELES.map(n => (
               <div key={n} className={`flex aspect-[3/4] flex-col justify-between rounded-md p-2 ${ESTILO[n]}`}>
                 <p className="font-display text-[15px] leading-tight">{NOMBRE_NIVEL[n]}</p>
-                <p className="text-[9px] uppercase leading-tight tracking-[0.1em] opacity-80">{n === 'marfil' ? 'al unirte' : `${umbral(n).toLocaleString('es-MX')} pts`}</p>
+                <p className="text-[9px] uppercase leading-tight tracking-[0.1em] opacity-80">{n === 'marfil' ? 'al unirte' : `${umbral(n, R).toLocaleString('es-MX')} pts`}</p>
               </div>
             ))}
           </div>
@@ -82,14 +84,14 @@ export default function MiClub() {
             </thead>
             <tbody>
               {([
-                ['Puntos por compra', n => `×${multiplicador(n)}`],
+                ['Puntos por compra', n => `×${multiplicador(n, R)}`],
                 ['Productos', n => BENEFICIOS_NIVEL[n].productos ? `${BENEFICIOS_NIVEL[n].productos}%` : '—'],
                 ['Maquillaje social', n => BENEFICIOS_NIVEL[n].maquillaje ? `${BENEFICIOS_NIVEL[n].maquillaje}%` : '—'],
                 ['Corte y peinado', n => BENEFICIOS_NIVEL[n].cortePeinado ? `${BENEFICIOS_NIVEL[n].cortePeinado}%` : '—'],
                 ['Despunte de flequillo', n => BENEFICIOS_NIVEL[n].flequillo ? '1 al mes' : '—'],
                 ['Antojos de comida (no incluye bebidas)', n => BENEFICIOS_NIVEL[n].antojosComida ? `${BENEFICIOS_NIVEL[n].antojosComida}%` : '—'],
                 ['Antojo y bebida de cortesía', n => BENEFICIOS_NIVEL[n].antojoCortesia ? '1 al mes' : '—'],
-                ['Tarjeta de regalo con 1,000 de tus puntos', n => pesos(montoTarjeta(1000, n))]
+                ['Tarjeta de regalo con 1,000 de tus puntos', n => pesos(montoTarjeta(1000, n, R))]
               ] as [string, (n: (typeof NIVELES)[number]) => string][]).map(([k, f]) => (
                 <tr key={k} className="border-t border-marca-linea/70">
                   <td className="py-2.5 text-left text-xs text-marca-gris">{k}</td>

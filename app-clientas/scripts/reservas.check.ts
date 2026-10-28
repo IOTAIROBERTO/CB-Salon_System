@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { atender } from '../api/salon';
 import { firmar } from '../api/sesion';
 import { recordarAlSalon } from '../avisos/index';
+import { PARAMETROS_CIRCULO } from '../../salon-control-app/src/utils/lealtad';
 
 const HORA = 3600 * 1000;
 const dia = (n: number) => new Date(Date.now() - 7 * HORA + n * 86400000).toISOString().slice(0, 10);
@@ -101,6 +102,20 @@ assert.equal(tablas.fotos.filter(f => f.citaId === conFotos.id).length, 2);
 assert.ok(tablas.avisos.some(a => a.refId === conFotos.id && /2 foto\(s\)/.test(a.detalle) && /cabello: hombros, tinte/.test(a.detalle)));
 assert.ok(tablas.avisos.some(a => a.refId === conFotos.id && /sin verificar/.test(a.detalle)));
 tablas.citas = tablas.citas.filter(c => c !== conFotos);
+
+// Lo que se edita en CB Control llega en vivo a la app: teléfono, horario, reglas del Club y precio de antojos (sin costo)
+const settings = tablas.configuracion[0];
+Object.assign(settings, { telefono: '662 555 0101', agenda: { horario: { '0': null, '1': { abre: '09:00', cierra: '18:00' }, '2': { abre: '09:00', cierra: '18:00' },
+  '3': { abre: '09:00', cierra: '18:00' }, '4': { abre: '09:00', cierra: '18:00' }, '5': { abre: '09:00', cierra: '18:00' }, '6': { abre: '10:00', cierra: '14:00' } } },
+  circulo: { ...PARAMETROS_CIRCULO, bienvenida: 250 } });
+tablas.inventario = [{ id: 'i1', nombre: 'Dumplings', categoria: 'Antojos', precio: 120, costo: 55 }];
+const vivo = await (await atender(new Request('https://app/api/salon'), base as any, ctx)).json();
+assert.equal(vivo.salon.whatsapp, '526625550101');
+assert.equal(vivo.salon.horario, 'Lunes a viernes de 09:00 a 18:00; sábado de 10:00 a 14:00. Servicios solo con cita; los domingos se abre únicamente para citas.');
+assert.equal(vivo.club.bienvenida, 250);
+assert.equal(vivo.antojos.find((a: any) => a.nombre === 'Dumplings').precio, 120);
+assert.ok(!JSON.stringify(vivo).includes('costo'));
+tablas.configuracion[0] = { id: 'settings', realmId: 'r' };
 
 // Recordatorio al salón: citas de la app sin confirmar después de 2 h, cada 4 h, solo de 9 a 21 h (Hermosillo, UTC−7)
 const a10 = Date.parse(`${dia(0)}T17:00:00Z`);   // 10:00 en Hermosillo

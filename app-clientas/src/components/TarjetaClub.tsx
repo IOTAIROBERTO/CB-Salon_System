@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useEnVivo } from '@/vivo'
 import { Link } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 import { miClub, misDatos, pedirCodigo, salir, sesion, verificarCodigo, type MiClub } from '@/api'
@@ -20,10 +21,8 @@ export default function TarjetaClub() {
   const [robot, setRobot] = useState('')   // «no soy robot» para pedir el código (uno por envío)
   const [vueltaRobot, setVueltaRobot] = useState(0)
 
-  useEffect(() => {
-    if (!conSesion) return
-    miClub().then(setDatos).catch(e => { setError(e.message); if (!sesion()) setConSesion(false) })
-  }, [conSesion])
+  // Puntos, nivel y citas en vivo: al entrar, al volver a la app y cada minuto
+  useEnVivo(() => miClub().then(setDatos).catch(e => { setError(e.message); if (!sesion()) setConSesion(false) }), 60_000, conSesion)
 
   const accion = (fn: () => Promise<void>) => async () => {
     setTrabajando(true); setError('')

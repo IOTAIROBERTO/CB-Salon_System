@@ -6,6 +6,7 @@ import { reducirFoto } from '@/fotos'
 import { fechaCumple } from '@/components/UnirmeClub'
 import { crearCita, disponibilidad, misDatos, pedirCodigo, recordarDatos, serviciosEnLinea, sesion, verificarCodigo, type DiaLibre } from '@/api'
 import NoSoyRobot, { conTurnstile } from '@/components/NoSoyRobot'
+import { useEnVivo } from '@/vivo'
 
 // Agenda en tiempo real: los horarios salen del mismo motor que usa CB Control (API /api/disponibilidad) y la cita
 // se aparta al enviar; llega «pendiente» a CB Control y a la bandeja de avisos para que el salón la confirme.
@@ -20,7 +21,10 @@ export default function Agendar() {
   // Catálogo vivo de CB Control (nombres y precios de hoy). Si la API falla no se muestra uno viejo: se ofrece WhatsApp
   const [catalogo, setCatalogo] = useState<Servicio[] | null>(null)
   const [sinCatalogo, setSinCatalogo] = useState(false)
-  useEffect(() => { serviciosEnLinea().then(setCatalogo).catch(() => setSinCatalogo(true)) }, [])
+  // En vivo: al abrir, al volver a la app y cada minuto (nombres, precios y anticipos que se cambien en CB Control)
+  useEnVivo(() => serviciosEnLinea()
+    .then(l => { setCatalogo(l); setSinCatalogo(false); setElegido(e => e && (l.find(x => x.id === e.id) ?? e)) })
+    .catch(() => { if (!catalogo) setSinCatalogo(true) }))
   const categorias = categoriasDe(catalogo || [])
   const [elegido, setElegido] = useState<Servicio | null>(null)
   const [datos, setDatos] = useState(misDatos)
@@ -67,7 +71,11 @@ export default function Agendar() {
     if (!elegido) return
     bajarAlFormulario()
     setHora(''); cargarHorarios(elegido)
-  }, [elegido])
+  }, [elegido?.id])   // por id: el refresco del catálogo actualiza precio y nombre sin borrar la hora elegida
+  useEnVivo(() => elegido && !lista && disponibilidad(elegido.id).then(r => {
+    setDias(r.dias)
+    setHora(h => h && r.dias.find(d => d.fecha === fecha)?.horas.includes(h) ? h : '')
+  }).catch(() => { /* se queda lo último */ }), 60_000, !!elegido)
 
   const enviar = async () => {
     if (!elegido || !hora) return

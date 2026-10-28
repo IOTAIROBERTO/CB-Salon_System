@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, MessageCircle } from 'lucide-react'
-import { NOMBRE_CLUB, REGLAS_CLUB, enlaceWhatsApp } from '@/salon'
+import { NOMBRE_CLUB, enlaceWhatsApp } from '@/salon'
+import { useSalon } from '@/vivo'
 import { misDatos, recordarDatos, unirmeClub } from '@/api'
 import NoSoyRobot, { conTurnstile } from '@/components/NoSoyRobot'
 
@@ -9,6 +10,7 @@ import NoSoyRobot, { conTurnstile } from '@/components/NoSoyRobot'
 export const fechaCumple = (f: string) => f ? new Date(`${f}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' }) : ''
 
 export default function UnirmeClub() {
+  const REGLAS_CLUB = useSalon().club
   const [datos, setDatos] = useState(misDatos)
   const [recomendo, setRecomendo] = useState('')
   const [trampa, setTrampa] = useState('')

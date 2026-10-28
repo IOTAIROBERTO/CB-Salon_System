@@ -7,6 +7,8 @@ import {
 } from '../../salon-control-app/src/utils/lealtad';
 import { saldoDe } from '../../salon-control-app/src/utils/saldo';
 import { CHECKS_CLIENTA, OPCIONES_REDES, VERSION_CONSENTIMIENTO, textoFirmado } from '../../salon-control-app/src/utils/consentimiento';
+import { DATOS_SALON } from '../../salon-control-app/src/data/datosSalon';
+import { CATEGORIA_ANTOJOS, MENU_ANTOJOS } from '../../salon-control-app/src/data/menuAntojos';
 import { guardar, leer, uno, type EnvDexie } from './dexie';
 import { calendariosAgenda, ocupadoGoogle, type EnvGoogle } from './google';
 import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
@@ -102,6 +104,40 @@ async function servicios(env: Env) {
     .map(s => ({ id: s.id, nombre: s.nombre, categoria: s.categoria || 'otros', precio: s.precioSugerido, anticipo: s.anticipoSugerido || 0, duracion: s.duracion || 60,
       descripcion: s.descripcionApp || '' }));   // «Descripción para la app» de Catálogo; `descripcion` son notas internas y nunca salen
   return json({ servicios: lista });   // sin caché: un cambio en CB Control se ve en la app en cuanto llega a la nube
+}
+
+const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+/** Horario de atención en palabras, del horario de la agenda de CB Control («Lunes a sábado de 10:00 a 19:00…») */
+export function textoHorario(horario?: ConfigAgenda['horario']) {
+  if (!horario) return '';
+  const tramos: { de: number; a: number; h: string }[] = [];
+  for (const d of [1, 2, 3, 4, 5, 6, 0]) {
+    const x = horario[String(d) as keyof typeof horario];
+    if (!x) continue;
+    const h = `de ${x.abre} a ${x.cierra}`, ultimo = tramos.at(-1);
+    if (ultimo && ultimo.h === h && (ultimo.a + 1) % 7 === d) ultimo.a = d; else tramos.push({ de: d, a: d, h });
+  }
+  if (!tramos.length) return '';
+  const partes = tramos.map(t => `${DIAS_SEMANA.at(t.de)}${t.a !== t.de ? ` a ${DIAS_SEMANA.at(t.a)!.toLowerCase()}` : ''} ${t.h}`);
+  return `${partes.map((p, i) => i ? p.charAt(0).toLowerCase() + p.slice(1) : p).join('; ')}. Servicios solo con cita${horario['0'] ? '' : '; los domingos se abre únicamente para citas'}.`;
+}
+
+const norma = (t: string) => t.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+/** GET /api/salon → lo que se edita en CB Control y la app muestra: datos del salón, reglas del Club y precios de antojos
+ *  (los del Inventario, nunca el costo). Sin caché: un cambio guardado en CB Control se ve en cuanto sube a la nube. */
+async function datosDelSalon(env: Env) {
+  const [settings, inventario] = await Promise.all([uno<any>(env, 'configuracion', 'settings'), leer<any>(env, 'inventario')]);
+  const precios = new Map(inventario.filter(i => i.categoria === CATEGORIA_ANTOJOS && Number(i.precio) > 0).map(i => [norma(i.nombre || ''), Number(i.precio)]));
+  const telefono = settings?.telefono || DATOS_SALON.telefono, digitos = tel10(telefono);
+  return json({
+    salon: {
+      nombre: settings?.nombreSalon || DATOS_SALON.nombre, telefono, whatsapp: digitos.length === 10 ? `52${digitos}` : DATOS_SALON.whatsapp,
+      direccion: settings?.direccion || DATOS_SALON.direccion, comoLlegar: DATOS_SALON.comoLlegar, email: settings?.email || DATOS_SALON.email,
+      horario: textoHorario(settings?.agenda?.horario) || DATOS_SALON.horario
+    },
+    club: parametrosDe(settings),
+    antojos: MENU_ANTOJOS.map(a => ({ ...a, precio: precios.get(norma(a.nombre)) ?? a.precio }))
+  });
 }
 
 /** GET /api/disponibilidad?servicioId=s17&desde=2027-01-04&dias=7 → horas libres por día (sin nombres de nadie) */
@@ -414,6 +450,7 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
   try {
     if (request.method === 'GET' && ruta === 'salud') return json({ ok: true, hoy: hoyHermosillo() });
     if (request.method === 'GET' && ruta === 'servicios') return await servicios(env);
+    if (request.method === 'GET' && ruta === 'salon') return await datosDelSalon(env);
     if (request.method === 'GET' && ruta === 'disponibilidad') return await disponibilidad(env, url);
     if (request.method === 'GET' && ruta === 'mi-club') return await miClub(env, await sesionDe(request, env));
     const firma = ruta.match(/^firma\/([^/]+)$/);
