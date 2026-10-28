@@ -4,6 +4,7 @@ import { Bell, CalendarCheck, Check, Crown, MessageCircle, ShoppingBag, X } from
 import { db, type Aviso } from '../../db/db';
 import { enlaceWhatsApp } from '../../utils/lealtad';
 import { fechaLocalISO } from '../../utils/dateValidation';
+import ValorarSolicitud from './ValorarSolicitud';
 
 // Bandeja del salón: lo que las clientas hacen solas en la app (citas, altas al Club) llega aquí en tiempo real
 // por Dexie Cloud. Con la ventana abierta también sale una notificación del navegador. Arriba, fija, la lista de
@@ -23,6 +24,7 @@ const hace = (iso: string) => {
 
 export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
   const [abierta, setAbierta] = useState(false);
+  const [valorando, setValorando] = useState<string | null>(null);   // cita que se está valorando
   const avisos = useLiveQuery(() => db.avisos.orderBy('fecha').reverse().limit(60).toArray()) || [];
   const citas = useLiveQuery(() => db.citas.where('estado').equals('pendiente').toArray()) || [];
   const clientes = useLiveQuery(() => db.clientes.toArray()) || [];
@@ -50,13 +52,9 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
 
   const marcar = (a: Aviso) => db.avisos.update(a.id, { leido: true });
   const marcarTodo = () => db.avisos.bulkUpdate(avisos.filter(a => !a.leido).map(a => ({ key: a.id, changes: { leido: true } })));
-  const confirmar = async (a: Aviso) => {
-    if (a.refId) await db.citas.update(a.refId, { estado: 'confirmada' });
-    await marcar(a);
-  };
-  // Confirmar desde la lista fija: también quedan leídos sus avisos
-  const confirmarCita = async (citaId: string) => {
-    await db.citas.update(citaId, { estado: 'confirmada' });
+  // Proceso estándar: una cita de la app se valora (precio y anticipo) antes de confirmarla; sus avisos quedan leídos
+  const valorar = async (citaId: string) => {
+    setValorando(citaId);
     const suyos = avisos.filter(a => a.refId === citaId && !a.leido);
     if (suyos.length) await db.avisos.bulkUpdate(suyos.map(a => ({ key: a.id, changes: { leido: true } })));
   };
@@ -116,11 +114,11 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
                           <p className="truncate text-gray-600">{sv?.nombre || 'Servicio'}{c.montoAnticipo ? ` · anticipo $${c.montoAnticipo.toLocaleString('es-MX')} ${c.anticipoConfirmado ? 'pagado' : 'pendiente'}` : ''}</p>
                         </div>
                         {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="rounded-md border bg-white p-2 text-gray-700 hover:bg-gray-50" aria-label="WhatsApp"><MessageCircle size={14} /></a>}
-                        <button onClick={() => confirmarCita(c.id)} className="flex items-center gap-1 rounded-md bg-marca-negro px-3 py-1.5 text-xs text-white hover:bg-gray-800"><Check size={13} /> Confirmar</button>
+                        <button onClick={() => valorar(c.id)} className="flex items-center gap-1 rounded-md bg-marca-negro px-3 py-1.5 text-xs text-white hover:bg-gray-800"><Check size={13} /> Valorar</button>
                       </div>
                     );
                   })}
-                  <p className="mt-3 text-[11px] text-gray-500">Para cambiarla de hora o cancelarla, ábrela en Citas.</p>
+                  <p className="mt-3 text-[11px] text-gray-500">Valorar = ver fotos y respuestas, fijar precio y anticipo, mandar el WhatsApp y confirmar. Cambios de hora o cancelaciones, en Citas.</p>
                 </div>
               )}
               {!avisos.length && <p className="p-6 text-sm text-gray-500">Aquí llegan las citas y registros al Club que las clientas hacen desde la app.</p>}
@@ -140,8 +138,8 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
                         {a.detalle && <p className="mt-0.5 text-sm text-gray-600">{a.detalle}</p>}
                         <div className="mt-2 flex flex-wrap gap-2">
                           {pendiente && (
-                            <button onClick={() => confirmar(a)} className="flex items-center gap-1 rounded-md bg-marca-negro px-3 py-1.5 text-xs text-white hover:bg-gray-800">
-                              <Check size={13} /> Confirmar cita
+                            <button onClick={() => a.refId && valorar(a.refId)} className="flex items-center gap-1 rounded-md bg-marca-negro px-3 py-1.5 text-xs text-white hover:bg-gray-800">
+                              <Check size={13} /> Valorar cita
                             </button>
                           )}
                           {wa && (
@@ -161,6 +159,7 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
           </aside>
         </div>
       )}
+      {valorando && <ValorarSolicitud citaId={valorando} onClose={() => setValorando(null)} />}
     </>
   );
 }

@@ -8,5 +8,6 @@ export interface ServicioFormData {
   duracion?: number;
   tiempoProceso?: number;
   tiempoCierre?: number;
+  descripcion?: string; // lo que ve la clienta en «Más info» de la app
 }
 

@@ -22,3 +22,13 @@ export const POLITICAS = {
   garantia: 'Tienes 7 días naturales para avisarnos si algo del resultado necesita ajuste o tiene algún desperfecto; el ajuste no tiene costo. No incluye un servicio nuevo o distinto al que se hizo.',
   pedidos: 'Los productos pagados se guardan 10 días para que pases por ellos. Después vuelven a la venta y el pago queda como saldo a favor.'
 };
+
+/** Políticas de reserva en la app de clientas (proceso estándar del 28 de octubre de 2026): la solicitud aparta el
+ *  horario, Cristina valora con las fotos y respuestas, acuerda precio y anticipo, y entonces confirma. */
+export const POLITICAS_RESERVA = [
+  'Tu solicitud aparta el horario mientras Cristina la revisa. Te confirmamos por WhatsApp.',
+  'Los precios son «desde»: con tus fotos y respuestas Cristina te dice el precio de tu servicio antes de la cita.',
+  'Si tu servicio lleva anticipo, al confirmar te pasamos los datos para enviarlo por transferencia o depósito, o acordamos pagarlo en el salón. En la app no se cobra nada.',
+  'Cambios o cancelaciones con al menos 48 horas: conservas tu anticipo. Con menos, o si no llegas, se pierde.',
+  'Citas para el mismo día: solo por WhatsApp, según la agenda de Cristina.'
+];

@@ -7,6 +7,7 @@ import {
 } from '../../salon-control-app/src/utils/lealtad';
 import { saldoDe } from '../../salon-control-app/src/utils/saldo';
 import { CHECKS_CLIENTA, OPCIONES_REDES, VERSION_CONSENTIMIENTO, textoFirmado } from '../../salon-control-app/src/utils/consentimiento';
+import { DESCRIPCIONES_SERVICIO } from '../../salon-control-app/src/data/descripcionesServicios';
 import { guardar, leer, uno, type EnvDexie } from './dexie';
 import { calendariosAgenda, ocupadoGoogle, type EnvGoogle } from './google';
 import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
@@ -93,7 +94,8 @@ const enLinea = (s: any) => !s.archivado && Number(s.precioSugerido) > 0 && !/fo
 /** GET /api/servicios → catálogo vivo con precios «desde» (lo mismo que ve el salón en CB Control) */
 async function servicios(env: Env) {
   const lista = (await leer<any>(env, 'servicios')).filter(enLinea)
-    .map(s => ({ id: s.id, nombre: s.nombre, categoria: s.categoria, precio: s.precioSugerido, anticipo: s.anticipoSugerido || 0, duracion: s.duracion || 60 }));
+    .map(s => ({ id: s.id, nombre: s.nombre, categoria: s.categoria || 'otros', precio: s.precioSugerido, anticipo: s.anticipoSugerido || 0, duracion: s.duracion || 60,
+      descripcion: s.descripcion || DESCRIPCIONES_SERVICIO[s.id] || '' }));
   return new Response(JSON.stringify({ servicios: lista }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
 }
 
@@ -108,7 +110,8 @@ async function disponibilidad(env: Env, url: URL) {
   if (!s) throw new ErrorCliente('Ese servicio no se agenda en línea');
   const fechas = Array.from({ length: dias }, (_, i) => masDias(desde, i));
   const res = await Promise.all(fechas.map(async fecha => ({
-    fecha, horas: [...new Set((await libresDelDia(env, ag, fecha, servicioId)).map(h => h.hora))]
+    // El mismo día no se agenda en línea: Cristina lo revisa en su agenda (WhatsApp)
+    fecha, horas: fecha <= hoyHermosillo() ? [] : [...new Set((await libresDelDia(env, ag, fecha, servicioId)).map(h => h.hora))]
   })));
   return json({ servicio: { id: s.id, nombre: s.nombre, duracion: s.duracion, precio: s.precioSugerido, anticipo: s.anticipoSugerido || 0 }, dias: res });
 }
@@ -166,11 +169,29 @@ async function aviso(env: Env, ctx: ExecutionContext, realmId: string, a: { tipo
   if (op.whatsapp !== false) ctx.waitUntil(avisarSalon(env, `${a.titulo}. ${a.detalle}`));
 }
 
-/** POST /api/citas → la cita queda «pendiente» (ya aparta el horario) hasta que el salón la confirma */
+// Cómo está su cabello hoy (para que Cristina valore el precio) y hasta 4 fotos en JPEG reducido
+const LARGOS = ['corto', 'hombros', 'media espalda', 'cintura o más'], COLORES = ['natural', 'tinte', 'decoloración o mechas'];
+function valoracionDe(v: any) {
+  if (!v || typeof v !== 'object') return undefined;
+  const out = {
+    largo: LARGOS.includes(v.largo) ? v.largo as string : undefined,
+    color: COLORES.includes(v.color) ? v.color as string : undefined,
+    quimicos: v.quimicos === true ? true : v.quimicos === false ? false : undefined,
+    busca: String(v.busca || '').trim().slice(0, 300) || undefined
+  };
+  return Object.values(out).some(x => x !== undefined) ? out : undefined;
+}
+const resumenValoracion = (v?: ReturnType<typeof valoracionDe>) => v ? ` · cabello: ${[v.largo, v.color, v.quimicos ? 'con químicos (6 meses)' : v.quimicos === false ? 'sin químicos' : '', v.busca && `busca «${v.busca}»`].filter(Boolean).join(', ')}` : '';
+const fotosDe = (f: unknown) => (Array.isArray(f) ? f : []).slice(0, 4).map(String)
+  .filter(x => /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(x) && x.length < 600_000);
+
+/** POST /api/citas → la cita queda «pendiente» (ya aparta el horario) hasta que el salón la valora y confirma */
 async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Sesion | null) {
   const d = validarClienta(sesion ? { ...body, telefono: sesion.tel } : body);
   const { servicioId, fecha, hora } = body;
   if (!FECHA.test(fecha) || !HORA.test(hora)) throw new ErrorCliente('Elige fecha y hora');
+  if (fecha <= hoyHermosillo()) throw new ErrorCliente('Las citas para hoy las revisa Cristina en su agenda: escríbenos por WhatsApp.');
+  const valoracion = valoracionDe(body.valoracion), fotos = fotosDe(body.fotos);
   const notas = String(body.notas || '').trim().slice(0, 500);
   const ag = await cargarAgenda(env, fecha, masDias(fecha, 1));
   if (!ag.realmId) throw new Error('Sin realm del salón en configuración');
@@ -202,14 +223,23 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
   const { cliente, pendiente } = await clientaPorTelefono(env, ag.realmId, d, !!body.club, !!sesion);
   const cita = {
     id: id('cita_app'), clienteId: cliente.id, servicioId, fecha, hora, estado: 'pendiente', notas: notas || undefined, creada: new Date().toISOString(),
-    montoAnticipo: s.anticipoSugerido || 0, anticipoConfirmado: false, atiendeId: libre.personaId, origen: 'app', realmId: ag.realmId
+    montoAnticipo: s.anticipoSugerido || 0, anticipoConfirmado: false, atiendeId: libre.personaId, origen: 'app', realmId: ag.realmId,
+    valoracion
   };
   await guardar(env, 'citas', [cita]);
+  // Las fotos van aparte (pesan) y no deben tumbar la cita: si fallan, la cita queda y el aviso lo dice
+  let fotosGuardadas = 0;
+  if (fotos.length) {
+    try {
+      await guardar(env, 'fotos', fotos.map((imagen, i) => ({ id: id('foto'), citaId: cita.id, clienteId: cliente.id, fecha: new Date().toISOString(), orden: i, imagen, realmId: ag.realmId })));
+      fotosGuardadas = fotos.length;
+    } catch (e) { console.log('fotos', (e as Error).message); }
+  }
   // A la clienta: «recibimos tu solicitud» (cuando el WhatsApp del salón esté conectado)
   if (sesion) ctx.waitUntil(plantilla(env, d.telefono, 'cita_recibida', [d.nombre.split(' ')[0], s.nombre, fechaLegible(fecha), hora]));
   await aviso(env, ctx, ag.realmId, {
     tipo: 'cita', titulo: `Nueva cita desde la app: ${cliente.nombre}`,
-    detalle: `${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${notas ? ` · «${notas}»` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
+    detalle: `${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${notas ? ` · «${notas}»` : ''}${resumenValoracion(valoracion)}${fotos.length ? ` · ${fotosGuardadas ? `${fotosGuardadas} foto(s)` : 'mandó fotos pero no se guardaron: pídeselas por WhatsApp'}` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
     refId: cita.id, clienteId: cliente.id
   });
   return respuesta(cita.id);

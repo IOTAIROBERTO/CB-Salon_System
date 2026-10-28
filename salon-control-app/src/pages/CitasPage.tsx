@@ -7,6 +7,7 @@ import CitaCard from "../components/citas/CitaCard";
 import CitaModal from "../components/citas/CitaModal";
 import CobroModal from "../components/citas/CobroModal";
 import ReagendarModal from "../components/citas/ReagendarModal";
+import CalendarioGoogle from "../components/citas/CalendarioGoogle";
 
 export default function CitasPage() {
   const {
@@ -24,6 +25,7 @@ export default function CitasPage() {
   } = useCitas();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [vista, setVista] = useState<"lista" | "google">("lista");
 
   const filteredCitas = useMemo(() => {
     const cerrada = (c: { estado: string }) => c.estado === 'completada' || c.estado === 'cancelada';
@@ -66,6 +68,14 @@ export default function CitasPage() {
       {/* Estadísticas */}
       <CitasStats citas={citas} servicios={servicios} />
 
+      {/* Lista de citas o el Google Calendar de Cristina */}
+      <div className="mb-4 flex rounded-lg bg-gray-100 p-1 w-fit">
+        <button onClick={() => setVista("lista")} className={`rounded-md px-4 py-1.5 text-sm ${vista === "lista" ? "bg-white font-medium shadow-sm" : "text-gray-500"}`}>Lista</button>
+        <button onClick={() => setVista("google")} className={`rounded-md px-4 py-1.5 text-sm ${vista === "google" ? "bg-white font-medium shadow-sm" : "text-gray-500"}`}>Calendario de Google</button>
+      </div>
+      {vista === "google" && <CalendarioGoogle />}
+
+      {vista === "lista" && <>
       {/* Buscador */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <input
@@ -119,6 +129,7 @@ export default function CitasPage() {
           </div>
         )}
       </div>
+      </>}
 
       {/* Modales */}
       {modalState.type === "create" && (

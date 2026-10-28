@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, MessageCircle } from 'lucide-react'
+import { Camera, Check, MessageCircle, X } from 'lucide-react'
 import Encabezado from '@/components/Encabezado'
-import { NOMBRE_CLUB, POLITICAS, SERVICIOS, enlaceWhatsApp, nombreCategoria, pesos, type Servicio } from '@/salon'
+import { DESCRIPCIONES_SERVICIO, NOMBRE_CLUB, POLITICAS_RESERVA, SERVICIOS, enlaceWhatsApp, nombreCategoria, pesos, type Servicio } from '@/salon'
+import { reducirFoto } from '@/fotos'
 import { fechaCumple } from '@/components/UnirmeClub'
 import { crearCita, disponibilidad, misDatos, pedirCodigo, recordarDatos, serviciosEnLinea, sesion, verificarCodigo, type DiaLibre } from '@/api'
 import NoSoyRobot, { conTurnstile } from '@/components/NoSoyRobot'
@@ -38,6 +39,19 @@ export default function Agendar() {
   const otroRobot = () => { setRobot(''); setVueltaRobot(v => v + 1) }
   const [reto, setReto] = useState('')            // código por WhatsApp pedido para confirmar el teléfono
   const [codigo, setCodigo] = useState('')
+  // Cómo trae su cabello (servicios de color): con esto y las fotos Cristina valora el precio antes de la cita
+  const [cabello, setCabello] = useState<{ largo?: string; color?: string; quimicos?: boolean; busca?: string }>({})
+  const [fotos, setFotos] = useState<string[]>([])
+  const [subiendo, setSubiendo] = useState(false)
+  const pideValoracion = elegido?.categoria === 'color'
+  const descripcion = (s: Servicio) => s.descripcion || DESCRIPCIONES_SERVICIO[s.id] || ''
+  const agregarFotos = async (lista: FileList | null) => {
+    if (!lista) return
+    setSubiendo(true); setError('')
+    try { for (const f of [...lista].slice(0, 4 - fotos.length)) { const foto = await reducirFoto(f); setFotos(v => [...v, foto].slice(0, 4)) } }
+    catch { setError('No se pudo leer una foto. Prueba con otra (JPG o PNG).') }
+    finally { setSubiendo(false) }
+  }
   // En el celular el formulario queda abajo de la lista y se baja a él; en computadora ya está a la derecha
   const bajarAlFormulario = () => { if (!matchMedia('(min-width: 1024px)').matches) formulario.current?.scrollIntoView({ behavior: 'smooth' }) }
 
@@ -58,7 +72,8 @@ export default function Agendar() {
     if (!elegido || !hora) return
     setEnviando(true); setError('')
     try {
-      const r = await crearCita({ servicioId: elegido.id, fecha, hora, ...datos, notas, club, sitio: trampa, turnstile: robot })
+      const r = await crearCita({ servicioId: elegido.id, fecha, hora, ...datos, notas, club, sitio: trampa, turnstile: robot,
+        ...(pideValoracion ? { valoracion: cabello, fotos } : {}) })
       recordarDatos(datos)
       setLista(r.cita)
       setReto('')
@@ -101,6 +116,10 @@ export default function Agendar() {
       </nav>
       <main className="contenido space-y-10 px-6 pb-8 lg:grid lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start lg:gap-14 lg:space-y-0">
         <div className="space-y-10">
+        <div className="rounded-sm border-l-2 border-marca-dorado bg-white p-4 text-sm leading-relaxed text-marca-grafito">
+          <p className="text-marca-negro">¿No sabes cuál pedir?</p>
+          <p className="mt-1 text-marca-gris">Elige el que más se parezca: con tus fotos Cristina te dice cuál necesitas y su precio antes de tu cita. Toca «Más info» para ver qué es cada uno, o <a href={enlaceWhatsApp('Hola, no sé qué servicio pedir. Te mando fotos de mi cabello:')} className="underline">pregúntanos por WhatsApp</a>.</p>
+        </div>
         {!catalogo && <p className="text-sm text-marca-gris">Cargando servicios…</p>}
         {categorias.map(cat => (
           <section key={cat} id={`cat-${cat}`} className="scroll-mt-16">
@@ -109,8 +128,9 @@ export default function Agendar() {
               {(catalogo || []).filter(s => s.categoria === cat).map(s => {
                 const activo = elegido?.id === s.id
                 return (
-                  <button key={s.id} onClick={() => { setLista(null); setElegido(s) }}
-                    className="flex w-full items-center gap-4 border-b border-marca-linea/70 py-4 text-left transition-colors">
+                  <div key={s.id} className="border-b border-marca-linea/70">
+                  <button onClick={() => { setLista(null); setElegido(s) }}
+                    className="flex w-full items-center gap-4 pb-2 pt-4 text-left transition-colors">
                     <span className="min-w-0 flex-1">
                       <span className={`block font-display text-xl leading-snug ${activo ? 'text-marca-dorado-prof' : 'text-marca-negro'}`}>{s.nombre}</span>
                       <span className="mt-0.5 block text-xs tracking-wide text-marca-gris">{horas(s.duracion)}</span>
@@ -123,6 +143,10 @@ export default function Agendar() {
                       {activo && <Check size={13} strokeWidth={2} />}
                     </span>
                   </button>
+                  {descripcion(s)
+                    ? <details className="pb-3 text-sm text-marca-gris"><summary className="cursor-pointer text-[11px] uppercase tracking-[0.18em] text-marca-dorado-prof">Más info</summary><p className="mt-1 leading-relaxed">{descripcion(s)}</p></details>
+                    : <div className="pb-2" />}
+                  </div>
                 )
               })}
             </div>
@@ -166,6 +190,7 @@ export default function Agendar() {
                     })}
                   </div>
                   {!dias.some(d => d.horas.length) && <p className="mt-2 text-sm text-marca-gris">No hay horarios libres en las próximas dos semanas. Escríbenos y te buscamos lugar.</p>}
+                  <p className="mt-2 text-xs text-marca-gris">¿Para hoy? Cristina lo revisa en su agenda: <a href={enlaceWhatsApp(`Hola, ¿tienen espacio hoy para ${elegido.nombre}?`)} className="underline">escríbenos por WhatsApp</a>.</p>
                 </div>
                 {fecha && (
                   <div>
@@ -179,6 +204,51 @@ export default function Agendar() {
                   </div>
                 )}
               </>
+            )}
+
+            {pideValoracion && (
+              <div className="space-y-4 rounded-sm bg-marca-marfil p-4">
+                <div>
+                  <p className="rotulo">Tu cabello hoy</p>
+                  <p className="mt-1 text-xs leading-relaxed text-marca-gris">Con esto y tus fotos Cristina te confirma el precio antes de tu cita.</p>
+                </div>
+                <div>
+                  <span className="text-xs text-marca-gris">Largo</span>
+                  <div className="mt-1 flex flex-wrap gap-2">{['corto', 'hombros', 'media espalda', 'cintura o más'].map(o => (
+                    <button key={o} type="button" onClick={() => setCabello({ ...cabello, largo: o })} className={`rounded-full border px-3 py-1 text-xs ${cabello.largo === o ? 'border-marca-negro bg-marca-negro text-white' : 'border-marca-linea bg-white'}`}>{o}</button>))}</div>
+                </div>
+                <div>
+                  <span className="text-xs text-marca-gris">¿Qué color tienes ahora?</span>
+                  <div className="mt-1 flex flex-wrap gap-2">{['natural', 'tinte', 'decoloración o mechas'].map(o => (
+                    <button key={o} type="button" onClick={() => setCabello({ ...cabello, color: o })} className={`rounded-full border px-3 py-1 text-xs ${cabello.color === o ? 'border-marca-negro bg-marca-negro text-white' : 'border-marca-linea bg-white'}`}>{o}</button>))}</div>
+                </div>
+                <div>
+                  <span className="text-xs text-marca-gris">¿Alaciado, keratina o permanente en los últimos 6 meses?</span>
+                  <div className="mt-1 flex gap-2">{[true, false].map(o => (
+                    <button key={String(o)} type="button" onClick={() => setCabello({ ...cabello, quimicos: o })} className={`rounded-full border px-4 py-1 text-xs ${cabello.quimicos === o ? 'border-marca-negro bg-marca-negro text-white' : 'border-marca-linea bg-white'}`}>{o ? 'Sí' : 'No'}</button>))}</div>
+                </div>
+                <label className="block">
+                  <span className="text-xs text-marca-gris">¿Qué resultado buscas?</span>
+                  <input className="campo" value={cabello.busca || ''} onChange={e => setCabello({ ...cabello, busca: e.target.value })} placeholder="Rubio más claro, cubrir canas…" />
+                </label>
+                <div>
+                  <span className="text-xs text-marca-gris">Fotos de tu cabello (frente, atrás y raíz; hasta 4)</span>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {fotos.map((f, i) => (
+                      <span key={i} className="relative">
+                        <img src={f} alt={`Foto ${i + 1}`} className="h-16 w-16 rounded-sm object-cover" />
+                        <button type="button" onClick={() => setFotos(fotos.filter((_, j) => j !== i))} className="absolute -right-1.5 -top-1.5 rounded-full bg-marca-negro p-0.5 text-white" aria-label="Quitar foto"><X size={12} /></button>
+                      </span>
+                    ))}
+                    {fotos.length < 4 && (
+                      <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-sm border border-dashed border-marca-linea bg-white text-marca-gris">
+                        {subiendo ? '…' : <Camera size={18} strokeWidth={1.4} />}
+                        <input type="file" accept="image/*" multiple className="hidden" onChange={e => { agregarFotos(e.target.files); e.target.value = '' }} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
 
             <label className="block">
@@ -204,10 +274,13 @@ export default function Agendar() {
               </label>
             )}
             <input className="hidden" tabIndex={-1} autoComplete="off" value={trampa} onChange={e => setTrampa(e.target.value)} aria-hidden="true" />
-            <p className="border-l border-marca-dorado pl-3 text-xs leading-relaxed text-marca-gris">
-              Al enviar, tu solicitud llega al salón y te confirmamos por WhatsApp y te mandamos el anticipo{elegido.anticipo ? ` (${pesos(elegido.anticipo)})` : ''}.
-              Los precios son desde: el final se confirma en tu valoración. {POLITICAS.cambios}
-            </p>
+            <div className="border-l border-marca-dorado pl-3 text-xs leading-relaxed text-marca-gris">
+              <p className="rotulo mb-1">Políticas de reserva</p>
+              <ul className="list-disc space-y-1 pl-4">
+                {POLITICAS_RESERVA.map(p => <li key={p}>{p}</li>)}
+                {elegido.anticipo > 0 && <li>Anticipo de este servicio: {pesos(elegido.anticipo)}.</li>}
+              </ul>
+            </div>
             {reto && (
               <div className="space-y-3 rounded-sm bg-marca-marfil p-4">
                 <p className="text-sm leading-relaxed text-marca-grafito">Te mandamos un código por WhatsApp al {datos.telefono}. Escríbelo para apartar tu horario.</p>
@@ -237,10 +310,12 @@ export default function Agendar() {
             <h2 className="titulo text-3xl">¡Listo, {datos.nombre.split(' ')[0]}!</h2>
             <p className="text-sm leading-relaxed text-marca-gris">
               {lista.servicio} · {new Date(`${lista.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })} a las {lista.hora}.
-              Te confirmamos tu cita por WhatsApp{lista.anticipo ? ` y te mandamos el anticipo de ${pesos(lista.anticipo)}` : ''}.
+              Cristina revisa tu solicitud y te escribe por WhatsApp con el precio de tu servicio{lista.anticipo ? ' y, para confirmar, los datos de tu anticipo' : ''}.
               Si tu servicio lo pide, también te llega tu consentimiento para firmarlo aquí en la app.
             </p>
-            <button onClick={() => { setLista(null); setElegido(null); setHora(''); setFecha('') }} className="text-xs uppercase tracking-[0.2em] text-marca-dorado-prof">Agendar otra cita</button>
+            <a href={enlaceWhatsApp(`Hola, soy ${datos.nombre.trim()}. Acabo de pedir mi cita en la app: ${lista.servicio}, el ${new Date(`${lista.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })} a las ${lista.hora}.${fotos.length ? ' Ya mandé fotos de mi cabello.' : ''}`)}
+              className="boton w-full"><MessageCircle size={16} strokeWidth={1.5} /> Avisar a Cristina por WhatsApp</a>
+            <button onClick={() => { setLista(null); setElegido(null); setHora(''); setFecha(''); setFotos([]); setCabello({}) }} className="text-xs uppercase tracking-[0.2em] text-marca-dorado-prof">Agendar otra cita</button>
           </section>
         )}
       </main>

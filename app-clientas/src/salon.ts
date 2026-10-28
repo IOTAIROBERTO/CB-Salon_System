@@ -1,16 +1,17 @@
 // Lo que la app toma de CB Control (una sola fuente de verdad): datos del salón, políticas, catálogo y reglas del Club.
 // Cuando exista la API (Cloudflare Workers), el catálogo y los puntos de cada clienta vendrán de ahí.
-import { DATOS_SALON, POLITICAS } from '@salon/data/datosSalon'
+import { DATOS_SALON, POLITICAS, POLITICAS_RESERVA } from '@salon/data/datosSalon'
 import catalogo from '@salon/data/servicios_dataset.json'
 
-export { DATOS_SALON, POLITICAS }
+export { DATOS_SALON, POLITICAS, POLITICAS_RESERVA }
+export { DESCRIPCIONES_SERVICIO } from '@salon/data/descripcionesServicios'
 export { MENU_ANTOJOS, CORTESIAS_SIEMPRE } from '@salon/data/menuAntojos'
 export {
   NOMBRE_CIRCULO as NOMBRE_CLUB, NOMBRE_NIVEL, NIVELES, BENEFICIOS_NIVEL, REGALOS_NIVEL, CLAVES_REGALO, ANIVERSARIO_PUNTOS, DIAS_PUNTOS_DOBLES,
   PARAMETROS_CIRCULO as REGLAS_CLUB, REGLA_CANJE, AVISO_GASTO, textoSaldoPuntos, montoCanje, montoTarjeta, multiplicador, umbral
 } from '@salon/utils/lealtad'
 
-export interface Servicio { id: string; nombre: string; categoria: string; precio: number; anticipo: number; duracion: number }
+export interface Servicio { id: string; nombre: string; categoria: string; precio: number; anticipo: number; duracion: number; descripcion?: string }
 
 const CATEGORIAS: Record<string, string> = {
   color: 'Color', corte: 'Corte', tratamiento: 'Tratamientos', maquillaje: 'Maquillaje', peinado: 'Peinado'

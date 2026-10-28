@@ -30,7 +30,8 @@ export const useServicioModal = () => {
       comision: servicio.comision || 0,
       duracion: servicio.duracion || 60,
       tiempoProceso: servicio.tiempoProceso || 0,
-      tiempoCierre: servicio.tiempoCierre || 0
+      tiempoCierre: servicio.tiempoCierre || 0,
+      descripcion: servicio.descripcion || ''
     });
     setEditingServicio(servicio);
     setIsModalOpen(true);

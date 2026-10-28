@@ -24,6 +24,7 @@ export default function ConfiguracionPage() {
         telefono: settings.telefono,
         direccion: settings.direccion,
         email: settings.email,
+        datosPago: settings.datosPago || '',
         emailConfig: settings.emailConfig || { serviceId: '', templateId: '', publicKey: '' }
       });
     }
@@ -34,7 +35,8 @@ export default function ConfiguracionPage() {
       nombreSalon: formData.nombreSalon,
       telefono: formData.telefono,
       direccion: formData.direccion,
-      email: formData.email
+      email: formData.email,
+      datosPago: formData.datosPago
     });
     showSavedMessage('Configuración General Guardada');
   };
@@ -126,6 +128,19 @@ export default function ConfiguracionPage() {
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Datos para el anticipo</label>
+            <textarea
+              className="w-full border rounded p-2 text-sm"
+              rows={4}
+              placeholder={`Mercado Pago: …
+BBVA, CLABE: …
+A nombre de: …`}
+              value={formData.datosPago || ''}
+              onChange={e => setFormData({ ...formData, datosPago: e.target.value })}
+            />
+            <p className="text-xs text-gray-500 mt-1">Se pegan en el WhatsApp cuando pides el anticipo por transferencia o depósito al valorar una cita.</p>
           </div>
           <button onClick={handleSaveGeneral} className="bg-purple-600 text-white px-4 py-2 rounded">
             <Save size={16} className="inline mr-2" /> Guardar

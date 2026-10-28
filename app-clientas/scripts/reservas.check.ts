@@ -13,8 +13,9 @@ while (new Date(`${lunes}T12:00:00Z`).getUTCDay() !== 1) lunes = dia(Math.round(
 
 const tablas: Record<string, any[]> = {
   configuracion: [{ id: 'settings', realmId: 'r' }],
-  servicios: [{ id: 's1', nombre: 'Corte de cabello', categoria: 'corte', precioSugerido: 500, duracion: 60 }],
-  empleados: [], empleadoEvents: [], clientes: [], citas: [], avisos: []
+  servicios: [{ id: 's1', nombre: 'Corte de cabello', categoria: 'corte', precioSugerido: 500, duracion: 60 },
+    { id: 's07', nombre: 'Retoque de raíz', precioSugerido: 550, duracion: 90 }],
+  empleados: [], empleadoEvents: [], clientes: [], citas: [], avisos: [], fotos: []
 };
 const whatsapp: string[] = [];
 globalThis.fetch = (async (entrada: any, init: any = {}) => {
@@ -65,6 +66,29 @@ assert.equal((await post(conWhatsApp, 'citas', cita('6629999999', { hora: '12:00
 const nueva = tablas.citas.find(c => c.hora === '12:00');
 assert.equal(tablas.clientes.find(c => c.id === nueva.clienteId).telefono, '6620000004');
 assert.ok(nueva.creada && whatsapp.includes('cita_recibida'));
+
+// El mismo día no se agenda en línea (Cristina lo revisa por WhatsApp): sin horarios y rechazo al pedirlo
+const hoyDisp = await (await atender(new Request(`https://app/api/disponibilidad?servicioId=s1&desde=${dia(0)}&dias=1`), base as any, ctx)).json();
+assert.deepEqual(hoyDisp.dias, [{ fecha: dia(0), horas: [] }]);
+const paraHoy = await post(base, 'citas', cita('6620000005', { fecha: dia(0) }));
+assert.equal(paraHoy.status, 400);
+assert.match((await paraHoy.json()).error, /WhatsApp/);
+
+// Catálogo: descripción de «Más info» (la de CB Control o la de respaldo) y categoría «otros» si falta
+const catalogo = (await (await atender(new Request('https://app/api/servicios'), base as any, ctx)).json()).servicios;
+assert.equal(catalogo.find((x: any) => x.id === 's07').descripcion.startsWith('Color solo en la raíz'), true);
+assert.equal(catalogo.find((x: any) => x.id === 's07').categoria, 'otros');
+
+// Preguntas del cabello y fotos: quedan en la cita y en «fotos»; lo inválido se descarta; el aviso lo resume
+const jpg = 'data:image/jpeg;base64,' + 'A'.repeat(400);
+assert.equal((await post(base, 'citas', cita('6620000006', { hora: '14:00',
+  valoracion: { largo: 'hombros', color: 'tinte', quimicos: false, busca: 'Rubio miel', extra: 'x' },
+  fotos: [jpg, jpg, '<svg onload=alert(1)>', 'data:image/svg+xml;base64,AAAA'] }))).status, 201);
+const conFotos = tablas.citas.find(c => c.hora === '14:00');
+assert.deepEqual(conFotos.valoracion, { largo: 'hombros', color: 'tinte', quimicos: false, busca: 'Rubio miel' });
+assert.equal(tablas.fotos.filter(f => f.citaId === conFotos.id).length, 2);
+assert.ok(tablas.avisos.some(a => a.refId === conFotos.id && /2 foto\(s\)/.test(a.detalle) && /cabello: hombros, tinte/.test(a.detalle)));
+tablas.citas = tablas.citas.filter(c => c !== conFotos);
 
 // Recordatorio al salón: citas de la app sin confirmar después de 2 h, cada 4 h, solo de 9 a 21 h (Hermosillo, UTC−7)
 const a10 = Date.parse(`${dia(0)}T17:00:00Z`);   // 10:00 en Hermosillo

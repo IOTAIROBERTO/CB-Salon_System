@@ -65,6 +65,7 @@ export interface AppSettings {
     telefono: string;
     email: string;
     tipoCambioUSD: number; // For Currency Feature
+    datosPago?: string; // Datos para el anticipo (Mercado Pago, BBVA…): solo en la base, nunca en el repositorio
     emailConfig?: {
         serviceId: string;
         templateId: string;
@@ -135,6 +136,20 @@ export interface Cita {
     recordatorio?: string; // ISO: cuándo se le mandó el recordatorio del día anterior
     creada?: string; // ISO: cuándo llegó desde la app
     recordatorioSalon?: string; // ISO: último aviso al salón de que sigue sin confirmar (Worker cb-avisos)
+    // Valoración (proceso estándar): cómo trae el cabello, lo que acordó Cristina y cómo se paga el anticipo
+    valoracion?: { largo?: string; color?: string; quimicos?: boolean; busca?: string };
+    precioAcordado?: number; // precio que Cristina confirmó después de valorar (el de catálogo es «desde»)
+    formaAnticipo?: 'transferencia' | 'deposito' | 'salon' | 'incluido' | 'sin';
+}
+
+/** Fotos del cabello que manda la clienta con su solicitud (JPEG reducido, data URL) */
+export interface FotoCita {
+    id: string;
+    citaId: string;
+    clienteId: string;
+    fecha: string; // ISO
+    orden: number;
+    imagen: string;
 }
 
 export interface Venta {
@@ -332,6 +347,7 @@ export class SalonDatabase extends Dexie {
     tarjetasRegalo!: Table<TarjetaRegalo>;
     movimientosSaldo!: Table<MovimientoSaldo>;
     avisos!: Table<Aviso>;
+    fotos!: Table<FotoCita>;
 
     // New Tables
     documentos!: Table<SalonDocument>;
@@ -383,6 +399,10 @@ export class SalonDatabase extends Dexie {
             avisos: 'id, fecha, tipo, leido'
         });
 
+        this.version(6).stores({
+            fotos: 'id, citaId, clienteId'
+        });
+
         this.cloud.configure({
             databaseUrl: DEXIE_CLOUD_URL,
             requireAuth: true, // Pide iniciar sesión por email antes de abrir la base
@@ -425,7 +445,7 @@ export class SalonDatabase extends Dexie {
 const TABLAS_DEL_SALON = new Set([
     'clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos', 'configuracion',
     'empleados', 'campanas', 'plantillas', 'automatizaciones', 'empleadoEvents',
-    'proveedores', 'compras', 'consentimientos', 'tarjetasRegalo', 'movimientosSaldo', 'avisos'
+    'proveedores', 'compras', 'consentimientos', 'tarjetasRegalo', 'movimientosSaldo', 'avisos', 'fotos'
 ]);
 
 let realmSalonId: string | undefined;
