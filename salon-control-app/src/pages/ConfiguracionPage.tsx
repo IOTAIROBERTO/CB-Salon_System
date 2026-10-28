@@ -233,6 +233,7 @@ export default function ConfiguracionPage() {
           <ul className="list-disc ml-5 space-y-1">
             <li>Cada minuto se copian al Google Calendar de Cristina las citas activas (pendientes, confirmadas, en curso) y los días de vacaciones y apoyo del equipo. Si una cita se cancela o se borra aquí, también desaparece de Google.</li>
             <li>La app de clientas consulta Google en el momento: lo que Cristina tenga como <strong>Ocupado</strong> en su calendario no se ofrece como horario libre. Lo marcado como <strong>Disponible</strong> (y lo que copia CB Control) no quita horarios.</li>
+            <li>CB Control también lo respeta: en el Calendario aparece como «G Ocupado» (sin el título del evento), la agenda del día lo marca como no disponible y al agendar avisa si choca. Se actualiza cada minuto.</li>
             <li>Los cambios a una cita se hacen aquí; si se editan en Google, se reemplazan en la siguiente copia.</li>
             <li>Auxiliar con calendario propio: que lo comparta con la cuenta de servicio del salón («Hacer cambios en eventos») y escribe su correo en Empleados → Google Calendar ID.</li>
           </ul>

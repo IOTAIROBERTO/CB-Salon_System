@@ -92,6 +92,9 @@ Conexión desde el servidor con una **cuenta de servicio** (sin ventanas de perm
   vacaciones/apoyo del equipo. Cada evento lleva la marca privada `cb=1` con el id y una firma: solo se escribe lo que
   cambió; lo cancelado o borrado sale de Google; las completadas se quedan. Una cita va al calendario de quien la atiende
   (si tiene «Google Calendar ID»), si no al de Cristina.
+- **Ocupado → CB Control** (mismo Worker, cada minuto): lo ocupado en Google de los próximos 180 días, sin títulos, se
+  guarda en Dexie como `configuracion/ocupadoGoogle` (solo si cambió; si un calendario falla no se toca). CB Control lo
+  suma a los bloqueos de su agenda (`useAgenda`) y lo muestra en el Calendario como «G Ocupado».
 
 Puesta en marcha (una sola vez, proyecto de Google Cloud «CristinaBorquezSalon», con la Google Calendar API habilitada):
 

@@ -16,9 +16,10 @@ const env = {
 
 const tablas: Record<string, any[]> = {
   servicios: [{ id: 's1', nombre: 'Corte', duracion: 60, precioSugerido: 500 }],
-  empleados: [{ id: 'e1', nombre: 'Ana', googleCalendarId: 'ana@gmail.com' }],
+  empleados: [{ id: 'e1', nombre: 'Ana', googleCalendarId: 'ana@gmail.com', activo: true, tomaCitas: true }],
   empleadoEvents: [{ id: 'ev1', empleadoId: 'e1', tipo: 'vacaciones', fechaInicio: manana, fechaFin: manana }],
   clientes: [{ id: 'k1', nombre: 'Laura Pérez', telefono: '6621234567' }],
+  configuracion: [{ id: 'settings', realmId: 'rlm1' }],
   citas: [
     { id: 'c1', clienteId: 'k1', servicioId: 's1', fecha: manana, hora: '10:00', estado: 'pendiente' },
     { id: 'c2', clienteId: 'k1', servicioId: 's1', fecha: manana, hora: '12:00', estado: 'confirmada', atiendeId: 'e1' },
@@ -56,6 +57,11 @@ globalThis.fetch = (async (entrada: any, init: any = {}) => {
   if (url.host === 'dexie') {
     if (url.pathname === '/token') return resp({ accessToken: 'd' });
     const [, , tabla, id] = url.pathname.split('/');
+    if (metodo === 'POST') {
+      llamadas.push(`POST dexie ${tabla}`);
+      for (const o of JSON.parse(init.body)) tablas[tabla] = [...tablas[tabla].filter(f => f.id !== o.id), o];
+      return resp(null);
+    }
     const filas = tablas[tabla].filter(f => [...url.searchParams].every(([k, v]) => f[k] === v));
     return id ? resp(tablas[tabla].find(f => f.id === id) ?? null, tablas[tabla].some(f => f.id === id) ? 200 : 404) : resp(filas);
   }
@@ -63,6 +69,7 @@ globalThis.fetch = (async (entrada: any, init: any = {}) => {
   const [, cal, , eventoId] = url.pathname.replace('/calendar/v3/calendars/', '/').split('/').map(decodeURIComponent);
   llamadas.push(`${metodo} ${cal}${eventoId ? ` ${eventoId}` : ''}`);
   const lista = google[cal];
+  if (!lista) return resp({ error: { code: 404, message: 'Not Found' } }, 404);   // calendario sin compartir
   if (metodo === 'GET') {
     const min = url.searchParams.get('timeMin'), max = url.searchParams.get('timeMax');
     const fin = (e: any) => new Date(e.end.dateTime || `${e.end.date}T00:00:00-07:00`).getTime();
@@ -81,7 +88,12 @@ const bloqueos = await ocupadoGoogle(env, [{ personaId: 'cristina', calendario: 
 assert.deepEqual(bloqueos.map(b => [b.desde, b.hasta]), [[`${manana}T15:00`, `${manana}T16:00`], [`${pasado}T00:00`, `${dia(3)}T00:00`]]);
 
 // Espejo: c1 se reescribe, c2 y las vacaciones van al calendario de Ana, la borrada sale, la completada se queda, c4 (ayer) no entra
-assert.deepEqual(await espejo(env), { creados: 2, cambiados: 1, borrados: 1, pendientes: 0, errores: 0 });
+assert.deepEqual(await espejo(env), { creados: 2, cambiados: 1, borrados: 1, pendientes: 0, errores: 0, ocupado: 2 });
+// Lo ocupado queda en CB Control (sin títulos), con el realm del salón
+const guardado = tablas.configuracion.find(f => f.id === 'ocupadoGoogle');
+assert.equal(guardado.realmId, 'rlm1');
+assert.deepEqual(guardado.bloqueos.map((b: any) => [b.personaId, b.desde, b.hasta, b.motivo]),
+  [['cristina', `${manana}T15:00`, `${manana}T16:00`, 'Google Calendar'], ['cristina', `${pasado}T00:00`, `${dia(3)}T00:00`, 'Google Calendar']]);
 const c1 = google['cristina@gmail.com'].find(e => e.extendedProperties?.private?.cbId === 'cita:c1');
 assert.equal(c1.summary, '(Por confirmar) Corte - Laura Pérez');
 assert.equal(c1.end.dateTime, new Date(`${manana}T11:00:00-07:00`).toISOString());
@@ -90,13 +102,26 @@ assert.ok(google['cristina@gmail.com'].some(e => e.id === 'g5') && !google['cris
 assert.deepEqual(google['ana@gmail.com'].map(e => e.extendedProperties.private.cbId).sort(), ['cita:c2', 'evento:ev1']);
 assert.deepEqual(google['ana@gmail.com'].find(e => e.extendedProperties.private.cbId === 'evento:ev1').end, { date: pasado });
 
-// Segunda vuelta sin cambios: no escribe nada
+// Segunda vuelta sin cambios: no escribe nada (ni en Google ni en CB Control)
 llamadas.length = 0;
-assert.deepEqual(await espejo(env), { creados: 0, cambiados: 0, borrados: 0, pendientes: 0, errores: 0 });
+assert.deepEqual(await espejo(env), { creados: 0, cambiados: 0, borrados: 0, pendientes: 0, errores: 0, ocupado: 'igual' });
 assert.ok(llamadas.every(l => l.startsWith('GET')));
 
 // La cita pasa a Ana: sale del calendario de Cristina y entra al de Ana
 tablas.citas[0].atiendeId = 'e1';
-assert.deepEqual(await espejo(env), { creados: 1, cambiados: 0, borrados: 1, pendientes: 0, errores: 0 });
+assert.deepEqual(await espejo(env), { creados: 1, cambiados: 0, borrados: 1, pendientes: 0, errores: 0, ocupado: 'igual' });
+
+// Ana anota algo ocupado en su Google: se agrega a CB Control con su id
+google['ana@gmail.com'].push({ id: 'a1', start: hora(pasado, '11:00'), end: hora(pasado, '12:00') });
+assert.equal((await espejo(env)).ocupado, 3);
+assert.ok(tablas.configuracion.find(f => f.id === 'ocupadoGoogle').bloqueos.some((b: any) => b.personaId === 'e1' && b.desde === `${pasado}T11:00`));
+
+// Si Google falla, lo guardado no se toca
+const antes = tablas.configuracion.find(f => f.id === 'ocupadoGoogle');
+tablas.empleados[0].googleCalendarId = 'sin-compartir@gmail.com';
+const r = await espejo(env);
+assert.equal(r.ocupado, 'error');
+assert.equal(r.errores, 1);   // el espejo de ese calendario también falla, el de Cristina sigue
+assert.equal(tablas.configuracion.find(f => f.id === 'ocupadoGoogle'), antes);
 
 console.log('google ok');

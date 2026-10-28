@@ -2,11 +2,12 @@
 // Cristina comparte su calendario con el correo de la cuenta de servicio («Hacer cambios en eventos»); cada auxiliar
 // que tenga «Google Calendar ID» en CB Control comparte el suyo igual.
 // - La app de clientas descuenta en tiempo real lo que esté «Ocupado» en esos calendarios (cada consulta lo lee).
-// - El Worker cb-avisos copia cada minuto las citas activas y los días del equipo a Google (espejo).
+// - El Worker cb-avisos, cada minuto: copia las citas activas y los días del equipo a Google (espejo) y guarda lo
+//   ocupado en Google en CB Control (configuracion/ocupadoGoogle), que lo usa como bloqueos de su agenda.
 // Sin los secretos no hace nada: la agenda sigue funcionando solo con CB Control.
-import { aMin, tramosCita, type Bloqueo } from '../../salon-control-app/src/utils/agenda';
+import { aMin, DUENA, tramosCita, type Bloqueo } from '../../salon-control-app/src/utils/agenda';
 import { nombreUbicacion, ZONAS_INICIALES } from '../../salon-control-app/src/utils/zonas';
-import { leer, uno, type EnvDexie } from './dexie';
+import { guardar, leer, uno, type EnvDexie } from './dexie';
 
 export interface EnvGoogle {
   GOOGLE_CUENTA_SERVICIO?: string;   // el JSON completo de la llave de la cuenta de servicio
@@ -85,17 +86,46 @@ export const ocupa = (e: any) =>
 export const aBloqueo = (e: any, personaId: string): Bloqueo =>
   ({ id: `g_${e.id}`, personaId, desde: horaLocal(e.start), hasta: horaLocal(e.end), motivo: 'Google Calendar' });
 
+type CalendarioPersona = { personaId: string; calendario: string };
+
+const ocupadoDe = (env: EnvGoogle, { personaId, calendario }: CalendarioPersona, desde: string, hasta: string) =>
+  eventos(env, calendario, {
+    timeMin: `${desde}T00:00:00${DESFASE}`, timeMax: `${hasta}T00:00:00${DESFASE}`,
+    fields: 'items(id,status,start,end,transparency,attendees(self,responseStatus),extendedProperties),nextPageToken'
+  }).then(l => l.filter(ocupa).map(e => aBloqueo(e, personaId)));
+
 /** Lo ocupado en Google de cada persona entre dos fechas (fin exclusivo), como bloqueos de agenda.
  *  Si Google falla se registra y la agenda sigue sin esos bloqueos (la cita igual llega «por confirmar»). */
-export async function ocupadoGoogle(env: EnvGoogle, calendarios: { personaId: string; calendario: string }[], desde: string, hasta: string) {
+export async function ocupadoGoogle(env: EnvGoogle, calendarios: CalendarioPersona[], desde: string, hasta: string) {
   if (!googleListo(env)) return [];
-  const listas = await Promise.all(calendarios.map(({ personaId, calendario }) =>
-    eventos(env, calendario, {
-      timeMin: `${desde}T00:00:00${DESFASE}`, timeMax: `${hasta}T00:00:00${DESFASE}`,
-      fields: 'items(id,status,start,end,transparency,attendees(self,responseStatus),extendedProperties),nextPageToken'
-    }).then(l => l.filter(ocupa).map(e => aBloqueo(e, personaId)))
-      .catch(e => { console.log('Google ocupado', (e as Error).message); return [] as Bloqueo[]; })));
+  const listas = await Promise.all(calendarios.map(c => ocupadoDe(env, c, desde, hasta)
+    .catch(e => { console.log('Google ocupado', (e as Error).message); return [] as Bloqueo[]; })));
   return listas.flat();
+}
+
+/** Calendario de cada persona que toma citas: Cristina y las auxiliares con «Google Calendar ID» */
+export const calendariosAgenda = (env: EnvGoogle, empleados: any[]): CalendarioPersona[] => [
+  { personaId: DUENA, calendario: env.GOOGLE_CALENDARIO || '' },
+  ...empleados.filter(e => e.activo && e.tomaCitas && e.googleCalendarId?.trim()).map(e => ({ personaId: e.id, calendario: e.googleCalendarId.trim() }))
+];
+
+// ---------- Ocupado → CB Control ----------
+
+const DIAS_OCUPADO = 180;   // las novias apartan con meses de anticipación
+
+/** Guarda lo ocupado en Google (sin títulos) en configuracion/ocupadoGoogle para que la agenda de CB Control lo
+ *  respete. Solo escribe si cambió; si un calendario falla no toca lo guardado (no borra bloqueos por un error). */
+async function ocupadoACBControl(env: EnvGoogle & EnvDexie, empleados: any[], hoy: string) {
+  let hasta = hoy;
+  for (let i = 0; i < DIAS_OCUPADO; i++) hasta = diaSiguiente(hasta);
+  const bloqueos = (await Promise.all(calendariosAgenda(env, empleados).map(c => ocupadoDe(env, c, hoy, hasta)))).flat();
+  const firma = await huella(bloqueos);
+  const guardado = await uno<any>(env, 'configuracion', 'ocupadoGoogle');
+  if (guardado?.firma === firma) return 'igual';
+  const realmId = guardado?.realmId || (await uno<any>(env, 'configuracion', 'settings'))?.realmId;
+  if (!realmId) throw new Error('Sin realm del salón en configuración');
+  await guardar(env, 'configuracion', [{ id: 'ocupadoGoogle', bloqueos, firma, actualizado: new Date().toISOString(), realmId }]);
+  return bloqueos.length;
 }
 
 // ---------- Espejo: CB Control → Google ----------
@@ -103,7 +133,7 @@ export async function ocupadoGoogle(env: EnvGoogle, calendarios: { personaId: st
 const VERSION = 'v1';   // cambiarla reescribe todos los eventos (si cambia el formato)
 const ACTIVAS = ['pendiente', 'confirmada', 'iniciada'];
 // Cuántas escrituras por vuelta: el plan gratis de Workers permite 50 consultas por ejecución; lo demás sigue al minuto
-const TOPE_ESCRITURAS = 25;
+const TOPE_ESCRITURAS = 20;
 
 async function huella(datos: unknown) {
   const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([VERSION, datos])));
@@ -133,7 +163,8 @@ export function planCalendario(calendario: string, quiero: Map<string, Deseado>,
 const conMarca = (d: Deseado, cuerpo: object) =>
   ({ ...cuerpo, extendedProperties: { private: { cb: '1', cbId: d.cbId, firma: d.firma } } });
 
-/** Copia a Google las citas activas desde hoy y los días de apoyo/vacaciones del equipo. Corre cada minuto. */
+/** Copia a Google las citas activas desde hoy y los días de apoyo/vacaciones del equipo, y lo ocupado en Google a
+ *  CB Control. Corre cada minuto. */
 export async function espejo(env: EnvGoogle & EnvDexie) {
   if (!googleListo(env)) return { motivo: 'Google sin conectar' };
   const hoy = hoyLocal();
@@ -141,6 +172,8 @@ export async function espejo(env: EnvGoogle & EnvDexie) {
     Promise.all(ACTIVAS.map(estado => leer<any>(env, 'citas', { estado }))).then(l => l.flat()),
     leer<any>(env, 'servicios'), leer<any>(env, 'empleados'), leer<any>(env, 'empleadoEvents')
   ]);
+  const ocupado = await ocupadoACBControl(env, empleados, hoy)
+    .catch(e => { console.log('Google ocupado→CB Control', (e as Error).message); return 'error'; });
   const principal = env.GOOGLE_CALENDARIO!;
   const calendarioDe = (empleadoId?: string) => empleados.find(e => e.id === empleadoId)?.googleCalendarId?.trim() || principal;
   const deseados: Deseado[] = [];
@@ -224,5 +257,5 @@ export async function espejo(env: EnvGoogle & EnvDexie) {
       else { await pedir(env, rutaEventos(a.calendario), { method: 'POST', body: JSON.stringify(conMarca(a.deseado!, a.deseado!.cuerpo(clientes))) }); hechos.creados++; }
     } catch (e) { console.log('Google espejo', a.tipo, (e as Error).message); errores++; }
   }
-  return { ...hechos, pendientes: acciones.length - ahora.length, errores };
+  return { ...hechos, pendientes: acciones.length - ahora.length, errores, ocupado };
 }

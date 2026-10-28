@@ -4,6 +4,7 @@ import { db } from '../db/db';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Users, Scissors } from 'lucide-react';
 import { fechaLocalISO } from '../utils/dateValidation';
 import AgendaDia from '../components/citas/AgendaDia';
+import { useOcupadoGoogle } from '../hooks/useAgenda';
 
 export default function CalendarioPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -15,6 +16,7 @@ export default function CalendarioPage() {
     const events = useLiveQuery(() => db.empleadoEvents.toArray());
     const empleados = useLiveQuery(() => db.empleados.toArray());
     const clientes = useLiveQuery(() => db.clientes.toArray());
+    const ocupadoGoogle = useOcupadoGoogle();
 
     const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
     const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
@@ -62,10 +64,17 @@ export default function CalendarioPage() {
             const end = e.fechaFin;
             return dateStr >= start && dateStr <= end;
         }) || [];
+        // Lo ocupado en Google ese día, recortado al día (un bloqueo que acaba a las 00:00 ya no cuenta)
+        const dayGoogle = ocupadoGoogle.flatMap(b => {
+            const [dd, hd] = b.desde.split('T'), [dh, hh] = b.hasta.split('T');
+            if (dateStr < dd || dateStr > dh || (dateStr === dh && hh === '00:00')) return [];
+            return [{ ...b, de: dateStr === dd ? hd : '00:00', a: dateStr === dh ? hh : '24:00' }];
+        });
 
         return [
             ...dayCitas.map(c => ({ type: 'cita', data: c })),
-            ...dayEvents.map(e => ({ type: 'event', data: e }))
+            ...dayEvents.map(e => ({ type: 'event', data: e })),
+            ...dayGoogle.map(g => ({ type: 'google', data: g }))
         ];
     };
 
@@ -141,6 +150,16 @@ export default function CalendarioPage() {
 
                                 <div className="mt-1 space-y-1 overflow-y-auto max-h-[85px] custom-scrollbar">
                                     {items.map((entry, i) => {
+                                        if (entry.type === 'google') {
+                                            const g = entry.data as any;
+                                            const emp = empleados?.find(x => x.id === g.personaId);
+                                            const horas = g.de === '00:00' && g.a === '24:00' ? 'todo el día' : `${g.de}–${g.a}`;
+                                            return (
+                                                <div key={i} className="text-[10px] p-1 rounded border truncate bg-white border-gray-300 text-gray-600" title="Ocupado en Google Calendar">
+                                                    <span className="font-bold text-purple-700">G</span> {emp ? `${emp.nombre.split(' ')[0]}: ` : ''}Ocupado {horas}
+                                                </div>
+                                            );
+                                        }
                                         if (entry.type === 'cita') {
                                             const c = entry.data as any;
                                             const cliente = clientes?.find(cl => cl.id === c.clienteId);
@@ -187,6 +206,9 @@ export default function CalendarioPage() {
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                     <div className="w-3 h-3 rounded bg-blue-50 border border-blue-100"></div> Vacaciones
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-500 border-l pl-4">
+                    <div className="w-3 h-3 rounded bg-white border border-gray-300"></div> Ocupado en Google
                 </div>
             </div>
         </div>

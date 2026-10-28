@@ -7,7 +7,7 @@ import {
 } from '../../salon-control-app/src/utils/lealtad';
 import { saldoDe } from '../../salon-control-app/src/utils/saldo';
 import { guardar, leer, uno, type EnvDexie } from './dexie';
-import { ocupadoGoogle, type EnvGoogle } from './google';
+import { calendariosAgenda, ocupadoGoogle, type EnvGoogle } from './google';
 import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
 import { DIAS_SESION, MIN_RETO, codigoNuevo, firmar, huellaCodigo, leerFirmado, type Reto, type Sesion } from './sesion';
 
@@ -64,10 +64,7 @@ async function cargarAgenda(env: Env, desde: string, hasta: string) {
   const conCitas = empleados.filter(e => e.activo && e.tomaCitas);
   const personas: Persona[] = [{ id: DUENA, nombre: 'Cristina' },
     ...conCitas.map(e => ({ id: e.id, nombre: e.nombre, categorias: e.categoriasAgenda }))];
-  const deGoogle = await ocupadoGoogle(env, [
-    { personaId: DUENA, calendario: env.GOOGLE_CALENDARIO || '' },
-    ...conCitas.filter(e => e.googleCalendarId?.trim()).map(e => ({ personaId: e.id, calendario: e.googleCalendarId.trim() }))
-  ], desde, hasta);
+  const deGoogle = await ocupadoGoogle(env, calendariosAgenda(env, empleados), desde, hasta);
   return {
     realmId: settings?.realmId as string, config: { ...guardada, bloqueos: [...(guardada.bloqueos || []), ...deEmpleados, ...deGoogle] },
     personas, servicios: servicios.filter(s => !s.archivado)
