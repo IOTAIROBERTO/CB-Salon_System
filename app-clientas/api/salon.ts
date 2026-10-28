@@ -50,6 +50,10 @@ async function esHumano(env: Env, token: unknown, ip: string) {
   return !!((await r.json()) as { success?: boolean }).success;
 }
 const SIN_ROBOT = 'no pasó el «no soy robot»';
+// Avisos «por confirmar a mano» de quien no pasó el «no soy robot»: contador propio, persistente y diario (Durable
+// Object), aparte del de las clientas reales que pasaron su tope; pasado el tope se descartan en silencio.
+const TOPE_SIN_ROBOT = 20;
+const cabeSinRobot = (env: Env) => permitido(env, `sin-robot:${hoyHermosillo()}`, TOPE_SIN_ROBOT, 24 * 3600);
 
 const json = (datos: unknown, status = 200) => new Response(JSON.stringify(datos), {
   status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -195,6 +199,8 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
   if (fecha <= hoyHermosillo()) throw new ErrorCliente('Las citas para hoy las revisa Cristina en su agenda: escríbenos por WhatsApp.');
   const valoracion = valoracionDe(body.valoracion), fotos = fotosDe(body.fotos);
   const notas = String(body.notas || '').trim().slice(0, 500);
+  // Sin «no soy robot» y pasado su tope: misma respuesta, sin leer ni escribir nada
+  if (sinApartar && !await cabeSinRobot(env)) return json({ ok: true, cita: { id: '', fecha, hora, servicio: '', anticipo: 0 } }, 201);
   const ag = await cargarAgenda(env, fecha, masDias(fecha, 1));
   if (!ag.realmId) throw new Error('Sin realm del salón en configuración');
   const s = ag.servicios.find(x => x.id === servicioId && enLinea(x));
@@ -214,8 +220,10 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
   if (sinApartar || (sesion ? deEseTelefono >= 4 : (deEseTelefono >= 2 || deEseDia >= 6))) {   // con teléfono verificado: hasta 4 por confirmar y sin tope por día
     // Cada solicitud de más es su propio aviso (id al azar: nada se reemplaza), sin WhatsApp ni notas libres;
     // pasado el tope diario se descarta en silencio (la respuesta no cambia)
-    if (avisosDeMas.dia !== hoyHermosillo()) { avisosDeMas.dia = hoyHermosillo(); avisosDeMas.cuantos = 0; }
-    if (++avisosDeMas.cuantos > TOPE_AVISOS_DE_MAS) return respuesta('');
+    if (!sinApartar) {   // las de «no soy robot» ya pasaron por su propio tope arriba
+      if (avisosDeMas.dia !== hoyHermosillo()) { avisosDeMas.dia = hoyHermosillo(); avisosDeMas.cuantos = 0; }
+      if (++avisosDeMas.cuantos > TOPE_AVISOS_DE_MAS) return respuesta('');
+    }
     await aviso(env, ctx, ag.realmId, {
       tipo: 'cita', titulo: `Solicitud por confirmar a mano: ${d.nombre}`,
       detalle: `Tel. ${d.telefono} pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}. ${sinApartar ? `La solicitud ${sinApartar}` : deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: no se apartó el horario.`
@@ -253,6 +261,7 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
 /** POST /api/club → alta al Club sin pasar por WhatsApp */
 async function unirseClub(env: Env, ctx: ExecutionContext, body: any, sesion: Sesion | null, sinVerificar = '') {
   const d = validarClienta(sesion ? { ...body, telefono: sesion.tel } : body);
+  if (sinVerificar && !await cabeSinRobot(env)) return json({ ok: true }, 201);   // tope diario propio, sin leer nada
   const settings = await uno<any>(env, 'configuracion', 'settings');
   if (!settings?.realmId) throw new Error('Sin realm del salón en configuración');
   if (sinVerificar) {   // sin crear ni tocar fichas: el salón decide (misma respuesta)

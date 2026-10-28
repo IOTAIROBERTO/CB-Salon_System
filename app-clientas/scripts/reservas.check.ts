@@ -56,6 +56,10 @@ assert.equal((await post(conRobot, 'acceso/codigo', { telefono: '6620000002' }))
 assert.equal(tablas.clientes.length, antes.clientes);
 assert.equal(tablas.citas.length, antes.citas);
 assert.equal(tablas.avisos.filter(a => /por confirmar a mano/.test(a.titulo) && /no soy robot/.test(a.detalle)).length, 3);
+// Tope diario propio para quien no pasa el robot: por más que insista, a la campana llegan 20 y nada más
+for (let i = 0; i < 25; i++) assert.equal((await post(conRobot, i % 2 ? 'club' : 'citas', i % 2 ? ana(`66210000${String(i).padStart(2, '0')}`) : cita(`66210000${String(i).padStart(2, '0')}`))).status, 201);
+assert.equal(tablas.avisos.filter(a => /no soy robot/.test(a.detalle)).length, 20);
+assert.equal(tablas.citas.length, antes.citas);
 assert.equal((await post(conRobot, 'club', { ...ana('6620000002'), turnstile: 'humana' })).status, 201);
 assert.equal((await post(conRobot, 'citas', cita('6620000003', { turnstile: 'humana' }))).status, 201);
 
