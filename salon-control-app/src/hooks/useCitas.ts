@@ -25,7 +25,7 @@ export default function useCitas() {
       const newCita: any = {
         id,
         ...formData,
-        estado: "pendiente",
+        estado: formData.estado || "pendiente",   // las que vienen de Google ya estaban acordadas: confirmadas
       };
       await db.citas.add(newCita);
     }

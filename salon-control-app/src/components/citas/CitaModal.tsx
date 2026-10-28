@@ -21,9 +21,11 @@ interface CitaModalProps {
   onClose: () => void;
   onSave: (formData: Omit<Cita, "id"> | { id: string;[key: string]: any }) => void;
   citaEdit?: Cita | null;
+  /** Para crear una cita ya llena (por ejemplo, desde un evento apuntado a mano en Google Calendar) */
+  inicial?: { fecha?: string; hora?: string; notas?: string; estado?: Cita['estado']; googleAdoptar?: string };
 }
 
-export default function CitaModal({ clientes, servicios, onClose, onSave, citaEdit }: CitaModalProps) {
+export default function CitaModal({ clientes, servicios, onClose, onSave, citaEdit, inicial }: CitaModalProps) {
   const empleados = useLiveQuery(() => db.empleados.toArray())?.filter(e => e.activo) || [];
   const { personas } = useAgenda();
   const settings = useLiveQuery(() => db.configuracion.get("settings"));
@@ -33,9 +35,9 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
     clienteId: citaEdit?.clienteId || "",
     servicioId: citaEdit?.servicioId || "",
     empleadoIds: citaEdit?.empleadoIds || [],
-    fecha: citaEdit?.fecha || "",
-    hora: citaEdit?.hora || "",
-    notas: citaEdit?.notas || "",
+    fecha: citaEdit?.fecha || inicial?.fecha || "",
+    hora: citaEdit?.hora || inicial?.hora || "",
+    notas: citaEdit?.notas || inicial?.notas || "",
     descripcionTrabajo: citaEdit?.descripcionTrabajo || "",
     ubicacion: citaEdit?.ubicacion || SALON,
     atiendeId: citaEdit?.atiendeId || "cristina",
@@ -73,7 +75,8 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
       // Modo creación: solo los campos básicos
       onSave({
         ...formData,
-        estado: "pendiente" as const,
+        estado: inicial?.estado || ("pendiente" as const),
+        ...(inicial?.googleAdoptar ? { googleAdoptar: inicial.googleAdoptar } : {}),
       });
     }
     onClose();

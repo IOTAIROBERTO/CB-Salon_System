@@ -88,11 +88,14 @@ export const aBloqueo = (e: any, personaId: string): Bloqueo =>
 
 type CalendarioPersona = { personaId: string; calendario: string };
 
-const ocupadoDe = (env: EnvGoogle, { personaId, calendario }: CalendarioPersona, desde: string, hasta: string) =>
+/** Eventos «Ocupado» de un calendario que no son copias de CB Control */
+const eventosOcupados = (env: EnvGoogle, calendario: string, desde: string, hasta: string) =>
   eventos(env, calendario, {
     timeMin: `${desde}T00:00:00${DESFASE}`, timeMax: `${hasta}T00:00:00${DESFASE}`,
-    fields: 'items(id,status,start,end,transparency,attendees(self,responseStatus),extendedProperties),nextPageToken'
-  }).then(l => l.filter(ocupa).map(e => aBloqueo(e, personaId)));
+    fields: 'items(id,summary,status,start,end,transparency,attendees(self,responseStatus),extendedProperties),nextPageToken'
+  }).then(l => l.filter(ocupa));
+const ocupadoDe = (env: EnvGoogle, { personaId, calendario }: CalendarioPersona, desde: string, hasta: string) =>
+  eventosOcupados(env, calendario, desde, hasta).then(l => l.map(e => aBloqueo(e, personaId)));
 
 /** Lo ocupado en Google de cada persona entre dos fechas (fin exclusivo), como bloqueos de agenda.
  *  Si Google falla se registra y la agenda sigue sin esos bloqueos (la cita igual llega «por confirmar»). */
@@ -118,13 +121,21 @@ const DIAS_OCUPADO = 180;   // las novias apartan con meses de anticipación
 async function ocupadoACBControl(env: EnvGoogle & EnvDexie, empleados: any[], hoy: string) {
   let hasta = hoy;
   for (let i = 0; i < DIAS_OCUPADO; i++) hasta = diaSiguiente(hasta);
-  const bloqueos = (await Promise.all(calendariosAgenda(env, empleados).map(c => ocupadoDe(env, c, hoy, hasta)))).flat();
-  const firma = await huella(bloqueos);
-  const guardado = await uno<any>(env, 'configuracion', 'ocupadoGoogle');
-  if (guardado?.firma === firma) return 'igual';
+  const listas = await Promise.all(calendariosAgenda(env, empleados).map(c => eventosOcupados(env, c.calendario, hoy, hasta)
+    .then(l => ({ c, l }))));
+  const bloqueos = listas.flatMap(({ c, l }) => l.map(e => aBloqueo(e, c.personaId)));
+  const deCristina = listas.find(x => x.c.personaId === DUENA)?.l || [];
+  const sinRegistrar = deCristina.filter(e => e.start?.dateTime)
+    .map(e => ({ id: e.id as string, titulo: String(e.summary || '(sin título)').slice(0, 120), desde: horaLocal(e.start), hasta: horaLocal(e.end) }));
+  const [firma, firmaEventos] = await Promise.all([huella(bloqueos), huella(sinRegistrar)]);
+  const [guardado, eventosGuardados] = await Promise.all([uno<any>(env, 'configuracion', 'ocupadoGoogle'), uno<any>(env, 'configuracion', 'eventosGoogle')]);
+  if (guardado?.firma === firma && eventosGuardados?.firma === firmaEventos) return 'igual';
   const realmId = guardado?.realmId || (await uno<any>(env, 'configuracion', 'settings'))?.realmId;
   if (!realmId) throw new Error('Sin realm del salón en configuración');
-  await guardar(env, 'configuracion', [{ id: 'ocupadoGoogle', bloqueos, firma, actualizado: new Date().toISOString(), realmId }]);
+  const ahora = new Date().toISOString(), cambios: object[] = [];
+  if (guardado?.firma !== firma) cambios.push({ id: 'ocupadoGoogle', bloqueos, firma, actualizado: ahora, realmId });
+  if (eventosGuardados?.firma !== firmaEventos) cambios.push({ id: 'eventosGoogle', eventos: sinRegistrar, firma: firmaEventos, actualizado: ahora, realmId });
+  await guardar(env, 'configuracion', cambios);
   return bloqueos.length;
 }
 
@@ -140,8 +151,8 @@ async function huella(datos: unknown) {
   return [...new Uint8Array(h)].slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-interface Deseado { cbId: string; calendario: string; firma: string; cuerpo: (clientes: Map<string, any>) => object }
-interface Accion { tipo: 'crear' | 'cambiar' | 'borrar'; calendario: string; eventoId?: string; deseado?: Deseado }
+interface Deseado { cbId: string; calendario: string; firma: string; cuerpo: (clientes: Map<string, any>) => object; adoptar?: string }
+interface Accion { tipo: 'crear' | 'cambiar' | 'borrar' | 'adoptar'; calendario: string; eventoId?: string; deseado?: Deseado }
 
 /** Qué hacer en un calendario: crea lo que falta, reescribe lo que cambió y borra lo que ya no va
  *  (incluye duplicados). Las citas completadas se quedan como registro; `completada` dice cuáles lo están. */
@@ -156,12 +167,29 @@ export function planCalendario(calendario: string, quiero: Map<string, Deseado>,
       if (p.firma !== d.firma) acciones.push({ tipo: 'cambiar', calendario, eventoId: ev.id, deseado: d });
     } else if (d || !completada(p.cbId)) acciones.push({ tipo: 'borrar', calendario, eventoId: ev.id });
   }
-  for (const [cbId, d] of quiero) if (!vistos.has(cbId)) acciones.push({ tipo: 'crear', calendario, deseado: d });
+  for (const [cbId, d] of quiero) if (!vistos.has(cbId))
+    acciones.push(d.adoptar ? { tipo: 'adoptar', calendario, eventoId: d.adoptar, deseado: d } : { tipo: 'crear', calendario, deseado: d });
   return acciones;
 }
 
 const conMarca = (d: Deseado, cuerpo: object) =>
   ({ ...cuerpo, extendedProperties: { private: { cb: '1', cbId: d.cbId, firma: d.firma } } });
+
+/** Citas (por id) cuyo `googleAdoptar` se respeta: el evento está en la lista vigente y la cita la creó una dueña
+ *  (rol «duena» en el salón o dueña del realm). Solo consulta la base si alguna cita pide adoptar. */
+async function adopcionesPermitidas(env: EnvDexie, citas: any[]) {
+  const piden = citas.filter(c => c.googleAdoptar);
+  if (!piden.length) return new Set<string>();
+  const [lista, miembros, realms] = await Promise.all([
+    uno<any>(env, 'configuracion', 'eventosGoogle'), leer<any>(env, 'members'), leer<any>(env, 'realms').catch(() => [] as any[])
+  ]);
+  const enLista = new Set<string>((lista?.eventos || []).map((e: any) => e.id));
+  // Dueña DEL REALM DE LA CITA (cada usuario es dueño de su realm privado: no basta con ser dueño de alguno)
+  const esDuena = (userId: string, realmId: string) => !!userId && !!realmId && (
+    miembros.some(m => m.realmId === realmId && m.userId === userId && (m.roles || []).includes('duena')) ||
+    realms.some(rl => rl.realmId === realmId && rl.owner === userId));
+  return new Set(piden.filter(c => enLista.has(c.googleAdoptar) && esDuena(c.owner, c.realmId)).map(c => c.id as string));
+}
 
 /** Copia a Google las citas activas desde hoy y los días de apoyo/vacaciones del equipo, y lo ocupado en Google a
  *  CB Control. Corre cada minuto. */
@@ -177,6 +205,9 @@ export async function espejo(env: EnvGoogle & EnvDexie) {
   const principal = env.GOOGLE_CALENDARIO!;
   const calendarioDe = (empleadoId?: string) => empleados.find(e => e.id === empleadoId)?.googleCalendarId?.trim() || principal;
   const deseados: Deseado[] = [];
+  // Adoptar un evento de Google solo si sigue en la lista «De Google, sin registrar» y la cita la creó una dueña: así
+  // nadie con permiso de editar citas puede hacer que el Worker sobrescriba otro evento de Cristina
+  const adoptables = await adopcionesPermitidas(env, citas);
 
   for (const c of citas.filter(c => c.fecha >= hoy && c.hora)) {
     const s = servicios.find(x => x.id === c.servicioId);
@@ -188,6 +219,8 @@ export async function espejo(env: EnvGoogle & EnvDexie) {
       c.ubicacion, c.descripcionTrabajo, c.notas, c.origen, fin.getTime()];
     deseados.push({
       cbId: `cita:${c.id}`, calendario: calendarioDe(c.atiendeId || c.empleadoIds?.[0]), firma: await huella(datos),
+      // registrada desde un evento que se apuntó a mano en el Google de Cristina: se adopta ese evento, no se duplica
+      adoptar: adoptables.has(c.id) && calendarioDe(c.atiendeId || c.empleadoIds?.[0]) === principal ? c.googleAdoptar : undefined,
       cuerpo: clientes => {
         const cl = clientes.get(c.clienteId);
         return {
@@ -252,8 +285,15 @@ export async function espejo(env: EnvGoogle & EnvDexie) {
   const hechos = { creados: 0, cambiados: 0, borrados: 0 };
   for (const a of ahora) {
     try {
-      if (a.tipo === 'borrar') { await pedir(env, `${rutaEventos(a.calendario)}/${a.eventoId}`, { method: 'DELETE' }); hechos.borrados++; }
-      else if (a.tipo === 'cambiar') { await pedir(env, `${rutaEventos(a.calendario)}/${a.eventoId}`, { method: 'PUT', body: JSON.stringify(conMarca(a.deseado!, a.deseado!.cuerpo(clientes))) }); hechos.cambiados++; }
+      if (a.tipo === 'borrar') { await pedir(env, `${rutaEventos(a.calendario)}/${encodeURIComponent(a.eventoId!)}`, { method: 'DELETE' }); hechos.borrados++; }
+      else if (a.tipo === 'cambiar') { await pedir(env, `${rutaEventos(a.calendario)}/${encodeURIComponent(a.eventoId!)}`, { method: 'PUT', body: JSON.stringify(conMarca(a.deseado!, a.deseado!.cuerpo(clientes))) }); hechos.cambiados++; }
+      else if (a.tipo === 'adoptar') {
+        try { await pedir(env, `${rutaEventos(a.calendario)}/${encodeURIComponent(a.eventoId!)}`, { method: 'PUT', body: JSON.stringify(conMarca(a.deseado!, a.deseado!.cuerpo(clientes))) }); hechos.cambiados++; }
+        catch (e) {   // el evento ya no existe (lo borraron en Google): se crea la copia normal
+          if (!/ (404|410) /.test((e as Error).message)) throw e;
+          await pedir(env, rutaEventos(a.calendario), { method: 'POST', body: JSON.stringify(conMarca(a.deseado!, a.deseado!.cuerpo(clientes))) }); hechos.creados++;
+        }
+      }
       else { await pedir(env, rutaEventos(a.calendario), { method: 'POST', body: JSON.stringify(conMarca(a.deseado!, a.deseado!.cuerpo(clientes))) }); hechos.creados++; }
     } catch (e) { console.log('Google espejo', a.tipo, (e as Error).message); errores++; }
   }

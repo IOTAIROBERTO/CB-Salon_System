@@ -140,6 +140,7 @@ export interface Cita {
     valoracion?: { largo?: string; color?: string; quimicos?: boolean; busca?: string };
     precioAcordado?: number; // precio que Cristina confirmó después de valorar (el de catálogo es «desde»)
     formaAnticipo?: 'transferencia' | 'deposito' | 'salon' | 'incluido' | 'sin';
+    googleAdoptar?: string; // id del evento que se apuntó a mano en Google: el Worker lo adopta en vez de crear otra copia
 }
 
 /** Fotos del cabello que manda la clienta con su solicitud (JPEG reducido, data URL) */

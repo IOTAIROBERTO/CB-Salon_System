@@ -8,6 +8,7 @@ import CitaModal from "../components/citas/CitaModal";
 import CobroModal from "../components/citas/CobroModal";
 import ReagendarModal from "../components/citas/ReagendarModal";
 import CalendarioGoogle from "../components/citas/CalendarioGoogle";
+import EventosGoogle, { type EventoGoogle } from "../components/citas/EventosGoogle";
 
 export default function CitasPage() {
   const {
@@ -26,6 +27,7 @@ export default function CitasPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [vista, setVista] = useState<"lista" | "google">("lista");
+  const [desdeGoogle, setDesdeGoogle] = useState<EventoGoogle | null>(null);   // evento de Google que se registra como cita
 
   const filteredCitas = useMemo(() => {
     const cerrada = (c: { estado: string }) => c.estado === 'completada' || c.estado === 'cancelada';
@@ -76,6 +78,8 @@ export default function CitasPage() {
       {vista === "google" && <CalendarioGoogle />}
 
       {vista === "lista" && <>
+      <EventosGoogle onRegistrar={setDesdeGoogle} />
+
       {/* Buscador */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <input
@@ -132,6 +136,16 @@ export default function CitasPage() {
       </>}
 
       {/* Modales */}
+      {desdeGoogle && (
+        <CitaModal
+          clientes={clientes}
+          servicios={servicios}
+          onClose={() => setDesdeGoogle(null)}
+          onSave={saveCita}
+          inicial={{ fecha: desdeGoogle.desde.slice(0, 10), hora: desdeGoogle.desde.slice(11, 16), notas: desdeGoogle.titulo, estado: "confirmada", googleAdoptar: desdeGoogle.id }}
+        />
+      )}
+
       {modalState.type === "create" && (
         <CitaModal
           clientes={clientes}

@@ -20,6 +20,8 @@ const tablas: Record<string, any[]> = {
   empleadoEvents: [{ id: 'ev1', empleadoId: 'e1', tipo: 'vacaciones', fechaInicio: manana, fechaFin: manana }],
   clientes: [{ id: 'k1', nombre: 'Laura Pérez', telefono: '6621234567' }],
   configuracion: [{ id: 'settings', realmId: 'rlm1' }],
+  members: [{ realmId: 'rlm1', userId: 'u-cris', roles: ['duena'] }, { realmId: 'rlm1', userId: 'u-aux', roles: ['empleada'] }],
+  realms: [{ realmId: 'rlm1', owner: 'u-rob' }, { realmId: 'u-aux', owner: 'u-aux' }],
   citas: [
     { id: 'c1', clienteId: 'k1', servicioId: 's1', fecha: manana, hora: '10:00', estado: 'pendiente' },
     { id: 'c2', clienteId: 'k1', servicioId: 's1', fecha: manana, hora: '12:00', estado: 'confirmada', atiendeId: 'e1' },
@@ -32,7 +34,7 @@ const hora = (f: string, h: string) => ({ dateTime: `${f}T${h}:00-07:00` });
 let n = 0;
 const google: Record<string, any[]> = {
   'cristina@gmail.com': [
-    { id: 'g1', start: hora(manana, '15:00'), end: hora(manana, '16:00') },                                       // ocupado
+    { id: 'g1', summary: 'Cita Edna', start: hora(manana, '15:00'), end: hora(manana, '16:00') },                // ocupado (apuntada a mano)
     { id: 'g2', start: hora(manana, '17:00'), end: hora(manana, '18:00'), transparency: 'transparent' },          // disponible
     { id: 'g3', start: { date: pasado }, end: { date: dia(3) } },                                                 // día completo ocupado
     { id: 'g4', start: hora(manana, '13:00'), end: hora(manana, '14:00'), attendees: [{ self: true, responseStatus: 'declined' }] },
@@ -78,6 +80,7 @@ globalThis.fetch = (async (entrada: any, init: any = {}) => {
       (!url.searchParams.get('privateExtendedProperty') || e.extendedProperties?.private?.cb === '1')) });
   }
   if (metodo === 'DELETE') { google[cal] = lista.filter(e => e.id !== eventoId); return resp(null, 204); }
+  if (eventoId && !lista.some(e => e.id === eventoId)) return resp({ error: { code: 404 } }, 404);   // como Google: no existe
   const ev = { ...JSON.parse(init.body), id: eventoId || `nuevo${++n}` };
   google[cal] = [...lista.filter(e => e.id !== ev.id), ev];
   return resp(ev);
@@ -123,5 +126,38 @@ const r = await espejo(env);
 assert.equal(r.ocupado, 'error');
 assert.equal(r.errores, 1);   // el espejo de ese calendario también falla, el de Cristina sigue
 assert.equal(tablas.configuracion.find(f => f.id === 'ocupadoGoogle'), antes);
+
+// Eventos de Cristina con hora que CB Control no creó: van a la lista «De Google, sin registrar» (con su título)
+tablas.empleados[0].googleCalendarId = 'ana@gmail.com';
+await espejo(env);
+const sinRegistrar = tablas.configuracion.find(f => f.id === 'eventosGoogle').eventos;
+assert.deepEqual(sinRegistrar.map((e: any) => [e.id, e.titulo, e.desde, e.hasta]), [['g1', 'Cita Edna', `${manana}T15:00`, `${manana}T16:00`]]);
+
+// Registrarla como cita adopta ese mismo evento (no se duplica) y sale de la lista
+// Nadie más puede pedir adoptar: una auxiliar (aunque sea dueña de su realm privado) o un evento fuera de la lista
+tablas.citas.push({ id: 'c8', clienteId: 'k1', servicioId: 's1', fecha: manana, hora: '17:00', estado: 'confirmada', googleAdoptar: 'g1', owner: 'u-aux', realmId: 'rlm1' });
+tablas.citas.push({ id: 'c11', clienteId: 'k1', servicioId: 's1', fecha: manana, hora: '18:00', estado: 'confirmada', googleAdoptar: 'g2', owner: 'u-cris', realmId: 'rlm1' });
+llamadas.length = 0;
+await espejo(env);
+assert.ok(!llamadas.some(l => /PUT .* g[12]$/.test(l)));   // ni g1 ni g2 se tocaron
+assert.equal(google['cristina@gmail.com'].find(e => e.id === 'g1').summary, 'Cita Edna');
+tablas.citas = tablas.citas.filter(c => c.id !== 'c8' && c.id !== 'c11');
+google['cristina@gmail.com'] = google['cristina@gmail.com'].filter(e => !['cita:c8', 'cita:c11'].includes(e.extendedProperties?.private?.cbId));
+
+// La dueña sí: su cita adopta el evento de la lista
+tablas.citas.push({ id: 'c9', clienteId: 'k1', servicioId: 's1', fecha: manana, hora: '15:00', estado: 'confirmada', googleAdoptar: 'g1', owner: 'u-cris', realmId: 'rlm1' });
+llamadas.length = 0;
+const adopcion = await espejo(env);
+assert.equal(adopcion.creados, 0);
+assert.ok(llamadas.includes('PUT cristina@gmail.com g1'));
+const g1 = google['cristina@gmail.com'].find(e => e.id === 'g1');
+assert.equal(g1.extendedProperties.private.cbId, 'cita:c9');
+assert.equal(g1.summary, 'Corte - Laura Pérez');
+assert.deepEqual(await espejo(env).then(r => [r.creados, r.cambiados, r.errores]), [0, 0, 0]);   // ya es su copia
+assert.deepEqual(tablas.configuracion.find(f => f.id === 'eventosGoogle').eventos, []);   // y a la vuelta siguiente sale de la lista
+
+// Si el evento ya no está en Google (ni en la lista), se crea la copia normal
+tablas.citas.push({ id: 'c10', clienteId: 'k1', servicioId: 's1', fecha: pasado, hora: '12:00', estado: 'confirmada', googleAdoptar: 'borrado', owner: 'u-rob', realmId: 'rlm1' });
+assert.equal((await espejo(env)).creados, 1);
 
 console.log('google ok');
