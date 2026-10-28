@@ -88,6 +88,7 @@ const conFotos = tablas.citas.find(c => c.hora === '14:00');
 assert.deepEqual(conFotos.valoracion, { largo: 'hombros', color: 'tinte', quimicos: false, busca: 'Rubio miel' });
 assert.equal(tablas.fotos.filter(f => f.citaId === conFotos.id).length, 2);
 assert.ok(tablas.avisos.some(a => a.refId === conFotos.id && /2 foto\(s\)/.test(a.detalle) && /cabello: hombros, tinte/.test(a.detalle)));
+assert.ok(tablas.avisos.some(a => a.refId === conFotos.id && /sin verificar/.test(a.detalle)));
 tablas.citas = tablas.citas.filter(c => c !== conFotos);
 
 // Recordatorio al salón: citas de la app sin confirmar después de 2 h, cada 4 h, solo de 9 a 21 h (Hermosillo, UTC−7)

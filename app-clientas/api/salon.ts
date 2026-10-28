@@ -171,6 +171,7 @@ async function aviso(env: Env, ctx: ExecutionContext, realmId: string, a: { tipo
 
 // Cómo está su cabello hoy (para que Cristina valore el precio) y hasta 4 fotos en JPEG reducido
 const LARGOS = ['corto', 'hombros', 'media espalda', 'cintura o más'], COLORES = ['natural', 'tinte', 'decoloración o mechas'];
+const TOPE_FOTOS_SIN_VERIFICAR = 15;   // solicitudes con fotos al día desde teléfonos sin verificar (hasta 4 fotos cada una)
 function valoracionDe(v: any) {
   if (!v || typeof v !== 'object') return undefined;
   const out = {
@@ -227,9 +228,12 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
     valoracion
   };
   await guardar(env, 'citas', [cita]);
-  // Las fotos van aparte (pesan) y no deben tumbar la cita: si fallan, la cita queda y el aviso lo dice
+  // Las fotos van aparte (pesan) y no deben tumbar la cita: si fallan, la cita queda y el aviso lo dice.
+  // Sin teléfono verificado, tope diario de solicitudes con fotos (nadie llena la base ni cuelga imágenes a una ficha
+  // ajena por montones); con el WhatsApp oficial conectado, solo agenda quien verificó su teléfono.
   let fotosGuardadas = 0;
-  if (fotos.length) {
+  const fotosPermitidas = !!fotos.length && (!!sesion || await permitido(env, `fotos-dia:${hoyHermosillo()}`, TOPE_FOTOS_SIN_VERIFICAR, 24 * 3600));
+  if (fotosPermitidas) {
     try {
       await guardar(env, 'fotos', fotos.map((imagen, i) => ({ id: id('foto'), citaId: cita.id, clienteId: cliente.id, fecha: new Date().toISOString(), orden: i, imagen, realmId: ag.realmId })));
       fotosGuardadas = fotos.length;
@@ -239,7 +243,7 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
   if (sesion) ctx.waitUntil(plantilla(env, d.telefono, 'cita_recibida', [d.nombre.split(' ')[0], s.nombre, fechaLegible(fecha), hora]));
   await aviso(env, ctx, ag.realmId, {
     tipo: 'cita', titulo: `Nueva cita desde la app: ${cliente.nombre}`,
-    detalle: `${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${notas ? ` · «${notas}»` : ''}${resumenValoracion(valoracion)}${fotos.length ? ` · ${fotosGuardadas ? `${fotosGuardadas} foto(s)` : 'mandó fotos pero no se guardaron: pídeselas por WhatsApp'}` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
+    detalle: `${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${notas ? ` · «${notas}»` : ''}${resumenValoracion(valoracion)}${fotos.length ? ` · ${fotosGuardadas ? `${fotosGuardadas} foto(s)${sesion ? '' : ' (teléfono sin verificar)'}` : 'mandó fotos pero no se guardaron: pídeselas por WhatsApp'}` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
     refId: cita.id, clienteId: cliente.id
   });
   return respuesta(cita.id);
