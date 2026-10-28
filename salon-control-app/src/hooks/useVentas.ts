@@ -1,6 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Venta } from '../types/ventas';
 import { sinVentasEspejo } from '../utils/ventasUtils';
 
 export const useVentas = () => {

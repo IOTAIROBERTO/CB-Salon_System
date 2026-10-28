@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, SalonDocument } from '../db/db';
+import { db, type SalonDocument } from '../db/db';
 import { Plus, Trash2, FileText, Image as ImageIcon, File, Paperclip, Eye, Download } from 'lucide-react';
 import FormatosSalon from '../components/documentos/FormatosSalon';
 

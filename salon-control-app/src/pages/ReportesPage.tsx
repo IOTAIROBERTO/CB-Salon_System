@@ -12,7 +12,6 @@ export default function ReportesPage() {
     clientes,
     catalogoServicios,
     reportPeriod,
-    setReportPeriod,
     stats,
     reportData
   } = useReportData();

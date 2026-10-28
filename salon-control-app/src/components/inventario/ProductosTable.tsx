@@ -1,5 +1,5 @@
 import { Edit, Trash2, Package } from 'lucide-react';
-import { Producto } from '../../types/inventario';
+import { type Producto } from '../../types/inventario';
 import { getStockColor, estadoPrecio, margenPorcentaje } from '../../utils/inventarioUtils';
 import { formatCurrency } from '../../utils/financialUtils';
 
@@ -7,7 +7,7 @@ interface ProductosTableProps {
   productos: Producto[];
   onEdit: (producto: Producto) => void;
   onEditStock: (producto: Producto) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => boolean | Promise<boolean>;
 }
 
 export default function ProductosTable({ productos, onEdit, onEditStock, onDelete }: ProductosTableProps) {

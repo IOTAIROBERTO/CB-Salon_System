@@ -2,9 +2,9 @@ import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import {
-  ReportData,
-  ReportStats,
-  ReportPeriod
+  type ReportData,
+  type ReportStats,
+  type ReportPeriod
 } from '../types/reportes';
 import { calculateReportStats, generateReportData } from '../utils/reportUtils';
 import { sinVentasEspejo } from '../utils/ventasUtils';

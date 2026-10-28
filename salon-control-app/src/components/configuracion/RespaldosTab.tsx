@@ -16,7 +16,7 @@ import {
     respaldarEnCarpeta,
     restaurarRespaldo,
     soportaCarpetaLocal,
-    Respaldo
+    type Respaldo
 } from '../../services/backupService';
 
 export default function RespaldosTab() {

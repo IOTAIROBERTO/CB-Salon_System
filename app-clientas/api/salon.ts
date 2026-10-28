@@ -296,7 +296,7 @@ async function firmarConsentimiento(env: Env, ctx: ExecutionContext, id: string,
     evidencia: { ip: request.headers.get('CF-Connecting-IP') || undefined, agente: limpio(request.headers.get('User-Agent'), 200), version: VERSION_CONSENTIMIENTO, huella }
   }]);
   await aviso(env, ctx, c.realmId, {
-    tipo: 'cita', titulo: `Consentimiento firmado en la app: ${nombreFirma}`,
+    tipo: 'sistema', titulo: `Consentimiento firmado en la app: ${nombreFirma}`,   // no 'cita': la campana no ofrece confirmarla
     detalle: `${respuestas.salud.length ? `Marcó ${respuestas.salud.length} punto(s) de salud: revisar antes del servicio. ` : ''}Fotos: ${fotos ? 'sí' : 'no'} · Redes: ${OPCIONES_REDES[respuestas.redes]}`,
     refId: c.citaId, clienteId: c.clienteId
   }, { whatsapp: false });

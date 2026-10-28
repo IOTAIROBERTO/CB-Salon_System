@@ -1,5 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
-import { Producto } from '../../types/inventario';
+import { type Producto } from '../../types/inventario';
 
 interface StockBajoAlertProps {
   productosStockBajo: Producto[];

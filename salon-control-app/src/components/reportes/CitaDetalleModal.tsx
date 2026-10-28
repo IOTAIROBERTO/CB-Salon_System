@@ -1,6 +1,6 @@
 // src/components/reportes/CitaDetalleModal.tsx
 import { CheckCircle, XCircle, TrendingDown, Calculator, Gift } from 'lucide-react';
-import { Cita, Cliente, ServicioCatalogo } from '../../types/reportes';
+import { type Cita, type Cliente, type ServicioCatalogo } from '../../types/reportes';
 import { getClienteName, getServicioName } from '../../utils/reportUtils';
 import { formatCurrency } from '../../utils/discountUtils';
 import { parseFechaLocal } from '../../utils/dateValidation';

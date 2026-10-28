@@ -12,6 +12,7 @@ La galería pública vive en `/galeria/` y la página de reseñas en `/resenas/`
 - **Sin servidor propio.** Los datos viven en IndexedDB (Dexie) y se sincronizan con **Dexie Cloud**:
   inicio de sesión por código al correo, un solo salón compartido y roles dueña / empleada (`src/db/`).
 - La tabla `documentos` (archivos) es solo local.
+- Consentimientos: firmados en la app de clientas con enlace personal (`src/db/firma.ts`) o en papel con foto.
 - Integraciones (EmailJS, WhatsApp) se llaman desde el navegador (`src/services/`). Google Calendar va por el servidor
   (`app-clientas/api/google.ts`: espejo de citas cada minuto y horarios ocupados en tiempo real para la app de clientas).
 - Los datos del negocio (ventas, finanzas) **nunca** van al repositorio: el sitio es público.
@@ -42,8 +43,8 @@ npx esbuild scripts/agenda.check.ts --bundle --platform=node --log-level=warning
 
 (Cambia `agenda` por `lealtad`, `pagos`, `proveedores` o `saldo`.)
 
-El despliegue corre `npx vite build` sin `tsc`: el proyecto arrastra errores de tipos viejos; revisa solo los
-de los archivos que toques.
+Tipos: `npx tsc -p tsconfig.app.json --noEmit` debe dar 0 errores (el despliegue corre `npx vite build`, que no
+los revisa). ESLint está pendiente: `eslint.config.js` es para ESLint 9 y el proyecto tiene instalado ESLint 8.
 
 ## La app de clientas
 

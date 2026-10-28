@@ -1,4 +1,4 @@
-import { Item, VentaItem } from '../../types/ventas';
+import { type Item, type VentaItem } from '../../types/ventas';
 import { formatCurrency } from '../../utils/financialUtils';
 
 interface ProductSelectorProps {

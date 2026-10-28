@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { VentaFormData, VentaItem } from '../types/ventas';
+import { type VentaFormData, type VentaItem } from '../types/ventas';
 
 const INITIAL_FORM_DATA: VentaFormData = {
   clienteId: '',

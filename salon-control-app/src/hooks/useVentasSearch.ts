@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Venta, Cliente } from '../types/ventas';
+import { type Venta, type Cliente } from '../types/ventas';
 import { filterVentasBySearch } from '../utils/ventasUtils';
 
 export const useVentasSearch = (ventas: Venta[], clientes: Cliente[]) => {

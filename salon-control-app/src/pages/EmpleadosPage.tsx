@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, Empleado } from '../db/db';
+import { db, type Empleado } from '../db/db';
 import { UserPlus, DollarSign, Trash2, Edit2, Search, X } from 'lucide-react';
 import { calculateCommission, formatCurrency } from '../utils/financialUtils';
 import { formatDate } from '../utils/clientesUtils';

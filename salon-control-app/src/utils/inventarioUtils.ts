@@ -1,4 +1,4 @@
-import { Producto, ProductoFormData, StockMovimiento, InventarioStats, MovimientoHistorial } from '../types/inventario';
+import { type Producto, type ProductoFormData, type StockMovimiento, type InventarioStats, type MovimientoHistorial } from '../types/inventario';
 import { formatCurrency } from './financialUtils';
 
 export const validateProductoForm = (formData: ProductoFormData): string | null => {
@@ -43,7 +43,7 @@ export const generateProductoId = (): string => {
 
 export const calculateStats = (inventario: Producto[]): InventarioStats => {
   const totalProductos = inventario.length;
-  const productosStockBajo = inventario.filter(p => p.cantidad <= p.stockMinimo).length;
+  const productosStockBajo = inventario.filter(p => p.cantidad <= (p.stockMinimo ?? 0)).length;
   const valorTotalInventario = inventario.reduce((sum, p) => sum + (p.cantidad * p.precio), 0);
   const categorias = [...new Set(inventario.map(p => p.categoria))].length;
 
@@ -56,12 +56,12 @@ export const calculateStats = (inventario: Producto[]): InventarioStats => {
 };
 
 export const getProductosStockBajo = (inventario: Producto[]): Producto[] => {
-  return inventario.filter(p => p.cantidad <= p.stockMinimo);
+  return inventario.filter(p => p.cantidad <= (p.stockMinimo ?? 0));
 };
 
 export const getStockColor = (producto: Producto): string => {
   if (producto.cantidad === 0) return 'text-red-600 bg-red-50';
-  if (producto.cantidad <= producto.stockMinimo) return 'text-orange-600 bg-orange-50';
+  if (producto.cantidad <= (producto.stockMinimo ?? 0)) return 'text-orange-600 bg-orange-50';
   return 'text-green-600 bg-green-50';
 };
 
@@ -100,7 +100,7 @@ export const formatPrice = (price: number): string => {
 };
 
 export const willBeStockBajo = (producto: Producto, cantidadARestar: number): boolean => {
-  return (producto.cantidad - cantidadARestar) < producto.stockMinimo;
+  return (producto.cantidad - cantidadARestar) < (producto.stockMinimo ?? 0);
 };
 // Regla de la auditoría 2026: ningún producto se vende a menos de costo × 1.6.
 export const MARGEN_MINIMO = 1.6;

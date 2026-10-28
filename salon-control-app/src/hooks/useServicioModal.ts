@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Servicio, ServicioFormData } from '../types/catalogo';
+import { type Servicio, type ServicioFormData } from '../types/catalogo';
 
 const INITIAL_FORM_DATA: ServicioFormData = {
   nombre: '',

@@ -10,7 +10,6 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  AlertTriangle,
   Check,
   TrendingDown,
   Calculator,
@@ -25,7 +24,7 @@ import { zonasDe, nombreUbicacion, SALON } from "../../utils/zonas";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../../db/db";
 import { useState } from "react";
-import { Cita, Cliente, Servicio } from "../../types/citas";
+import { type Cita, type Cliente, type Servicio } from "../../types/citas";
 import { formatCurrency } from "../../utils/discountUtils";
 import { imprimirConsentimiento } from "../../utils/consentimiento";
 import { notaReserva } from "../../utils/reserva";
@@ -80,7 +79,7 @@ export default function CitaCard({
   const servicio = servicios.find((s) => s.id === cita.servicioId);
 
   // Funciones completamente seguras para formatear fechas y horas
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     try {
       if (!dateString || typeof dateString !== 'string' || dateString.trim() === '') {
         return "Fecha no disponible";
@@ -117,7 +116,7 @@ export default function CitaCard({
     }
   };
 
-  const formatTime = (timeString) => {
+  const formatTime = (timeString: string) => {
     try {
       if (!timeString || typeof timeString !== 'string' || timeString.trim() === '') {
         return "Hora no disponible";

@@ -1,11 +1,11 @@
 import {
-  EmailCampaign,
-  EmailRecipient,
-  CampaignType,
-  EmailTemplate,
-  CampaignConfig
+  type EmailCampaign,
+  type EmailRecipient,
+  type CampaignType,
+  type EmailTemplate,
+  type CampaignConfig
 } from '../types/email';
-import { Cliente } from '../types/clientes';
+import { type Cliente } from '../types/clientes';
 import { loadEmailJS } from '../utils/emailJSLoader';
 import { db } from '../db/db';
 import { fechaLocalISO } from '../utils/dateValidation';

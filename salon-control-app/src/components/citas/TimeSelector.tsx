@@ -1,6 +1,6 @@
 // src/components/citas/TimeSelector.tsx - Selector visual de hora mejorado
 import { useState } from 'react';
-import { Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, ChevronRight } from 'lucide-react';
 
 interface TimeSelectorProps {
   value: string;

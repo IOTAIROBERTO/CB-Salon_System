@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { db } from '../db/db';
 import { emailMarketingService } from '../services/emailMarketingService';
-import { CampaignType, CampaignConfig, EmailTemplate } from '../types/email';
+import { type CampaignType, type CampaignConfig, type EmailTemplate } from '../types/email';
 import { Link } from 'react-router-dom';
 
 export default function EmailCampaignsPage() {

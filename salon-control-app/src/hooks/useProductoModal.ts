@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Producto, ProductoFormData, StockMovimiento, ModalType } from '../types/inventario';
+import { type Producto, type ProductoFormData, type StockMovimiento, type ModalType } from '../types/inventario';
 
 const INITIAL_FORM_DATA: ProductoFormData = {
   nombre: '',
@@ -37,8 +37,8 @@ export const useProductoModal = () => {
       cantidad: producto.cantidad,
       precio: producto.precio,
       costo: producto.costo ?? 0,
-      stockMinimo: producto.stockMinimo,
-      categoria: producto.categoria,
+      stockMinimo: producto.stockMinimo ?? 0,
+      categoria: producto.categoria || '',
       proveedor: producto.proveedor || ''
     });
     setEditingProducto(producto);

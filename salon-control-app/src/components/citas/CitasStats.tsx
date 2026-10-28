@@ -1,6 +1,6 @@
 // src/components/citas/CitasStats.tsx
 import { Clock, Play, CreditCard, AlertTriangle } from "lucide-react";
-import { Cita, Servicio } from "../../types/citas";
+import { type Cita, type Servicio } from "../../types/citas";
 
 interface CitasStatsProps {
   citas: Cita[];

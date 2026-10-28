@@ -53,7 +53,7 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
 
   const whatsapp = (a: Aviso) => {
     const c = clientes.find(x => x.id === a.clienteId);
-    if (!c) return null;
+    if (!c || (a.tipo !== 'cita' && a.tipo !== 'club')) return null;
     const nombre = c.nombre.split(' ')[0];
     const texto = a.tipo === 'cita'
       ? `¡Hola, ${nombre}! Recibimos tu cita en Cristina Borquez Beauty Salon: ${(a.detalle || '').split(' · «')[0]}. Te la confirmamos con gusto.`

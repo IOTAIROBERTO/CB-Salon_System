@@ -1,5 +1,5 @@
 import { Download } from 'lucide-react';
-import { ReportData, ReportPeriod } from '../../types/reportes';
+import { type ReportData, type ReportPeriod } from '../../types/reportes';
 import { exportReportToCSV } from '../../utils/exportUtils';
 
 interface ExportButtonProps {

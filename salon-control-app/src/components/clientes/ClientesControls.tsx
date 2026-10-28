@@ -1,4 +1,4 @@
-import { ViewMode } from '../../types/clientes';
+import { type ViewMode } from '../../types/clientes';
 
 interface ClientesControlsProps {
   showInactivos: boolean;

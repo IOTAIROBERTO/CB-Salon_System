@@ -1,7 +1,7 @@
 // src/components/clientes/CumpleanerosBanner.tsx
 import { useState } from 'react';
 import { Gift, Calendar } from 'lucide-react';
-import { Cliente } from '../../types/clientes';
+import { type Cliente } from '../../types/clientes';
 import { formatBirthdayWithAge, calcularEdad, esCumpleanosHoy } from '../../utils/clientesUtils';
 
 interface CumpleanerosBannerProps {

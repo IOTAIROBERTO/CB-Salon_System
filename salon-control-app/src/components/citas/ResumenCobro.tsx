@@ -2,7 +2,7 @@
 
 import { Percent, Calculator, Gift } from 'lucide-react';
 import {
-  ChargeBreakdown as CalculoFinal,
+  type ChargeBreakdown as CalculoFinal,
   formatCurrency,
   esDecenaExacta
 } from '../../utils/financialUtils';

@@ -1,7 +1,7 @@
 // src/components/citas/CitaModal.tsx - Actualizado con selector de hora mejorado
 import { X, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Cliente, Servicio, Cita } from "../../types/citas";
+import { type Cliente, type Servicio, type Cita } from "../../types/citas";
 import {
   obtenerFechaMinima,
   validarFechaHora,

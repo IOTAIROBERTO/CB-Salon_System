@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Cliente, ClienteFormData } from '../types/clientes';
+import { type Cliente, type ClienteFormData } from '../types/clientes';
 
 const INITIAL_FORM_DATA: ClienteFormData = {
   nombre: '',
@@ -26,7 +26,7 @@ export const useClienteModal = () => {
       nombre: cliente.nombre,
       cumple: cliente.cumple,
       comentarios: cliente.comentarios,
-      activo: cliente.activo,
+      activo: cliente.activo !== false,
       email: cliente.email || '',
       telefono: cliente.telefono || ''
     });

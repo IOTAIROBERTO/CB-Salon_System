@@ -1,15 +1,5 @@
-export interface Producto {
-  id: string;
-  nombre: string;
-  cantidad: number;
-  precio: number;
-  costo?: number; // Lo que cuesta al salón; sirve para vigilar el margen
-  stockMinimo: number;
-  categoria: string;
-  fechaUltimaCompra?: string;
-  proveedor?: string;
-  proveedorId?: string;
-}
+import type { Producto } from '../db/db';
+export type { Producto };
 
 export interface ProductoFormData {
   nombre: string;

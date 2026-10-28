@@ -1,7 +1,7 @@
 // src/components/citas/ReagendarModal.tsx
 import { X, AlertTriangle, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Cita } from "../../types/citas";
+import { type Cita } from "../../types/citas";
 import { 
   obtenerFechaMinima, 
   validarFechaHora,

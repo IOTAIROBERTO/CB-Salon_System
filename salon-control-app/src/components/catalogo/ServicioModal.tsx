@@ -1,5 +1,5 @@
 import { X, Save } from 'lucide-react';
-import { Servicio, ServicioFormData } from '../../types/catalogo';
+import { type Servicio, type ServicioFormData } from '../../types/catalogo';
 import { validateServicioForm, generateServicioId } from '../../utils/catalogoUtils';
 
 interface ServicioModalProps {
@@ -37,7 +37,8 @@ export default function ServicioModal({
     } else {
       const newServicio: Servicio = {
         id: generateServicioId(),
-        ...formData
+        ...formData,
+        duracion: formData.duracion ?? 60
       };
       onSave(newServicio);
     }

@@ -1,13 +1,13 @@
 // src/components/ventas/VentaCard.tsx
 import { Trash2, ShoppingBag, Calendar, User, Package } from 'lucide-react';
-import { Venta, Cliente, Item } from '../../types/ventas';
+import { type Venta, type Cliente, type Item } from '../../types/ventas';
 import { getClienteName, formatPrice, formatDate } from '../../utils/ventasUtils';
 
 interface VentaCardProps {
   venta: Venta;
   clientes: Cliente[];
   inventario: Item[];
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => boolean | Promise<boolean>;
 }
 
 export default function VentaCard({ venta, clientes, inventario, onDelete }: VentaCardProps) {

@@ -1,4 +1,4 @@
-import { Cita, Cliente, ServicioCatalogo, FiltroHistorial } from '../../types/reportes';
+import { type Cita, type Cliente, type ServicioCatalogo, type FiltroHistorial } from '../../types/reportes';
 import CitaHistorialCard from './CitaHistorialCard';
 
 interface HistorialCitasProps {

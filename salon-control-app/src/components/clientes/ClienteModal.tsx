@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { Cliente, ClienteFormData } from '../../types/clientes';
+import { type Cliente, type ClienteFormData } from '../../types/clientes';
 import { validateClienteForm } from '../../utils/clientesUtils';
 import { db } from '../../db/db';
 import { normalizar, telefono10 } from '../../utils/texto';
@@ -41,7 +41,7 @@ export default function ClienteModal({
     const clienteData = {
       nombre: formData.nombre.trim(),
       cumple: formData.cumple,
-      comentarios: formData.comentarios.trim(),
+      comentarios: (formData.comentarios || '').trim(),
       activo: formData.activo,
       email: formData.email.trim(),
       telefono: formData.telefono.trim()

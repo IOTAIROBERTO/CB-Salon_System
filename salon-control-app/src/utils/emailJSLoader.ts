@@ -1,4 +1,5 @@
 // src/utils/emailJSLoader.ts
+declare global { interface Window { emailjs: any } }
 export const loadEmailJS = (): Promise<void> => {
   return new Promise((resolve, reject) => {
     // Si EmailJS ya está cargado, resolver inmediatamente

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Cliente } from '../types/clientes';
-import { generateClienteId, hasClienteRegistros } from '../utils/clientesUtils';
+import { type Cliente } from '../types/clientes';
+import { generateClienteId } from '../utils/clientesUtils';
 import { fechaLocalISO } from '../utils/dateValidation';
 
 export const useClientes = () => {
@@ -29,8 +29,9 @@ export const useClientes = () => {
   };
 
   const deleteCliente = async (clienteId: string) => {
-    // Verificar si el cliente tiene registros
-    if (hasClienteRegistros(clienteId)) {
+    // Si tiene citas o ventas conviene marcarla inactiva en vez de borrarla
+    const tieneRegistros = (await db.citas.where('clienteId').equals(clienteId).count()) + (await db.ventas.where('clienteId').equals(clienteId).count()) > 0;
+    if (tieneRegistros) {
       const confirmarEliminacion = confirm(
         'Este cliente tiene citas o servicios registrados. ¿Estás seguro de eliminarlo? ' +
         'Se recomienda marcarlo como inactivo en su lugar.'

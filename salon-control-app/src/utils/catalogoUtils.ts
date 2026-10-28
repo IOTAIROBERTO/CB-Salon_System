@@ -1,4 +1,4 @@
-import { ServicioFormData } from '../types/catalogo';
+import { type ServicioFormData } from '../types/catalogo';
 import { formatCurrency } from './financialUtils';
 
 export const validateServicioForm = (formData: ServicioFormData): string | null => {

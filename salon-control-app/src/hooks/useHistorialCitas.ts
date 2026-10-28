@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Cita, FiltroHistorial } from '../types/reportes';
+import { type Cita, type FiltroHistorial } from '../types/reportes';
 
 export const useHistorialCitas = (citas: Cita[]) => {
   const [filtroHistorial, setFiltroHistorial] = useState<FiltroHistorial>('todas');

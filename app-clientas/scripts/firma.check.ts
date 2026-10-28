@@ -69,7 +69,7 @@ assert.equal(c.realmId, 'r');
 assert.match(c.evidencia.huella, /^[a-f0-9]{64}$/);
 assert.equal(c.evidencia.agente, 'prueba');
 assert.equal(c.evidencia.version, '2026-10');
-assert.ok(tablas.avisos.some(a => a.titulo.includes('Laura Pérez') && a.detalle.includes('2 punto(s) de salud') && a.refId === 'c1'));
+assert.ok(tablas.avisos.some(a => a.tipo === 'sistema' && a.titulo.includes('Laura Pérez') && a.detalle.includes('2 punto(s) de salud') && a.refId === 'c1'));
 
 // Un solo uso
 assert.equal((await api(`firma/${ID}`, bien)).status, 409);

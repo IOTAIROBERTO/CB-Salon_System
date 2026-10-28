@@ -1,4 +1,4 @@
-import { ClientesStats as IClientesStats } from '../../types/clientes';
+import { type ClientesStats as IClientesStats } from '../../types/clientes';
 
 interface ClientesStatsProps {
   stats: IClientesStats;

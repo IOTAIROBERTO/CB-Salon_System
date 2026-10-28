@@ -41,8 +41,8 @@ export default function ClientesPage() {
   const cumpleaneros = getCumpleanerosMes(clientes);
 
   // Handlers
-  const handleDeleteCliente = (id: string) => {
-    const success = deleteCliente(id);
+  const handleDeleteCliente = async (id: string) => {
+    const success = await deleteCliente(id);
     if (success) {
       alert('Cliente eliminado exitosamente');
     }

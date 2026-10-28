@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Producto, StockMovimiento } from '../types/inventario';
+import { type Producto, type StockMovimiento } from '../types/inventario';
 import {
   generateProductoId,
   calculateNewStock,

@@ -1,9 +1,9 @@
-import Dexie, { Table } from 'dexie';
+import Dexie, { type Table } from 'dexie';
 import dexieCloud from 'dexie-cloud-addon';
 
 // URL pública de la base (dexie-cloud.json). La clave secreta vive en dexie-cloud.key, fuera de git.
 export const DEXIE_CLOUD_URL = 'https://zt3tyd7cy.dexie.cloud';
-import { CampaignType } from '../types/email';
+import { type CampaignType } from '../types/email';
 import type { Canje } from '../utils/lealtad';
 import type { ConfigAgenda } from '../utils/agenda';
 import type { Zona } from '../utils/zonas';

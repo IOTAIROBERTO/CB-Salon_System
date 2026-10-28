@@ -1,5 +1,5 @@
 import { Calendar, DollarSign, Clock, ShoppingCart, TrendingDown, TrendingUp } from 'lucide-react';
-import { ReportStats as IReportStats } from '../../types/reportes';
+import { type ReportStats as IReportStats } from '../../types/reportes';
 import { formatCurrency } from '../../utils/financialUtils';
 
 interface ReportStatsProps {

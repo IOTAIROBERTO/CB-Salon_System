@@ -1,7 +1,7 @@
 // src/components/citas/CobroModal.tsx
 import { X, Plus, AlertTriangle } from "lucide-react";
 import { useState } from "react";
-import { Cita, Servicio } from "../../types/citas";
+import { type Cita, type Servicio } from "../../types/citas";
 import ResumenCobro from "./ResumenCobro";
 import {
   calculateChargeBreakdown,

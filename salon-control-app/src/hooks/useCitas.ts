@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db";
-import { Cita, Cliente } from "../types/citas";
+import { type Cita, type Cliente } from "../types/citas";
 
 export default function useCitas() {
   const [modalState, setModalState] = useState<{ type: string; data?: Cita | null }>({

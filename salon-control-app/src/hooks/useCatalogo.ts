@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Servicio } from '../types/catalogo';
+import { type Servicio } from '../types/catalogo';
 
 export const useCatalogo = () => {
   // Cargar servicios desde Dexie en tiempo real

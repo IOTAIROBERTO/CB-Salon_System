@@ -1,5 +1,5 @@
 import { X, AlertTriangle } from 'lucide-react';
-import { Producto, StockMovimiento, ModalType } from '../../types/inventario';
+import { type Producto, type StockMovimiento, type ModalType } from '../../types/inventario';
 import { validateStockForm, calculateNewStock, willBeStockBajo } from '../../utils/inventarioUtils';
 
 interface StockModalProps {
@@ -8,7 +8,7 @@ interface StockModalProps {
   editingProducto: Producto | null;
   stockData: StockMovimiento;
   updateStockData: (field: keyof StockMovimiento, value: string | number) => void;
-  onUpdateStock: (productoId: string, stockData: StockMovimiento) => void;
+  onUpdateStock: (productoId: string, stockData: StockMovimiento) => boolean | Promise<boolean>;
   onClose: () => void;
 }
 
@@ -23,7 +23,7 @@ export default function StockModal({
 }: StockModalProps) {
   if (!isOpen || modalType !== 'stock' || !editingProducto) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const validationError = validateStockForm(stockData);
@@ -37,7 +37,7 @@ export default function StockModal({
       return;
     }
 
-    const success = onUpdateStock(editingProducto.id, stockData);
+    const success = await onUpdateStock(editingProducto.id, stockData);
     if (success) {
       alert(`Stock ${stockData.operacion === 'suma' ? 'aumentado' : 'reducido'} exitosamente`);
       onClose();

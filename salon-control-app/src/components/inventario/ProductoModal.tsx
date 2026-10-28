@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { Producto, ProductoFormData, ModalType } from '../../types/inventario';
+import { type Producto, type ProductoFormData, type ModalType } from '../../types/inventario';
 import { validateProductoForm, estadoPrecio, precioMinimo, MARGEN_MINIMO } from '../../utils/inventarioUtils';
 import { formatCurrency } from '../../utils/financialUtils';
 import { useLiveQuery } from 'dexie-react-hooks';

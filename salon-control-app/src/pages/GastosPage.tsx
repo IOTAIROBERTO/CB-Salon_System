@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, Expense } from '../db/db';
+import { db, type Expense } from '../db/db';
 import { Plus, Trash2, Calendar } from 'lucide-react';
 import { formatCurrency } from '../utils/financialUtils';
 import { fechaLocalISO, parseFechaLocal } from '../utils/dateValidation';

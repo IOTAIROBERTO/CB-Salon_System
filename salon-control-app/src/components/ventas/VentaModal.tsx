@@ -1,7 +1,6 @@
 import { X } from 'lucide-react';
-import { Plus, Trash2, Search, User, Package, Calculator, ShoppingCart, Tag } from "lucide-react";
 import { formatCurrency } from "../../utils/financialUtils";
-import { VentaFormData, Cliente, Item, Venta } from '../../types/ventas';
+import { type VentaFormData, type Cliente, type Item, type Venta } from '../../types/ventas';
 import { validateVentaForm, calculateVentaTotal, generateVentaId } from '../../utils/ventasUtils';
 import ProductSelector from './ProductSelector';
 import { useLiveQuery } from 'dexie-react-hooks';

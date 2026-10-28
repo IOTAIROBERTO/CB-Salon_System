@@ -1,27 +1,7 @@
 // src/types/citas.ts - Versión actualizada
 
-export interface Cliente {
-  id: string;
-  nombre: string;
-  telefono: string;
-  email?: string;
-  fechaNacimiento?: string;
-  fechaRegistro: string;
-  notas?: string;
-}
-
-export interface Servicio {
-  id: string;
-  nombre: string;
-  descripcion?: string;
-  precioSugerido: number;
-  anticipoSugerido?: number;
-  duracionMinutos: number;
-  categoria?: string;
-  activo: boolean;
-  comision?: number;
-  archivado?: boolean; // Fuera del catálogo (uñas, «otros»)
-}
+// Clienta y servicio son los de la base (db.ts): una sola definición
+export type { Cliente, Servicio } from '../db/db';
 
 export interface Cita {
   id: string;

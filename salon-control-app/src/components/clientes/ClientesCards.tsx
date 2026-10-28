@@ -1,5 +1,5 @@
 import { Edit, Trash2, Calendar, MessageCircle, User, Mail, Phone } from 'lucide-react';
-import { Cliente } from '../../types/clientes';
+import { type Cliente } from '../../types/clientes';
 import { formatDate } from '../../utils/clientesUtils';
 
 interface ClientesCardsProps {

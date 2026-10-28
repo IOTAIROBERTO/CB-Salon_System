@@ -1,4 +1,4 @@
-import { ReportData, ReportPeriod } from '../types/reportes';
+import { type ReportData, type ReportPeriod } from '../types/reportes';
 import { fechaLocalISO } from './dateValidation';
 
 export const exportReportToCSV = (reportData: ReportData[], period: ReportPeriod): void => {

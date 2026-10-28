@@ -1,5 +1,5 @@
 import { Package, TrendingDown } from 'lucide-react';
-import { InventarioStats as IInventarioStats } from '../../types/inventario';
+import { type InventarioStats as IInventarioStats } from '../../types/inventario';
 import { formatCurrency } from '../../utils/financialUtils';
 
 interface InventarioStatsProps {

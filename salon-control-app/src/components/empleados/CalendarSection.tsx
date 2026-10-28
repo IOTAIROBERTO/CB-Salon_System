@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, EmpleadoEvent } from '../../db/db';
+import { db, type EmpleadoEvent } from '../../db/db';
 import { Calendar, Plus, Trash2, Tag, CalendarDays, Clock, Briefcase, HelpCircle } from 'lucide-react';
 import { formatDate } from '../../utils/clientesUtils';
 import { fechaLocalISO } from '../../utils/dateValidation';

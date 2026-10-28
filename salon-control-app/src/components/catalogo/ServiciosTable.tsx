@@ -1,5 +1,5 @@
 import { Scissors } from 'lucide-react';
-import { Servicio } from '../../types/catalogo';
+import { type Servicio } from '../../types/catalogo';
 import ServicioRow from './ServicioRow';
 
 interface ServiciosTableProps {

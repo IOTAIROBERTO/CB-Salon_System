@@ -1,4 +1,4 @@
-import { Venta, VentaFormData, VentasStats, Item, Cliente } from '../types/ventas';
+import { type Venta, type VentaFormData, type VentasStats, type Item, type Cliente } from '../types/ventas';
 import { formatCurrency } from './financialUtils';
 import { parseFechaLocal } from './dateValidation';
 

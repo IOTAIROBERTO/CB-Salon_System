@@ -1,5 +1,5 @@
 // src/utils/clientesUtils.ts
-import { Cliente, ClienteFormData, ClientesStats } from '../types/clientes';
+import { type Cliente, type ClienteFormData, type ClientesStats } from '../types/clientes';
 import { parseFechaLocal } from './dateValidation';
 
 export const validateClienteForm = (formData: ClienteFormData): string | null => {
@@ -31,7 +31,8 @@ export const generateClienteId = (): string => {
   return `cli_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
-export const formatDate = (dateString: string): string => {
+export const formatDate = (dateString?: string): string => {
+  if (!dateString) return '';
   try {
     return parseFechaLocal(dateString).toLocaleDateString('es-ES', {
       day: '2-digit',
@@ -43,7 +44,8 @@ export const formatDate = (dateString: string): string => {
   }
 };
 
-export const formatDateBirthday = (dateString: string): string => {
+export const formatDateBirthday = (dateString?: string): string => {
+  if (!dateString) return '';
   try {
     const date = parseFechaLocal(dateString);
     return date.toLocaleDateString('es-ES', {
@@ -56,7 +58,8 @@ export const formatDateBirthday = (dateString: string): string => {
 };
 
 // Nueva función para calcular la edad
-export const calcularEdad = (fechaNacimiento: string): number => {
+export const calcularEdad = (fechaNacimiento?: string): number => {
+  if (!fechaNacimiento) return 0;
   try {
     const today = new Date();
     const birthDate = parseFechaLocal(fechaNacimiento);
@@ -74,7 +77,8 @@ export const calcularEdad = (fechaNacimiento: string): number => {
 };
 
 // Nueva función para formatear cumpleaños con edad
-export const formatBirthdayWithAge = (fechaNacimiento: string): string => {
+export const formatBirthdayWithAge = (fechaNacimiento?: string): string => {
+  if (!fechaNacimiento) return '';
   try {
     const date = parseFechaLocal(fechaNacimiento);
     const edad = calcularEdad(fechaNacimiento);
@@ -91,7 +95,8 @@ export const formatBirthdayWithAge = (fechaNacimiento: string): string => {
 };
 
 // Función mejorada para verificar si es cumpleaños hoy
-export const esCumpleanosHoy = (fechaNacimiento: string): boolean => {
+export const esCumpleanosHoy = (fechaNacimiento?: string): boolean => {
+  if (!fechaNacimiento) return false;
   try {
     const today = new Date();
     const birthDate = parseFechaLocal(fechaNacimiento);
@@ -137,13 +142,4 @@ export const getCumpleanerosMes = (clientes: Cliente[]): Cliente[] => {
       return 0;
     }
   });
-};
-
-// This utility now needs to be async if it query Dexie, 
-// but since it's used synchronously in many places, we'll keep a simpler version for now
-// or better, migrate the callers.
-export const hasClienteRegistros = (clienteId: string): boolean => {
-  // We'll keep this as a optimistic check since full migration involves async/await
-  // If we really need precision, we should use a hook in the component.
-  return true; // Simplified for UI safety during deletion
 };

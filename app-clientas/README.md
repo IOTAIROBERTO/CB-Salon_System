@@ -5,14 +5,15 @@ La app que se publica en Google Play. Es una **app web instalable (PWA)** hecha 
 **Trusted Web Activity (TWA)** con Bubblewrap, como dice la propuesta: abre a pantalla completa con su ícono, recibe
 notificaciones y se actualiza sola cada vez que se publica la web (sin subir otra versión a Play).
 
-## Qué hay hoy (fase 1)
+## Qué hay hoy
 
 | Pantalla | Qué hace |
 |---|---|
 | Inicio | Logo, botón para agendar, Club, cómo llegar, horario, WhatsApp, Instagram y Facebook. Aviso para instalarla sin tienda: botón «Instalar» en Android, pasos de «Agregar a pantalla de inicio» en iPhone y «ábrela en tu navegador» si viene de Instagram o Facebook. No sale si ya está instalada o si la clienta lo cerró. |
-| Agendar | Catálogo 2027 por categoría («desde $…»). La clienta elige servicio, fecha y turno y la solicitud sale **por WhatsApp ya escrita**; Cristina o Roberto confirman y mandan el anticipo. |
-| Productos | Aviso de catálogo próximo y botón para preguntar por WhatsApp. |
-| Mi Club | Reglas del Club Cristina Borquez: cómo se juntan puntos, niveles, descuentos, canje y cortesías. |
+| Agendar | Catálogo vivo de CB Control («desde $…») y horarios libres en tiempo real (agenda + lo ocupado en el Google Calendar de Cristina). La cita llega «pendiente» a CB Control; el salón confirma y manda el anticipo. WhatsApp queda de respaldo. |
+| Antojos | Menú con fotos; catálogo de productos aún no (se pregunta por WhatsApp). |
+| Mi Club | Reglas del Club Cristina Borquez y tarjeta personal (puntos, nivel, regalos, citas y consentimientos por firmar) al entrar con teléfono y código por WhatsApp: se activa cuando el WhatsApp oficial tenga token y número. |
+| Firmar (`#/firmar/<id>`) | Consentimiento informado con el enlace personal que manda el salón: marca salud y permisos y firma con el dedo. Sin cuenta. |
 
 Los datos del salón, las políticas, el catálogo y las reglas del Club **no se copian**: se leen de CB Control
 (`../salon-control-app/src`, alias `@salon` en `vite.config.ts`). Si se cambia una regla allá, la app la toma al compilar.
@@ -60,12 +61,11 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
 > `app.cristinaborquez.com`. En Play el identificador ya no se puede cambiar nunca: no tocarlo en
 > `android/twa-manifest.json` ni en `public/.well-known/assetlinks.json`.
 
-## Lo que sigue (fases de la propuesta)
+## Lo que sigue
 
-- **Fase 3 · API y cuenta de la clienta**: Cloudflare Workers que leen CB Control (Dexie Cloud por REST); entrar con
-  el teléfono; tarjeta del Club con puntos, nivel y saldo; catálogo de productos; la solicitud de cita llega directo
-  a CB Control para que Cristina o Roberto la confirmen.
-- **Fase 4 · Notificaciones y Play**: recordatorios de cita, anticipo y campañas; publicación en Google Play.
+- **WhatsApp oficial** (falta `WA_TOKEN` y el número definitivo): activa la entrada con código, los avisos al salón y
+  la confirmación y el recordatorio a las clientas (ya programados).
+- Anticipos con Mercado Pago, catálogo de productos, dominio `cristinaborquez.com` y publicación en Google Play.
 
 ## API y automatización (Cloudflare)
 

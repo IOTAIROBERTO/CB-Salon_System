@@ -1,5 +1,5 @@
-import { Cita, Venta, ReportData, ReportStats, ReportPeriod } from '../types/reportes';
-import { Expense } from '../db/db';
+import { type Cita, type Venta, type ReportData, type ReportStats, type ReportPeriod } from '../types/reportes';
+import { type Expense } from '../db/db';
 import { parseFechaLocal } from './dateValidation';
 
 /** Ingreso de una cita cobrada: lo pagado menos la propina (la propina no es venta) y menos lo

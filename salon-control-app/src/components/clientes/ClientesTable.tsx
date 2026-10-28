@@ -1,6 +1,6 @@
 // src/components/clientes/ClientesTable.tsx
-import { Edit, Trash2, Calendar, MessageCircle, User, Mail, Phone, Gift } from 'lucide-react';
-import { Cliente } from '../../types/clientes';
+import { Edit, Trash2, Calendar, MessageCircle, User, Mail, Phone } from 'lucide-react';
+import { type Cliente } from '../../types/clientes';
 import { formatDate, formatBirthdayWithAge, esCumpleanosHoy } from '../../utils/clientesUtils';
 
 interface ClientesTableProps {

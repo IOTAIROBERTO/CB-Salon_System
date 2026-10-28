@@ -1,5 +1,5 @@
 import { Edit2, Trash2 } from 'lucide-react';
-import { Servicio } from '../../types/catalogo';
+import { type Servicio } from '../../types/catalogo';
 import { formatPrice } from '../../utils/catalogoUtils';
 
 interface ServicioRowProps {

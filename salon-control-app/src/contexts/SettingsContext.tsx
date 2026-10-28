@@ -1,6 +1,6 @@
 import { DATOS_SALON } from '../data/datosSalon';
 import React, { createContext, useContext } from 'react';
-import { db, AppSettings } from '../db/db';
+import { db, type AppSettings } from '../db/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 interface SettingsContextType {

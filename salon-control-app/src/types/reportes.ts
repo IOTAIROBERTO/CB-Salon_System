@@ -19,6 +19,8 @@ export interface Cita {
   descuentoAplicado?: number;
   subtotalOriginal?: number;
   montoDescuento?: number;
+  subtotalConDescuento?: number;
+  montoRedondeo?: number;
   fechaCompletada?: string;
   notas?: string;
 }
@@ -40,11 +42,7 @@ export interface Venta {
   notas?: string;
 }
 
-export interface Cliente {
-  id: string;
-  nombre: string;
-  activo: boolean;
-}
+export type { Cliente } from '../db/db';
 
 export interface ServicioCatalogo {
   id: string;
