@@ -8,7 +8,7 @@ import {
 import { saldoDe } from '../../salon-control-app/src/utils/saldo';
 import { CHECKS_CLIENTA, OPCIONES_REDES, VERSION_CONSENTIMIENTO, textoFirmado } from '../../salon-control-app/src/utils/consentimiento';
 import { DATOS_SALON } from '../../salon-control-app/src/data/datosSalon';
-import { CATEGORIA_ANTOJOS, MENU_ANTOJOS } from '../../salon-control-app/src/data/menuAntojos';
+import { MENU_ANTOJOS, esCategoriaBreak } from '../../salon-control-app/src/data/menuAntojos';
 import { guardar, leer, uno, type EnvDexie } from './dexie';
 import { calendariosAgenda, ocupadoGoogle, type EnvGoogle } from './google';
 import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
@@ -123,11 +123,11 @@ export function textoHorario(horario?: ConfigAgenda['horario']) {
 }
 
 const norma = (t: string) => t.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
-/** GET /api/salon → lo que se edita en CB Control y la app muestra: datos del salón, reglas del Club y precios de antojos
+/** GET /api/salon → lo que se edita en CB Control y la app muestra: datos del salón, reglas del Club y precios del break
  *  (los del Inventario, nunca el costo). Sin caché: un cambio guardado en CB Control se ve en cuanto sube a la nube. */
 async function datosDelSalon(env: Env) {
   const [settings, inventario] = await Promise.all([uno<any>(env, 'configuracion', 'settings'), leer<any>(env, 'inventario')]);
-  const precios = new Map(inventario.filter(i => i.categoria === CATEGORIA_ANTOJOS && Number(i.precio) > 0).map(i => [norma(i.nombre || ''), Number(i.precio)]));
+  const precios = new Map(inventario.filter(i => esCategoriaBreak(i.categoria) && Number(i.precio) > 0).map(i => [norma(i.nombre || ''), Number(i.precio)]));
   const telefono = settings?.telefono || DATOS_SALON.telefono, digitos = tel10(telefono);
   return json({
     salon: {

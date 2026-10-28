@@ -11,7 +11,7 @@ import { DatosVivos } from './vivo'
 const PESTANAS = [
   { a: '/', texto: 'Inicio', Icono: Home },
   { a: '/agendar', texto: 'Agendar', Icono: CalendarPlus },
-  { a: '/productos', texto: 'Antojos', Icono: Coffee },
+  { a: '/productos', texto: 'Break', Icono: Coffee },
   { a: '/club', texto: 'Mi Club', Icono: Crown }
 ]
 

@@ -6,7 +6,7 @@ import ProductSelector from './ProductSelector';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
 import { estadoCirculo, parametrosDe, descuentoProducto, NOMBRE_CIRCULO, NOMBRE_NIVEL, type Nivel } from '../../utils/lealtad';
-import { CATEGORIA_ANTOJOS, descuentoAntojo } from '../../data/menuAntojos';
+import { descuentoAntojo, esCategoriaBreak } from '../../data/menuAntojos';
 
 interface VentaModalProps {
   isOpen: boolean;
@@ -31,7 +31,7 @@ export default function VentaModal({
 }: VentaModalProps) {
   // Hooks antes del return condicional (regla de hooks de React)
   const empleados = useLiveQuery(() => db.empleados.toArray())?.filter(e => e.activo) || [];
-  // Nivel del Club de la clienta: decide el descuento de cada producto (cabello y antojos tienen su propia escala)
+  // Nivel del Club de la clienta: decide el descuento de cada producto (cabello y break tienen su propia escala)
   const nivelClub = useLiveQuery(async (): Promise<Nivel | null> => {
     if (!ventaData.clienteId) return null;
     const [cliente, citas, ventas, todas, servicios, settings, saldo] = await Promise.all([db.clientes.get(ventaData.clienteId), db.citas.toArray(),
@@ -45,7 +45,7 @@ export default function VentaModal({
   const pctItem = (itemId: string) => {
     const prod = inventario.find(i => i.id === itemId) as (Item & { categoria?: string }) | undefined;
     if (!nivelClub || !prod) return 0;
-    return prod.categoria === CATEGORIA_ANTOJOS ? descuentoAntojo(nivelClub, prod.nombre) : descuentoProducto(nivelClub);
+    return esCategoriaBreak(prod.categoria) ? descuentoAntojo(nivelClub, prod.nombre) : descuentoProducto(nivelClub);
   };
   const totalConClub = () => Math.round(ventaData.items.reduce((t, it) => {
     const prod = inventario.find(i => i.id === it.itemId);

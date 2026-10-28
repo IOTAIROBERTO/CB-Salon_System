@@ -11,7 +11,7 @@
 // - Puntos dobles en el mes de cumpleaños y en los días flojos (martes y miércoles); no se acumulan entre sí.
 // - Bonos: bienvenida (más si llegó recomendada), reserva en línea y aniversario en el Club.
 // - Tres tipos de beneficio, que siempre mejoran al subir y nunca se pierden de un nivel al siguiente:
-//   1. Permanentes mientras se esté en el nivel, sin gastar puntos (BENEFICIOS_NIVEL: descuentos, flequillo, antojos;
+//   1. Permanentes mientras se esté en el nivel, sin gastar puntos (BENEFICIOS_NIVEL: descuentos, flequillo, break;
 //      Ónix además un antojo y una bebida de cortesía al mes). Café, té caliente y agua son de cortesía para todas.
 //   2. Regalo de nivel: uno por nivel, cuesta puntos, se tacha al usarlo y se renueva cada 12 meses (REGALOS_NIVEL).
 //   3. Celebraciones gratis: cumpleaños, aniversario, amiga recomendada y constancia.
@@ -130,8 +130,8 @@ export const permanentesDe = (nivel: Nivel, p: ParametrosCirculo = PARAMETROS_CI
     b.maquillaje ? `${b.maquillaje}% en maquillaje social` : '',
     b.cortePeinado ? `${b.cortePeinado}% en corte y peinado` : '',
     b.flequillo ? 'Despunte de flequillo gratis, uno al mes' : '',
-    b.antojosComida ? `${b.antojosComida}% en antojos de comida (no incluye bebidas)` : '',
-    b.antojoCortesia ? 'Un antojo y una bebida del menú de cortesía, uno al mes' : '',
+    b.antojosComida ? `${b.antojosComida}% en la comida del break (no incluye bebidas)` : '',
+    b.antojoCortesia ? 'Comida y bebida del break de cortesía, una vez al mes' : '',
     b.tarjeta ? `Si cambias tus puntos por una tarjeta de regalo, valen ${b.tarjeta}% más` : ''
   ].filter(Boolean);
 };
@@ -158,7 +158,7 @@ export const BENEFICIOS: Record<Exclude<ClaveBeneficio, ClaveRegalo>, { titulo: 
   cumple: { titulo: 'Sorpresa por tu cumpleaños', servicioId: '' },
   constancia: { titulo: 'Ampolleta de hidratación por constancia', servicioId: 's03' },
   flequillo: { titulo: 'Despunte de flequillo del mes', servicioId: 's02' },
-  antojoOnix: { titulo: 'Antojo y bebida de cortesía del mes', servicioId: '' },
+  antojoOnix: { titulo: 'Break de cortesía del mes (comida y bebida)', servicioId: '' },
   referida: { titulo: 'Descuento por amiga recomendada', servicioId: '' }
 };
 export const datosBeneficio = (clave: ClaveBeneficio, nivel: Nivel) => {
