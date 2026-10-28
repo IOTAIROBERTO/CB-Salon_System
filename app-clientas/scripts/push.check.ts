@@ -52,6 +52,9 @@ assert.equal(JSON.parse(Buffer.from(c, 'base64url').toString()).aud, 'https://fc
 const ahora = Date.now(), hace = (min: number) => new Date(ahora - min * 60000).toISOString();
 const tablas: Record<string, any[]> = {
   configuracion: [{ id: 'settings', realmId: 'r' }],
+  realms: [{ realmId: 'r', owner: 'duena@salon.mx' }],
+  members: [{ id: 'm1', realmId: 'r', userId: 'aux@salon.mx', email: 'aux@salon.mx', accepted: '2026-10-01' },
+    { id: 'm2', realmId: 'r', email: 'invitada@salon.mx' }],                                   // invitada que no ha aceptado
   avisos: [
     { id: 'a1', fecha: hace(1), tipo: 'cita', titulo: 'Nueva cita desde la app: Laura', detalle: 'Babylights mañana 10:00', leido: false },
     { id: 'a2', fecha: hace(90), tipo: 'cita', titulo: 'Vieja', leido: false },                 // de hace más de media hora
@@ -60,10 +63,12 @@ const tablas: Record<string, any[]> = {
     { id: 'a5', fecha: hace(1), tipo: 'cita', titulo: 'De otra cuenta', leido: false, realmId: 'ajeno' }
   ],
   suscripciones: [
-    { id: 'push_1', endpoint: 'https://fcm.googleapis.com/fcm/send/abc', p256dh, auth },
-    { id: 'push_2', endpoint: 'https://web.push.apple.com/QGone', p256dh, auth },            // desinstalada: 410
-    { id: 'push_3', endpoint: 'https://atacante.example/robar', p256dh, auth },               // no es servicio de push
-    { id: 'push_4', endpoint: 'https://fcm.googleapis.com/fcm/send/ajena', p256dh, auth, realmId: 'ajeno' }
+    { id: 'push_1', endpoint: 'https://fcm.googleapis.com/fcm/send/abc', p256dh, auth, owner: 'Duena@salon.mx' },
+    { id: 'push_2', endpoint: 'https://web.push.apple.com/QGone', p256dh, auth, owner: 'aux@salon.mx' },   // desinstalada: 410
+    { id: 'push_3', endpoint: 'https://atacante.example/robar', p256dh, auth, owner: 'aux@salon.mx' },     // no es servicio de push
+    { id: 'push_4', endpoint: 'https://fcm.googleapis.com/fcm/send/ajena', p256dh, auth, owner: 'duena@salon.mx', realmId: 'ajeno' },
+    { id: 'push_5', endpoint: 'https://fcm.googleapis.com/fcm/send/exaux', p256dh, auth, owner: 'exaux@salon.mx', usuario: 'duena@salon.mx' },  // ya no está en el equipo
+    { id: 'push_6', endpoint: 'https://fcm.googleapis.com/fcm/send/inv', p256dh, auth, owner: 'invitada@salon.mx' }
   ]
 };
 for (const filas of Object.values(tablas)) for (const f of filas) f.realmId ??= 'r';
@@ -90,7 +95,9 @@ enviados.sort((a, b) => a.url.localeCompare(b.url));   // se mandan en paralelo
 assert.deepEqual(enviados.map(e => e.url), ['https://fcm.googleapis.com/fcm/send/abc', 'https://web.push.apple.com/QGone']);
 assert.equal(enviados[0].headers['Content-Encoding'], 'aes128gcm');
 assert.deepEqual(await descifrar(enviados[0].cuerpo), { titulo: 'Nueva cita desde la app: Laura', detalle: 'Babylights mañana 10:00', id: 'a1' });
-assert.deepEqual(tablas.suscripciones.map(s => s.id), ['push_1', 'push_3', 'push_4']);    // la de Apple (410) se borró
+// Se borran: la de Apple (410), la que no es servicio de push y las de quien no está (o aún no) en el equipo; la de otra
+// cuenta (otro realm) ni se ve
+assert.deepEqual(tablas.suscripciones.map(s => s.id), ['push_1', 'push_4']);
 assert.ok(tablas.avisos.find(a => a.id === 'a1').push);
 assert.ok(!tablas.avisos.find(a => a.id === 'a2').push && !tablas.avisos.find(a => a.id === 'a5').push);
 

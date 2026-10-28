@@ -11,7 +11,10 @@ export interface EnvPush {
   VAPID_PRIVADA?: string;   // d de la llave (32 bytes), base64url
 }
 
-export interface Suscripcion { id: string; endpoint: string; p256dh: string; auth: string; usuario?: string; dispositivo?: string; fecha: string }
+export interface Suscripcion {
+  id: string; endpoint: string; p256dh: string; auth: string; usuario?: string; dispositivo?: string; fecha: string;
+  owner?: string;   // quién la creó (lo pone Dexie Cloud)
+}
 
 export const pushListo = (env: EnvPush) => !!(env.VAPID_PUBLICA && env.VAPID_PRIVADA);
 
@@ -72,12 +75,23 @@ export async function vapid(env: EnvPush, endpoint: string, ahora = Date.now()) 
 // mande los avisos (nombres de clientas) a otra dirección
 const SERVICIO_PUSH = /^https:\/\/([a-z0-9-]+\.)*(googleapis\.com|push\.apple\.com|mozilla\.com|mozaws\.net|notify\.windows\.com)\//;
 
+/** Quién sigue en el salón: la dueña del realm y quien aceptó su invitación (por userId o correo, en minúsculas) */
+async function equipo(env: EnvDexie) {
+  const [realms, miembros] = await Promise.all([leer<any>(env, 'realms'), leer<any>(env, 'members')]);
+  return new Set([...realms.map(r => r.owner), ...miembros.filter(m => m.accepted && !m.rejected).flatMap(m => [m.userId, m.email])]
+    .filter(Boolean).map(x => String(x).toLowerCase()));
+}
+
 /** Manda un aviso a todos los dispositivos suscritos del salón y borra las suscripciones que ya no existen (404/410).
- *  Devuelve a cuántos les llegó al servicio de push. */
+ *  Quien ya no está en el equipo deja de recibirlos: su suscripción se borra aquí. Devuelve a cuántos les llegó. */
 export async function avisarCelulares(env: EnvPush & EnvDexie, aviso: { titulo: string; detalle?: string; id?: string }) {
   if (!pushListo(env)) return 0;
   const mensaje = texto(JSON.stringify(aviso));
-  const subs = (await leer<Suscripcion>(env, 'suscripciones')).filter(s => SERVICIO_PUSH.test(s.endpoint));
+  const [todas, quienes] = await Promise.all([leer<Suscripcion>(env, 'suscripciones'), equipo(env)]);
+  if (!quienes.size) return 0;   // sin saber quién es del equipo no se manda (ni se borra) nada
+  const valida = (s: Suscripcion) => SERVICIO_PUSH.test(s.endpoint) && quienes.has(String(s.owner ?? s.usuario ?? '').toLowerCase());
+  await Promise.all(todas.filter(s => !valida(s)).map(s => borrar(env, 'suscripciones', s.id)));
+  const subs = todas.filter(valida);
   const llegaron = await Promise.all(subs.map(async s => {
     try {
       const r = await fetch(s.endpoint, {
