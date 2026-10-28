@@ -12,9 +12,7 @@ import { fechaLegible, hoyHermosillo, masDias, type Env as EnvApi } from '../api
 
 type Env = EnvApi & EnvPush & { RECORDATORIOS?: 'app' | 'todas' };   // 'todas': también las citas que agenda el salón a mano
 
-// Igual que en wrangler.toml. Dos horarios de cada minuto escritos distinto: cada uno corre aparte y tiene sus propias
-// 50 consultas del plan gratis (el espejo de Google gasta casi todas)
-const CADA_MINUTO = '* * * * *', AVISOS_AL_CELULAR = '*/1 * * * *';
+const CADA_MINUTO = '* * * * *';   // igual que en wrangler.toml
 const pesos = (n: number) => `$${Number(n || 0).toLocaleString('es-MX')}`;
 
 export async function revisar(env: Env) {
@@ -82,11 +80,18 @@ export async function avisosAlCelular(env: Env, ahora = Date.now()) {
   return { avisos: nuevos.length, llegaron };
 }
 
+/** Cada minuto: primero los avisos al celular (pocas consultas, no deben esperar) y luego el espejo de Google. Comparten
+ *  las 50 consultas por vuelta del plan gratis (Cloudflare junta en una sola vuelta los horarios del mismo minuto): si el
+ *  espejo llega al límite, lo que falte se escribe en la vuelta siguiente, como ya hace con su tope de escrituras. */
+async function cadaMinuto(env: Env) {
+  console.log('celular', JSON.stringify(await avisosAlCelular(env).catch(e => ({ error: (e as Error).message }))));
+  console.log('google', JSON.stringify(await espejo(env)));
+}
+
 export default {
-  // Cada minuto: espejo de citas en Google Calendar y, aparte, avisos al celular; cada 10: avisos por WhatsApp
+  // Cada minuto: avisos al celular y espejo de citas en Google Calendar; cada 10: avisos por WhatsApp
   async scheduled(evento: ScheduledController, env: Env, ctx: ExecutionContext) {
-    if (evento.cron === CADA_MINUTO) ctx.waitUntil(espejo(env).then(r => console.log('google', JSON.stringify(r))));
-    else if (evento.cron === AVISOS_AL_CELULAR) ctx.waitUntil(avisosAlCelular(env).then(r => console.log('celular', JSON.stringify(r))));
+    if (evento.cron === CADA_MINUTO) ctx.waitUntil(cadaMinuto(env));
     else ctx.waitUntil(revisar(env).then(r => console.log('avisos', JSON.stringify(r))));
   }
 } satisfies ExportedHandler<Env>;
