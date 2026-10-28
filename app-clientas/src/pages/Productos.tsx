@@ -12,7 +12,7 @@ export default function Productos() {
   return (
     <>
       <Encabezado rotulo="Durante tu cita y en casa" titulo="Antojos y productos" bajada="Algo rico mientras te consentimos, y lo que usamos en el salón para cuidar tu color." />
-      <main className="space-y-10 px-6 pb-8">
+      <main className="contenido space-y-10 px-6 pb-8 lg:grid lg:grid-cols-[1fr_1.4fr] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-16 lg:gap-y-12 lg:space-y-0">
         <section>
           <p className="rotulo">Siempre de cortesía</p>
           <div className="mt-3 grid grid-cols-3 gap-2.5">
@@ -27,7 +27,7 @@ export default function Productos() {
           </div>
         </section>
 
-        <section>
+        <section className="lg:row-span-2">
           <p className="rotulo">Menú de antojos</p>
           <h2 className="titulo mt-1 text-3xl">Para disfrutar en tu cita</h2>
           <p className="mt-2 text-sm leading-relaxed text-marca-gris">Pídelos en recepción. ¿Traes tu lunch? Tenemos microondas para calentarlo.</p>
@@ -68,7 +68,7 @@ export default function Productos() {
             </p>
           </div>
           <p className="mt-4 border-l border-marca-dorado pl-3 text-xs leading-relaxed text-marca-gris">{POLITICAS.pedidos}</p>
-          <a href={enlaceWhatsApp('Hola, quiero preguntar por un producto:')} className="boton-claro mt-6 w-full"><MessageCircle size={16} strokeWidth={1.5} /> Pregunta por un producto</a>
+          <a href={enlaceWhatsApp('Hola, quiero preguntar por un producto:')} className="boton-claro mt-6 w-full lg:w-auto"><MessageCircle size={16} strokeWidth={1.5} /> Pregunta por un producto</a>
         </section>
       </main>
     </>

@@ -18,7 +18,25 @@ export default function App() {
   const { pathname } = useLocation()
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])   // cada pestaña abre desde arriba (con llaves: scrollTo ya devuelve una promesa)
   return (
-    <div className="mx-auto min-h-screen max-w-md bg-marca-marfil pb-24 shadow-[0_0_60px_rgba(17,17,17,0.06)]">
+    <div className="mx-auto min-h-screen max-w-md bg-marca-marfil pb-24 shadow-[0_0_60px_rgba(17,17,17,0.06)] lg:max-w-none lg:pb-16 lg:pt-16 lg:shadow-none">
+      {/* Computadora: barra arriba con las mismas pestañas (en el celular van abajo) */}
+      <header className="fixed inset-x-0 top-0 z-20 hidden h-16 border-b border-marca-linea/60 bg-white/85 backdrop-blur-xl lg:block">
+        <div className="contenido flex h-full items-center gap-10">
+          <NavLink to="/" className="flex items-center gap-3">
+            <img src="./icons/monograma.svg" alt="" className="h-7 w-auto" />
+            <span className="font-display text-lg text-marca-negro">Cristina Borquez <span className="text-marca-gris">Beauty Salon</span></span>
+          </NavLink>
+          <nav className="ml-auto flex items-center gap-8">
+            {PESTANAS.slice(1).map(({ a, texto }) => (
+              <NavLink key={a} to={a}
+                className={({ isActive }) => `text-[11px] uppercase tracking-[0.22em] transition-colors ${isActive ? 'text-marca-dorado-prof' : 'text-marca-grafito hover:text-marca-negro'}`}>
+                {texto}
+              </NavLink>
+            ))}
+          </nav>
+          <NavLink to="/agendar" className="boton px-5 py-2.5">Agendar mi cita</NavLink>
+        </div>
+      </header>
       <div key={pathname} className="aparece">
         <Routes>
           <Route path="/" element={<Inicio />} />
@@ -29,7 +47,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-      <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-marca-linea/60 bg-white/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+      <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-marca-linea/60 bg-white/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-md">
           {PESTANAS.map(({ a, texto, Icono }) => (
             <NavLink key={a} to={a} end={a === '/'}

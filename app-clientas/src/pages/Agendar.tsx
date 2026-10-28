@@ -3,11 +3,13 @@ import { Check, MessageCircle } from 'lucide-react'
 import Encabezado from '@/components/Encabezado'
 import { NOMBRE_CLUB, POLITICAS, SERVICIOS, enlaceWhatsApp, nombreCategoria, pesos, type Servicio } from '@/salon'
 import { fechaCumple } from '@/components/UnirmeClub'
-import { crearCita, disponibilidad, misDatos, recordarDatos, serviciosEnLinea, type DiaLibre } from '@/api'
+import { crearCita, disponibilidad, misDatos, pedirCodigo, recordarDatos, serviciosEnLinea, sesion, verificarCodigo, type DiaLibre } from '@/api'
+import NoSoyRobot, { conTurnstile } from '@/components/NoSoyRobot'
 
 // Agenda en tiempo real: los horarios salen del mismo motor que usa CB Control (API /api/disponibilidad) y la cita
 // se aparta al enviar; llega «pendiente» a CB Control y a la bandeja de avisos para que el salón la confirme.
-// Si la API no responde, queda WhatsApp como respaldo.
+// Si la API no responde, queda WhatsApp como respaldo. «No soy robot» (Turnstile) en cada envío; con el WhatsApp del
+// salón conectado, la API pide confirmar el teléfono con un código antes de apartar (428) y aquí se pide en el momento.
 const ORDEN = ['color', 'corte', 'tratamiento', 'maquillaje', 'peinado']   // el color primero: es la especialidad
 const categoriasDe = (lista: Servicio[]) => [...new Set(lista.map(s => s.categoria))].sort((a, b) => (ORDEN.indexOf(a) + 1 || 99) - (ORDEN.indexOf(b) + 1 || 99))
 
@@ -31,6 +33,13 @@ export default function Agendar() {
   const [error, setError] = useState('')
   const [lista, setLista] = useState<{ fecha: string; hora: string; servicio: string; anticipo: number } | null>(null)
   const formulario = useRef<HTMLElement>(null)
+  const [robot, setRobot] = useState('')          // token de Turnstile (sirve una vez)
+  const [vueltaRobot, setVueltaRobot] = useState(0)
+  const otroRobot = () => { setRobot(''); setVueltaRobot(v => v + 1) }
+  const [reto, setReto] = useState('')            // código por WhatsApp pedido para confirmar el teléfono
+  const [codigo, setCodigo] = useState('')
+  // En el celular el formulario queda abajo de la lista y se baja a él; en computadora ya está a la derecha
+  const bajarAlFormulario = () => { if (!matchMedia('(min-width: 1024px)').matches) formulario.current?.scrollIntoView({ behavior: 'smooth' }) }
 
   const cargarHorarios = (s: Servicio) => {
     setCargando(true); setError(''); setDias(null)
@@ -41,7 +50,7 @@ export default function Agendar() {
   }
   useEffect(() => {
     if (!elegido) return
-    formulario.current?.scrollIntoView({ behavior: 'smooth' })
+    bajarAlFormulario()
     setHora(''); cargarHorarios(elegido)
   }, [elegido])
 
@@ -49,15 +58,27 @@ export default function Agendar() {
     if (!elegido || !hora) return
     setEnviando(true); setError('')
     try {
-      const r = await crearCita({ servicioId: elegido.id, fecha, hora, ...datos, notas, club, sitio: trampa })
+      const r = await crearCita({ servicioId: elegido.id, fecha, hora, ...datos, notas, club, sitio: trampa, turnstile: robot })
       recordarDatos(datos)
       setLista(r.cita)
-      setTimeout(() => formulario.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+      setReto('')
+      otroRobot()
+      setTimeout(bajarAlFormulario, 50)
     } catch (e) {
       const err = e as { message: string; status?: number }
-      setError(err.message)
+      if (err.status === 428) {   // falta confirmar el teléfono: el mismo token (aún sin usar) sirve para pedir el código
+        try { setReto((await pedirCodigo(datos.telefono, robot)).reto) } catch (e2) { setError((e2 as Error).message) }
+      } else setError(err.message)
+      otroRobot()
       if (err.status === 409) cargarHorarios(elegido)   // el horario se ocupó: se actualizan los libres
     } finally { setEnviando(false) }
+  }
+
+  /** Con el código correcto queda la sesión en este celular y se vuelve a pedir la cita */
+  const confirmarTelefono = async () => {
+    setEnviando(true); setError('')
+    try { await verificarCodigo(reto, codigo); setCodigo('') } catch (e) { setError((e as Error).message); setEnviando(false); return }
+    await enviar()
   }
 
   const mensajeWhatsApp = elegido ? [
@@ -70,7 +91,7 @@ export default function Agendar() {
   return (
     <>
       <Encabezado rotulo="Paso 1 de 2 · Servicio" titulo="Agenda tu cita" bajada="Elige tu servicio, el día y la hora. Ves los horarios libres en tiempo real y tu lugar queda apartado al enviar." />
-      <nav className="sticky top-0 z-[5] -mt-2 mb-4 flex gap-2 overflow-x-auto bg-marca-marfil/90 px-6 py-3 backdrop-blur-md [scrollbar-width:none]">
+      <nav className="contenido sticky top-0 z-[5] -mt-2 mb-4 flex gap-2 overflow-x-auto bg-marca-marfil/90 px-6 py-3 backdrop-blur-md [scrollbar-width:none] lg:top-16 lg:mb-8">
         {categorias.map(cat => (
           <button key={cat} onClick={() => document.getElementById(`cat-${cat}`)?.scrollIntoView({ behavior: 'smooth' })}
             className="shrink-0 rounded-full border border-marca-linea px-4 py-1.5 text-[10px] uppercase tracking-[0.2em] text-marca-grafito active:border-marca-dorado">
@@ -78,7 +99,8 @@ export default function Agendar() {
           </button>
         ))}
       </nav>
-      <main className="space-y-10 px-6 pb-8">
+      <main className="contenido space-y-10 px-6 pb-8 lg:grid lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start lg:gap-14 lg:space-y-0">
+        <div className="space-y-10">
         {!catalogo && <p className="text-sm text-marca-gris">Cargando servicios…</p>}
         {categorias.map(cat => (
           <section key={cat} id={`cat-${cat}`} className="scroll-mt-16">
@@ -106,9 +128,18 @@ export default function Agendar() {
             </div>
           </section>
         ))}
+        </div>
+
+        {!elegido && !lista && (
+          <aside className="tarjeta hidden space-y-3 p-8 lg:sticky lg:top-36 lg:block">
+            <p className="rotulo">Paso 2 de 2</p>
+            <p className="titulo text-2xl">Día, hora y tus datos</p>
+            <p className="text-sm leading-relaxed text-marca-gris">Elige un servicio de la lista y aquí aparecen los días y horarios libres en tiempo real.</p>
+          </aside>
+        )}
 
         {elegido && !lista && (
-          <section ref={formulario} className="tarjeta aparece scroll-mt-6 space-y-5 p-6">
+          <section ref={formulario} className="tarjeta aparece scroll-mt-6 space-y-5 p-6 lg:sticky lg:top-36 lg:max-h-[calc(100svh-10rem)] lg:overflow-y-auto">
             <div>
               <p className="rotulo">Paso 2 de 2 · Día, hora y tus datos</p>
               <h2 className="titulo mt-2 text-3xl">{elegido.nombre}</h2>
@@ -177,10 +208,22 @@ export default function Agendar() {
               Al enviar, tu solicitud llega al salón y te confirmamos por WhatsApp y te mandamos el anticipo{elegido.anticipo ? ` (${pesos(elegido.anticipo)})` : ''}.
               Los precios son desde: el final se confirma en tu valoración. {POLITICAS.cambios}
             </p>
+            {reto && (
+              <div className="space-y-3 rounded-sm bg-marca-marfil p-4">
+                <p className="text-sm leading-relaxed text-marca-grafito">Te mandamos un código por WhatsApp al {datos.telefono}. Escríbelo para apartar tu horario.</p>
+                <input className="campo text-center text-2xl tracking-[0.5em]" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+                  placeholder="······" value={codigo} onChange={e => setCodigo(e.target.value.replace(/\D/g, ''))} />
+              </div>
+            )}
+            <NoSoyRobot key={vueltaRobot} onToken={setRobot} />
             {error && <p className="rounded-sm bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-            <button onClick={enviar} disabled={enviando || !hora} className="boton w-full disabled:opacity-40">
-              {enviando ? 'Enviando…' : hora ? `Pedir ${hora}` : 'Elige día y hora'}
-            </button>
+            {reto
+              ? <button onClick={confirmarTelefono} disabled={enviando || codigo.length !== 6} className="boton w-full disabled:opacity-40">
+                  {enviando ? 'Confirmando…' : `Confirmar y apartar ${hora}`}
+                </button>
+              : <button onClick={enviar} disabled={enviando || !hora || (conTurnstile && !robot && !sesion())} className="boton w-full disabled:opacity-40">
+                  {enviando ? 'Enviando…' : !hora ? 'Elige día y hora' : conTurnstile && !robot && !sesion() ? 'Verificando…' : `Pedir ${hora}`}
+                </button>}
             {(error || (dias === null && !cargando)) && (
               <a href={enlaceWhatsApp(mensajeWhatsApp)} className="boton-claro w-full"><MessageCircle size={16} strokeWidth={1.5} /> Mejor por WhatsApp</a>
             )}
@@ -188,7 +231,7 @@ export default function Agendar() {
         )}
 
         {lista && (
-          <section ref={formulario} className="tarjeta aparece scroll-mt-6 space-y-4 p-6 text-center">
+          <section ref={formulario} className="tarjeta aparece scroll-mt-6 space-y-4 p-6 text-center lg:sticky lg:top-36">
             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-marca-negro text-marca-dorado"><Check size={22} /></span>
             <p className="rotulo">Solicitud recibida</p>
             <h2 className="titulo text-3xl">¡Listo, {datos.nombre.split(' ')[0]}!</h2>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 import { miClub, misDatos, pedirCodigo, salir, sesion, verificarCodigo, type MiClub } from '@/api'
 import { AVISO_GASTO, pesos } from '@/salon'
+import NoSoyRobot, { conTurnstile } from '@/components/NoSoyRobot'
 
 // Tarjeta del Club de la clienta: entra con su teléfono y un código que le llega por WhatsApp; luego ve sus puntos,
 // nivel, saldo en pesos, regalos disponibles y próximas citas, calculados con las mismas reglas de CB Control.
@@ -16,6 +17,8 @@ export default function TarjetaClub() {
   const [codigo, setCodigo] = useState('')
   const [trabajando, setTrabajando] = useState(false)
   const [error, setError] = useState('')
+  const [robot, setRobot] = useState('')   // «no soy robot» para pedir el código (uno por envío)
+  const [vueltaRobot, setVueltaRobot] = useState(0)
 
   useEffect(() => {
     if (!conSesion) return
@@ -26,7 +29,7 @@ export default function TarjetaClub() {
     setTrabajando(true); setError('')
     try { await fn() } catch (e) { setError((e as Error).message) } finally { setTrabajando(false) }
   }
-  const mandar = accion(async () => setReto((await pedirCodigo(telefono)).reto))
+  const mandar = accion(async () => { try { setReto((await pedirCodigo(telefono, robot)).reto) } finally { setRobot(''); setVueltaRobot(v => v + 1) } })
   const entrar = accion(async () => { await verificarCodigo(reto, codigo); setReto(''); setCodigo(''); setConSesion(true) })
 
   const marco = 'relative overflow-hidden rounded-xl bg-gradient-to-br from-[#2B2B2B] via-[#151515] to-[#0B0B0B] p-6 text-white shadow-[0_24px_48px_-24px_rgba(17,17,17,0.6)]'
@@ -47,7 +50,8 @@ export default function TarjetaClub() {
           <>
             <input className="w-full border-0 border-b border-white/30 bg-transparent px-0 py-2.5 text-base text-white outline-none placeholder:text-white/40 focus:border-marca-dorado"
               type="tel" inputMode="tel" autoComplete="tel" placeholder="Tu teléfono" value={telefono} onChange={e => setTelefono(e.target.value)} />
-            <button onClick={mandar} disabled={trabajando || telefono.replace(/\D/g, '').length < 10} className="boton-dorado w-full disabled:opacity-40">
+            <NoSoyRobot key={vueltaRobot} onToken={setRobot} />
+            <button onClick={mandar} disabled={trabajando || telefono.replace(/\D/g, '').length < 10 || (conTurnstile && !robot)} className="boton-dorado w-full disabled:opacity-40">
               {trabajando ? 'Enviando…' : 'Mandarme el código'}
             </button>
           </>

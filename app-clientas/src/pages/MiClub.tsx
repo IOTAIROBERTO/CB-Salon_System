@@ -22,7 +22,7 @@ export default function MiClub() {
   return (
     <>
       <Encabezado rotulo="Membresía" titulo={NOMBRE_CLUB} bajada="Cinco niveles con los colores de la casa. Mientras más tiempo eres clienta, más rinde cada visita." />
-      <main className="space-y-10 px-6 pb-8">
+      <main className="contenido space-y-10 px-6 pb-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-16 lg:gap-y-14 lg:space-y-0">
         <TarjetaClub />
 
         <UnirmeClub />

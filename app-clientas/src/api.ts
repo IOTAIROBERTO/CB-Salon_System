@@ -42,7 +42,7 @@ export const recordarDatos = (d: { nombre: string; telefono: string; cumple?: st
 const CLAVE_SESION = 'cb-sesion'
 export const sesion = () => { try { return localStorage.getItem(CLAVE_SESION) } catch { return null } }
 export const salir = () => { try { localStorage.removeItem(CLAVE_SESION) } catch { /* modo privado */ } }
-export const pedirCodigo = (telefono: string) => llamar<{ reto: string }>('acceso/codigo', { method: 'POST', body: JSON.stringify({ telefono }) })
+export const pedirCodigo = (telefono: string, turnstile = '') => llamar<{ reto: string }>('acceso/codigo', { method: 'POST', body: JSON.stringify({ telefono, turnstile }) })
 export async function verificarCodigo(reto: string, codigo: string) {
   const r = await llamar<{ sesion: string; telefono: string }>('acceso/verificar', { method: 'POST', body: JSON.stringify({ reto, codigo }) })
   try { localStorage.setItem(CLAVE_SESION, r.sesion) } catch { /* modo privado: solo esta vez */ }

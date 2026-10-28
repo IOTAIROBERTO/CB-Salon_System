@@ -133,6 +133,8 @@ export interface Cita {
     origen?: 'app' | 'bot'; // agendada por la clienta (llega «pendiente» hasta que el salón la confirma)
     avisoConfirmacion?: string; // ISO: cuándo se le mandó la confirmación por WhatsApp (Worker cb-avisos)
     recordatorio?: string; // ISO: cuándo se le mandó el recordatorio del día anterior
+    creada?: string; // ISO: cuándo llegó desde la app
+    recordatorioSalon?: string; // ISO: último aviso al salón de que sigue sin confirmar (Worker cb-avisos)
 }
 
 export interface Venta {

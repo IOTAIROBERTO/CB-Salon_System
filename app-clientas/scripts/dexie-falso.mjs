@@ -6,7 +6,14 @@ const pronto = new Date(Date.now() + 7 * 86400000).toISOString();
 const tablas = {
   configuracion: [{ id: 'settings', realmId: 'rlm-local' }],
   clientes: [{ id: 'k1', nombre: 'Laura Pérez', telefono: '6621234567', realmId: 'rlm-local' }],
-  servicios: [{ id: 's1', nombre: 'Babylights', precioSugerido: 2500, duracion: 180 }],
+  servicios: [
+    { id: 's1', nombre: 'Babylights', categoria: 'color', precioSugerido: 2500, anticipoSugerido: 300, duracion: 180 },
+    { id: 's2', nombre: 'Balayage', categoria: 'color', precioSugerido: 2800, anticipoSugerido: 300, duracion: 240 },
+    { id: 's3', nombre: 'Retoque de raíz', categoria: 'color', precioSugerido: 900, duracion: 90 },
+    { id: 's4', nombre: 'Corte de cabello', categoria: 'corte', precioSugerido: 500, anticipoSugerido: 150, duracion: 60 },
+    { id: 's5', nombre: 'Maquillaje social', categoria: 'maquillaje', precioSugerido: 1200, anticipoSugerido: 300, duracion: 75 },
+    { id: 's6', nombre: 'Peinado', categoria: 'peinado', precioSugerido: 800, duracion: 60 }
+  ],
   citas: [{ id: 'c1', clienteId: 'k1', servicioId: 's1', fecha: '2026-11-03', hora: '10:00', estado: 'confirmada', realmId: 'rlm-local' }],
   consentimientos: [{ id: 'firma_00000000000000000000000000000001', clienteId: 'k1', citaId: 'c1', estado: 'pendiente', vence: pronto, fotos: false, redes: 'no', fecha: new Date().toISOString(), realmId: 'rlm-local' }],
   empleados: [], empleadoEvents: [], avisos: [], ventas: [], movimientosSaldo: []

@@ -12,7 +12,7 @@ import { calendariosAgenda, ocupadoGoogle, type EnvGoogle } from './google';
 import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
 import { DIAS_SESION, MIN_RETO, codigoNuevo, firmar, huellaCodigo, leerFirmado, type Reto, type Sesion } from './sesion';
 
-export type Env = EnvDexie & EnvWhatsApp & EnvGoogle & { SESION_SECRETO?: string; LIMITES?: DurableObjectNamespace };
+export type Env = EnvDexie & EnvWhatsApp & EnvGoogle & { SESION_SECRETO?: string; TURNSTILE_SECRETO?: string; LIMITES?: DurableObjectNamespace };
 
 /** ¿Se permite una vez más? Contador atómico en Durable Object (ventana fija: al llegar al tope deja de sumar);
  *  sin el binding (pruebas locales) usa la memoria de la instancia */
@@ -37,6 +37,17 @@ export const fechaLegible = (f: string) => new Date(`${f}T12:00:00Z`).toLocaleDa
 const FECHA = /^\d{4}-\d{2}-\d{2}$/, HORA = /^\d{2}:\d{2}$/;
 
 class ErrorCliente extends Error { constructor(msg: string, public status = 400) { super(msg); } }
+
+/** Cloudflare Turnstile («no soy robot»): con TURNSTILE_SECRETO se exige el token del formulario; sin él no se pide
+ *  (así se enciende cuando la app ya trae la llave pública). Quien ya confirmó su teléfono con el código no lo necesita. */
+async function verificarHumano(env: Env, token: unknown, ip: string) {
+  if (!env.TURNSTILE_SECRETO) return;
+  const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST', body: new URLSearchParams({ secret: env.TURNSTILE_SECRETO, response: String(token || ''), remoteip: ip })
+  });
+  if (!((await r.json()) as { success?: boolean }).success)
+    throw new ErrorCliente('No pudimos confirmar que no eres un robot. Recarga la página e intenta de nuevo.', 403);
+}
 
 const json = (datos: unknown, status = 200) => new Response(JSON.stringify(datos), {
   status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -190,7 +201,7 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
   }
   const { cliente, pendiente } = await clientaPorTelefono(env, ag.realmId, d, !!body.club, !!sesion);
   const cita = {
-    id: id('cita_app'), clienteId: cliente.id, servicioId, fecha, hora, estado: 'pendiente', notas: notas || undefined,
+    id: id('cita_app'), clienteId: cliente.id, servicioId, fecha, hora, estado: 'pendiente', notas: notas || undefined, creada: new Date().toISOString(),
     montoAnticipo: s.anticipoSugerido || 0, anticipoConfirmado: false, atiendeId: libre.personaId, origen: 'app', realmId: ag.realmId
   };
   await guardar(env, 'citas', [cita]);
@@ -369,8 +380,13 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
       const body: any = await request.json().catch(() => { throw new ErrorCliente('Datos inválidos'); });
       if (ruta === 'acceso/verificar') return await verificarCodigo(env, body);
       limitar(`tel:${tel10(body?.telefono)}`);   // también por teléfono destino (mismos 8 cada 10 min)
+      const sesion = ruta === 'acceso/codigo' ? null : await sesionDe(request, env);
+      // Con el WhatsApp del salón conectado, solo aparta horario quien confirmó su teléfono con el código (la app lo pide
+      // en ese momento y reintenta). Se revisa antes del «no soy robot» para que su token sirva para pedir el código.
+      if (ruta === 'citas' && !sesion && whatsappListo(env) && env.SESION_SECRETO)
+        throw new ErrorCliente('Para apartar tu horario, confirma tu teléfono con el código que te mandamos por WhatsApp.', 428);
+      if (!sesion) await verificarHumano(env, body?.turnstile, ip);
       if (ruta === 'acceso/codigo') return await pedirCodigo(env, body, ip);
-      const sesion = await sesionDe(request, env);
       return ruta === 'citas' ? await crearCita(env, ctx, body, sesion) : await unirseClub(env, ctx, body, sesion);
     }
     return json({ error: 'No encontrado' }, 404);

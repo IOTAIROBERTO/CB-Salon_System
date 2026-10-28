@@ -108,7 +108,7 @@ export default function Firmar() {
   }
 
   if (listo) return (
-    <main className="px-6 pb-8 pt-[calc(env(safe-area-inset-top)+4rem)]">
+    <main className="contenido px-6 pb-8 pt-[calc(env(safe-area-inset-top)+4rem)] lg:[&>*]:mx-auto lg:[&>*]:max-w-lg">
       <div className="tarjeta aparece space-y-4 p-6 text-center">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-marca-negro text-marca-dorado"><Check size={22} /></div>
         <h1 className="titulo text-3xl">¡Gracias, {nombre.split(' ')[0]}!</h1>
@@ -121,7 +121,7 @@ export default function Firmar() {
   if (!datos) return (
     <>
       <Encabezado rotulo="Consentimiento informado" titulo="Antes de tu servicio" />
-      <main className="px-6 pb-8">
+      <main className="contenido px-6 pb-8 lg:[&>*]:max-w-2xl">
         {error
           ? <div className="tarjeta space-y-4 p-6 text-sm">
               <p className="text-marca-grafito">{error}</p>
@@ -136,7 +136,7 @@ export default function Firmar() {
     <>
       <Encabezado rotulo="Consentimiento informado" titulo="Antes de tu servicio"
         bajada="Lee, marca lo que aplique y firma. Toma dos minutos y vale igual que el formato en papel." />
-      <main className="space-y-8 px-6 pb-8">
+      <main className="contenido space-y-8 px-6 pb-8 lg:[&>*]:max-w-2xl">
         <section className="tarjeta space-y-1 p-6 text-sm">
           <p className="rotulo text-marca-gris">Tus datos</p>
           <p className="text-marca-negro">{datos.nombre}</p>

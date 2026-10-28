@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, MessageCircle } from 'lucide-react'
 import { NOMBRE_CLUB, REGLAS_CLUB, enlaceWhatsApp } from '@/salon'
 import { misDatos, recordarDatos, unirmeClub } from '@/api'
+import NoSoyRobot, { conTurnstile } from '@/components/NoSoyRobot'
 
 // Alta al Club directa: la API crea (o encuentra por teléfono) a la clienta en CB Control y avisa al salón.
 // Si la API no responde, queda WhatsApp como respaldo.
@@ -14,6 +15,8 @@ export default function UnirmeClub() {
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState('')
   const [hecho, setHecho] = useState(false)
+  const [robot, setRobot] = useState('')   // token de «no soy robot» (uno por envío)
+  const [vueltaRobot, setVueltaRobot] = useState(0)
   const listo = datos.nombre.trim().length >= 3 && datos.telefono.replace(/\D/g, '').length >= 10
   const mensaje = `Hola, quiero unirme al ${NOMBRE_CLUB}. Soy ${datos.nombre.trim()}, mi teléfono es ${datos.telefono.trim()}` +
     (datos.cumple ? ` y mi cumpleaños es el ${fechaCumple(datos.cumple)}.` : '.')
@@ -21,10 +24,10 @@ export default function UnirmeClub() {
   const enviar = async () => {
     setEnviando(true); setError('')
     try {
-      await unirmeClub({ ...datos, recomendo, sitio: trampa })
+      await unirmeClub({ ...datos, recomendo, sitio: trampa, turnstile: robot })
       setHecho(true)
       recordarDatos(datos)
-    } catch (e) { setError((e as Error).message) } finally { setEnviando(false) }
+    } catch (e) { setError((e as Error).message) } finally { setEnviando(false); setRobot(''); setVueltaRobot(v => v + 1) }
   }
 
   if (hecho) return (
@@ -63,7 +66,8 @@ export default function UnirmeClub() {
       </label>
       <input className="hidden" tabIndex={-1} autoComplete="off" value={trampa} onChange={e => setTrampa(e.target.value)} aria-hidden="true" />
       {error && <p className="rounded-sm bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      <button onClick={enviar} disabled={!listo || enviando} className="boton w-full disabled:opacity-40">
+      <NoSoyRobot key={vueltaRobot} onToken={setRobot} />
+      <button onClick={enviar} disabled={!listo || enviando || (conTurnstile && !robot)} className="boton w-full disabled:opacity-40">
         {enviando ? 'Registrando…' : 'Unirme al Club'}
       </button>
       {error && listo && (

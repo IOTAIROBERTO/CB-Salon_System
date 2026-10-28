@@ -1,9 +1,9 @@
 # App de clientas · Cristina Borquez Beauty Salon
 
-La app que se publica en Google Play. Es una **app web instalable (PWA)** hecha con el mismo stack que CB Control
-(Vite, React, TypeScript y Tailwind con la paleta de marca). Para Android se empaqueta como
-**Trusted Web Activity (TWA)** con Bubblewrap, como dice la propuesta: abre a pantalla completa con su ícono, recibe
-notificaciones y se actualiza sola cada vez que se publica la web (sin subir otra versión a Play).
+**App web instalable (PWA)** hecha con el mismo stack que CB Control (Vite, React, TypeScript y Tailwind con la paleta
+de marca). Se instala desde el navegador («Agregar a pantalla de inicio») y se actualiza sola con cada publicación.
+En computadora se ve a pantalla completa (barra arriba, contenido en columnas). **No se publica en Google Play**
+(decisión del 27 de octubre de 2026); la carpeta `android/` queda solo por si algún día se retoma.
 
 ## Qué hay hoy
 
@@ -37,35 +37,11 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
 `app.cristinaborquez.com`. La TWA necesita `/.well-known/assetlinks.json` en la raíz de ese dominio; ya va en
 `public/.well-known/` y se publica solo.
 
-## Publicarla en Google Play
-
-1. **Cuenta de Play Console** con el correo de Cristina (pago único de US$25 y verificación de identidad).
-   Roberto se agrega como administrador.
-2. **Herramientas** (una sola vez, en la computadora de Roberto): `npm install -g @bubblewrap/cli`. Bubblewrap
-   descarga solo el JDK y el SDK de Android la primera vez.
-3. **Llave de subida**: `bubblewrap build` la crea en la ruta de `android/twa-manifest.json`
-   (`C:/Users/Roberto/Documents/llaves-cb/`, **fuera del repositorio**). Guardar el archivo y su contraseña en
-   Bitwarden. Si se pierde, Google puede cambiarla, pero tarda; si se filtra, alguien podría subir versiones falsas.
-4. **Compilar**: desde `app-clientas/android/` correr `bubblewrap build`. Sale `app-release-bundle.aab`.
-5. **Subir a Play**: crear la app «Cristina Borquez Beauty Salon», activar *Firma de apps de Play* y subir el `.aab`
-   a **prueba cerrada**. Con cuenta personal, Google pide **12 personas probándola 14 días** antes de publicarla
-   (la propuesta dice 12 a 15 clientas de confianza).
-6. **Enlazar la web con la app**: en Play Console → Integridad de la app → copiar la huella SHA-256 de la llave de
-   firma de Play y pegarla en `public/.well-known/assetlinks.json` (donde dice `PEGAR_AQUI…`). Volver a publicar la
-   web. Sin esto, la app abre con la barra del navegador arriba.
-7. **Ficha de la tienda**: ícono 512 × 512 (`public/icons/icon-512.png`), imagen destacada 1024 × 500, 2 a 8 capturas
-   del teléfono, descripción corta y larga, aviso de privacidad (ya existe en `02_Legal_y_Clientas`, se publica en
-   la web) y el formulario de *Seguridad de los datos* (nombre, teléfono y citas; no se venden ni se comparten).
-
-> **Confirmado el 22 de octubre de 2026:** identificador `com.cristinaborquez.app` y dominio
-> `app.cristinaborquez.com`. En Play el identificador ya no se puede cambiar nunca: no tocarlo en
-> `android/twa-manifest.json` ni en `public/.well-known/assetlinks.json`.
-
 ## Lo que sigue
 
 - **WhatsApp oficial** (falta `WA_TOKEN` y el número definitivo): activa la entrada con código, los avisos al salón y
   la confirmación y el recordatorio a las clientas (ya programados).
-- Anticipos con Mercado Pago, catálogo de productos, dominio `cristinaborquez.com` y publicación en Google Play.
+- Anticipos con Mercado Pago, catálogo de productos y dominio `cristinaborquez.com`.
 
 ## API y automatización (Cloudflare)
 
@@ -78,6 +54,11 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
 - **Secretos** (Cloudflare, nunca en el repo), en el proyecto de Pages `cristinaborquez-app` y en el Worker `cb-avisos`:
   `DEXIE_CLIENT_ID`, `DEXIE_CLIENT_SECRET`, `SESION_SECRETO` (solo Pages), `WA_TOKEN`, `WA_PHONE_ID`, `WA_AVISOS`
   (números del salón que reciben avisos, separados por coma, con 52 adelante), `GOOGLE_CUENTA_SERVICIO`, `GOOGLE_CALENDARIO`.
+  `TURNSTILE_SECRETO` (solo Pages): «no soy robot» en agendar, Club y código. Encender en orden: primero la llave pública en
+  `src/components/NoSoyRobot.tsx` y publicar, después el secreto (al revés la API rechazaría la app vieja).
+- **Contra citas falsas** (sin vencimiento automático): Turnstile; con WhatsApp conectado, solo aparta horario quien confirma
+  su teléfono con código (la API responde 428 y la app lo pide); la campana de CB Control fija las citas de la app por
+  confirmar y el Worker se las recuerda al salón por WhatsApp cada 4 h (9 a 21 h) hasta confirmarlas.
   Opcional en el Worker: `RECORDATORIOS=todas` para recordar también las citas que agenda el salón a mano.
 - **Pruebas locales**: `npm run build`, luego `npm run dexie:falso` (base falsa, puerto 8799) y `npm run api:local` (app + API en
   8788; enlace de prueba `/#/firmar/firma_00000000000000000000000000000001`). Pruebas: `scripts/*.check.ts` (comando en cada archivo).

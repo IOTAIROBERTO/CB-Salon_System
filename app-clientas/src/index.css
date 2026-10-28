@@ -47,6 +47,11 @@ body {
   .aparece {
     animation: aparece 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
+
+  /* Ancho de lectura en computadora (en el celular no cambia nada) */
+  .contenido {
+    @apply lg:mx-auto lg:w-full lg:max-w-6xl lg:px-10;
+  }
 }
 
 @keyframes aparece {

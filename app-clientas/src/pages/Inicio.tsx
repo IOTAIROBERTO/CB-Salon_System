@@ -14,21 +14,21 @@ const TRABAJOS = [
 export default function Inicio() {
   return (
     <>
-      <header className="relative flex h-[78svh] max-h-[46rem] min-h-[32rem] flex-col justify-end overflow-hidden bg-marca-negro px-6 pb-10 pt-[calc(env(safe-area-inset-top)+2rem)] text-white">
+      <header className="relative flex h-[78svh] max-h-[46rem] min-h-[32rem] flex-col justify-end overflow-hidden bg-marca-negro px-6 pb-10 pt-[calc(env(safe-area-inset-top)+2rem)] text-white lg:h-[calc(100svh-4rem)] lg:max-h-[56rem] lg:px-0 lg:pb-20">
         <img src="./fotos/portada.jpg" alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
         <div className="absolute inset-0 bg-gradient-to-b from-marca-negro/70 via-marca-negro/10 to-marca-negro" />
-        <img src="./icons/logo-horizontal.svg" alt={DATOS_SALON.nombre} className="aparece absolute left-6 top-[calc(env(safe-area-inset-top)+1.75rem)] w-52" />
-        <div className="aparece relative">
+        <img src="./icons/logo-horizontal.svg" alt={DATOS_SALON.nombre} className="aparece absolute left-6 top-[calc(env(safe-area-inset-top)+1.75rem)] w-52 lg:hidden" />
+        <div className="aparece contenido relative">
           <p className="rotulo text-marca-champan">Hermosillo, Sonora</p>
-          <h1 className="mt-3 font-display text-[3.4rem] font-light leading-[0.95]">
+          <h1 className="mt-3 font-display text-[3.4rem] font-light leading-[0.95] lg:text-8xl">
             El arte<br /><em className="text-marca-dorado">del color</em>
           </h1>
-          <p className="mt-4 max-w-[17rem] text-sm leading-relaxed text-white/75">Diseño de color, corte, maquillaje y peinado, con la calma de una cita solo para ti.</p>
-          <Link to="/agendar" className="boton-dorado mt-7 w-full">Agendar mi cita <ArrowRight size={15} strokeWidth={1.5} /></Link>
+          <p className="mt-4 max-w-[17rem] text-sm leading-relaxed text-white/75 lg:max-w-md lg:text-lg">Diseño de color, corte, maquillaje y peinado, con la calma de una cita solo para ti.</p>
+          <Link to="/agendar" className="boton-dorado mt-7 w-full lg:inline-flex lg:w-auto">Agendar mi cita <ArrowRight size={15} strokeWidth={1.5} /></Link>
         </div>
       </header>
 
-      <main className="space-y-10 px-6 py-9">
+      <main className="contenido space-y-10 px-6 py-9 lg:space-y-16 lg:py-16">
         <AvisoInstalar />
 
         <section>
@@ -39,9 +39,9 @@ export default function Inicio() {
             </div>
             <a href={ENLACE_INSTAGRAM} className="pb-1 text-[11px] uppercase tracking-[0.2em] text-marca-dorado-prof">Ver más</a>
           </div>
-          <div className="-mx-6 mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-6 pb-2 [scrollbar-width:none]">
+          <div className="-mx-6 mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-6 pb-2 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-4 lg:overflow-visible lg:px-0">
             {TRABAJOS.map(t => (
-              <Link key={t.foto} to="/agendar" className="relative w-40 shrink-0 snap-start overflow-hidden rounded-sm">
+              <Link key={t.foto} to="/agendar" className="relative w-40 shrink-0 snap-start overflow-hidden rounded-sm lg:w-auto">
                 <img src={`./fotos/${t.foto}.jpg`} alt={t.nombre} loading="lazy" className="aspect-[3/4] w-full object-cover" />
                 <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-marca-negro/80 to-transparent px-3 pb-3 pt-8 font-display text-lg text-white">{t.nombre}</span>
               </Link>
@@ -49,7 +49,8 @@ export default function Inicio() {
           </div>
         </section>
 
-        <Link to="/club" className="block overflow-hidden rounded-sm bg-marca-negro p-6 text-white">
+        <div className="space-y-10 lg:grid lg:grid-cols-2 lg:items-start lg:gap-12 lg:space-y-0">
+        <Link to="/club" className="block overflow-hidden rounded-sm bg-marca-negro p-6 text-white lg:p-10">
           <div className="flex items-center justify-between">
             <p className="rotulo text-marca-dorado">Membresía</p>
             <Sparkles size={16} strokeWidth={1.4} className="text-marca-dorado" />
@@ -81,9 +82,10 @@ export default function Inicio() {
             </div>
           </div>
         </section>
+        </div>
 
         <section className="space-y-6 text-center">
-          <a href={enlaceWhatsApp('Hola, tengo una pregunta:')} className="boton-claro w-full"><MessageCircle size={16} strokeWidth={1.5} /> Escríbenos por WhatsApp</a>
+          <a href={enlaceWhatsApp('Hola, tengo una pregunta:')} className="boton-claro w-full lg:mx-auto lg:w-auto lg:max-w-sm"><MessageCircle size={16} strokeWidth={1.5} /> Escríbenos por WhatsApp</a>
           <div className="flex justify-center gap-8 text-marca-gris">
             <a href={ENLACE_INSTAGRAM} aria-label="Instagram"><Instagram size={20} strokeWidth={1.4} /></a>
             <a href={ENLACE_FACEBOOK} aria-label="Facebook"><Facebook size={20} strokeWidth={1.4} /></a>
