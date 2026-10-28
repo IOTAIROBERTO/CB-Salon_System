@@ -89,8 +89,8 @@ export default function MiClub() {
                 ['Maquillaje social', n => BENEFICIOS_NIVEL[n].maquillaje ? `${BENEFICIOS_NIVEL[n].maquillaje}%` : '—'],
                 ['Corte y peinado', n => BENEFICIOS_NIVEL[n].cortePeinado ? `${BENEFICIOS_NIVEL[n].cortePeinado}%` : '—'],
                 ['Despunte de flequillo', n => BENEFICIOS_NIVEL[n].flequillo ? '1 al mes' : '—'],
-                ['Antojos de comida (no incluye bebidas)', n => BENEFICIOS_NIVEL[n].antojosComida ? `${BENEFICIOS_NIVEL[n].antojosComida}%` : '—'],
-                ['Antojo y bebida de cortesía', n => BENEFICIOS_NIVEL[n].antojoCortesia ? '1 al mes' : '—'],
+                ['Comida del break (no incluye bebidas)', n => BENEFICIOS_NIVEL[n].antojosComida ? `${BENEFICIOS_NIVEL[n].antojosComida}%` : '—'],
+                ['Break de cortesía (comida y bebida)', n => BENEFICIOS_NIVEL[n].antojoCortesia ? '1 al mes' : '—'],
                 ['Tarjeta de regalo con 1,000 de tus puntos', n => pesos(montoTarjeta(1000, n, R))]
               ] as [string, (n: (typeof NIVELES)[number]) => string][]).map(([k, f]) => (
                 <tr key={k} className="border-t border-marca-linea/70">

@@ -5,6 +5,7 @@ import dataset from '../data/servicios_dataset.json';
 import historicas from '../data/listas_historicas.json';
 import { abrirLista, type ListasPrecios } from '../utils/precios';
 import { DATOS_SALON } from '../data/datosSalon';
+import { CATEGORIA_ANTOJOS } from '../data/menuAntojos';
 
 // Uñas lo atiende una subarrendataria; «Anticipo (histórico)» y «Otro» eran de relleno.
 export const ARCHIVADOS = ['s27', 's28', 's98', 's99'];
@@ -81,6 +82,8 @@ export const ponerDatosAlDia = async () => {
   if (s06?.nombre === viejo) await db.servicios.update('s06', { nombre: nuevo } as any);
   const listas = s.listasPrecios;
   if (listas && JSON.stringify(listas).includes(viejo)) await guardarSettings({ listasPrecios: JSON.parse(JSON.stringify(listas).split(viejo).join(nuevo)) });
+  // 28 de octubre de 2026: la categoría «Antojos» del Inventario se llama «Break»
+  await db.inventario.where('categoria').equals('Antojos').modify({ categoria: CATEGORIA_ANTOJOS });
 };
 
 /** Agrega del catálogo base los servicios que falten, sin tocar precios capturados */

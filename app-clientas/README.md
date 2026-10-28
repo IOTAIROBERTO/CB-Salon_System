@@ -11,7 +11,7 @@ En computadora se ve a pantalla completa (barra arriba, contenido en columnas). 
 |---|---|
 | Inicio | Logo, botón para agendar, Club, cómo llegar, horario, WhatsApp, Instagram y Facebook. Aviso para instalarla sin tienda: botón «Instalar» en Android, pasos de «Agregar a pantalla de inicio» en iPhone y «ábrela en tu navegador» si viene de Instagram o Facebook. No sale si ya está instalada o si la clienta lo cerró. |
 | Agendar | Catálogo vivo de CB Control («desde $…») y horarios libres en tiempo real (agenda + lo ocupado en el Google Calendar de Cristina). La cita llega «pendiente» a CB Control; el salón confirma y manda el anticipo. WhatsApp queda de respaldo. |
-| Antojos | Menú con fotos; catálogo de productos aún no (se pregunta por WhatsApp). |
+| Break | Menú del break con fotos; catálogo de productos aún no (se pregunta por WhatsApp). |
 | Mi Club | Reglas del Club Cristina Borquez y tarjeta personal (puntos, nivel, regalos, citas y consentimientos por firmar) al entrar con teléfono y código por WhatsApp: se activa cuando el WhatsApp oficial tenga token y número. |
 | Firmar (`#/firmar/<id>`) | Consentimiento informado con el enlace personal que manda el salón: marca salud y permisos y firma con el dedo. Sin cuenta. |
 

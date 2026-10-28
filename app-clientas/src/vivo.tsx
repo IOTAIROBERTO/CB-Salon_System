@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { DATOS_SALON, MENU_ANTOJOS, REGLAS_CLUB, usarWhatsApp } from '@/salon'
 import { salonEnVivo, type DatosSalonVivos } from '@/api'
 
-// Lo que se edita en CB Control y la app muestra (datos del salón, horario, reglas del Club, precios de antojos) llega
+// Lo que se edita en CB Control y la app muestra (datos del salón, horario, reglas del Club, precios del break) llega
 // en vivo de /api/salon: al abrir, al volver a la app y cada minuto. Mientras tanto, los valores del código.
 const INICIAL: DatosSalonVivos = {
   salon: { ...DATOS_SALON },

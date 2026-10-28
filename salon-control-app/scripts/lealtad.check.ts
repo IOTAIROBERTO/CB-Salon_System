@@ -5,7 +5,7 @@ import {
   descuentoProducto, descuentoServicio, montoCanje, montoTarjeta, porcentajeReferida, rachaConstancia, tituloCanje,
   descuentosReferidaDisponibles, parametrosDe, datosBeneficio, textoSaldoPuntos, permanentesDe, costoPuntos, ANIVERSARIO_PUNTOS
 } from '../src/utils/lealtad';
-import { descuentoAntojo } from '../src/data/menuAntojos';
+import { descuentoAntojo, esCategoriaBreak } from '../src/data/menuAntojos';
 
 const P = PARAMETROS_CIRCULO;
 const P2 = { ...P, miel: 300, ambar: 900, dorado: 2000, onix: 3500 }; // umbrales altos: prueban multiplicadores paso a paso
@@ -117,7 +117,7 @@ assert.equal(descuentoServicio('onix', 's21'), 15);
 assert.equal(descuentoServicio('onix', 's25'), 0); // paquetes de novia fuera
 assert.deepEqual(permanentesDe('marfil'), []);
 assert.equal(permanentesDe('onix').length, 8);
-assert.match(permanentesDe('onix').join(' · '), /15% en antojos de comida \(no incluye bebidas\)/);
+assert.match(permanentesDe('onix').join(' · '), /15% en la comida del break \(no incluye bebidas\)/);
 assert.equal(montoCanje(200), 50);
 assert.equal(montoTarjeta(200, 'marfil'), 50);
 assert.equal(montoTarjeta(200, 'dorado'), 55);
@@ -161,7 +161,8 @@ assert.match(textoSaldoPuntos(150), /= \$38\. Sigue acumulando: desde 200 puntos
 assert.match(codigoClienta('cli_123'), /^CB[0-9A-Z]{6}$/);
 assert.equal(enlaceWhatsApp('662 161 4688', 'hola'), 'https://wa.me/526621614688?text=hola');
 assert.equal(enlaceWhatsApp('abc', 'hola'), null);
-// Menú de antojos: comida con descuento desde Ámbar; bebidas no
+// Menú del break: comida con descuento desde Ámbar; bebidas no. Categoría «Break» (y la vieja «Antojos»)
+assert.ok(esCategoriaBreak('Break') && esCategoriaBreak('Antojos') && !esCategoriaBreak('Cabello') && !esCategoriaBreak(undefined));
 assert.equal(descuentoAntojo('miel', 'Oreo'), 0);
 assert.equal(descuentoAntojo('ambar', 'Oreo 42 g'), 5);
 assert.equal(descuentoAntojo('dorado', 'Dumplings'), 10);

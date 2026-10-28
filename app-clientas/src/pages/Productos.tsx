@@ -4,7 +4,7 @@ import { BENEFICIOS_NIVEL, CORTESIAS_SIEMPRE, NOMBRE_CLUB, NOMBRE_NIVEL, POLITIC
 import { useSalon } from '@/vivo'
 import { esComida } from '@salon/data/menuAntojos'
 
-// El menú de antojos sale de CB Control (data/menuAntojos.ts) con los precios en vivo del Inventario (categoría Antojos).
+// El menú del break sale de CB Control (data/menuAntojos.ts) con los precios en vivo del Inventario (categoría Break).
 // El catálogo de productos vendrá del inventario por la API; mientras, se pregunta por WhatsApp.
 const B = BENEFICIOS_NIVEL
 
@@ -13,7 +13,7 @@ export default function Productos() {
   const grupos = [...new Set(MENU_ANTOJOS.map(a => a.grupo))]
   return (
     <>
-      <Encabezado rotulo="Durante tu cita y en casa" titulo="Antojos y productos" bajada="Algo rico mientras te consentimos, y lo que usamos en el salón para cuidar tu color." />
+      <Encabezado rotulo="Durante tu cita y en casa" titulo="Break y productos" bajada="Algo rico mientras te consentimos, y lo que usamos en el salón para cuidar tu color." />
       <main className="contenido space-y-10 px-6 pb-8 lg:grid lg:grid-cols-[1fr_1.4fr] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-16 lg:gap-y-12 lg:space-y-0">
         <section>
           <p className="rotulo">Siempre de cortesía</p>
@@ -30,7 +30,7 @@ export default function Productos() {
         </section>
 
         <section className="lg:row-span-2">
-          <p className="rotulo">Menú de antojos</p>
+          <p className="rotulo">Menú del break</p>
           <h2 className="titulo mt-1 text-3xl">Para disfrutar en tu cita</h2>
           <p className="mt-2 text-sm leading-relaxed text-marca-gris">Pídelos en recepción. ¿Traes tu lunch? Tenemos microondas para calentarlo.</p>
           {grupos.map(g => (
@@ -54,8 +54,8 @@ export default function Productos() {
           ))}
           <div className="tarjeta mt-6 space-y-2 p-5 text-sm leading-relaxed text-marca-gris">
             <p className="rotulo">Con el {NOMBRE_CLUB}</p>
-            <p>En antojos de comida (no incluye bebidas): <span className="text-marca-negro">{NOMBRE_NIVEL.ambar} {B.ambar.antojosComida}% · {NOMBRE_NIVEL.dorado} {B.dorado.antojosComida}% · {NOMBRE_NIVEL.onix} {B.onix.antojosComida}%</span>.</p>
-            <p>En {NOMBRE_NIVEL.onix}, además, un antojo con bebida de cortesía cada mes.</p>
+            <p>En la comida del break (no incluye bebidas): <span className="text-marca-negro">{NOMBRE_NIVEL.ambar} {B.ambar.antojosComida}% · {NOMBRE_NIVEL.dorado} {B.dorado.antojosComida}% · {NOMBRE_NIVEL.onix} {B.onix.antojosComida}%</span>.</p>
+            <p>En {NOMBRE_NIVEL.onix}, además, comida y bebida del break de cortesía cada mes.</p>
           </div>
         </section>
 
