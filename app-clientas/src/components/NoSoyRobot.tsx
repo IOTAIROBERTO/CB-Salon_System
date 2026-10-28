@@ -26,14 +26,18 @@ export default function NoSoyRobot({ onToken }: { onToken: (token: string) => vo
   useEffect(() => {
     if (!conTurnstile) return
     let id: string | undefined
+    let respondio = false
+    const token = (t: string) => { respondio = true; onToken(t) }
+    // Si Cloudflare no contesta en 10 s (red lenta, navegador raro), no se deja a la clienta esperando: la API decide
+    const espera = setTimeout(() => { if (!respondio) onToken('error') }, 10000)
     cargar().then(() => {
       if (!caja.current || !window.turnstile) return
       id = window.turnstile.render(caja.current, {
         sitekey: LLAVE_TURNSTILE, appearance: 'interaction-only', language: 'es',
-        callback: onToken, 'expired-callback': () => onToken(''), 'error-callback': () => onToken('error')
+        callback: token, 'expired-callback': () => onToken(''), 'error-callback': () => token('error')
       })
-    }).catch(() => onToken('error'))
-    return () => { if (id) window.turnstile?.remove(id) }
+    }).catch(() => token('error'))
+    return () => { clearTimeout(espera); if (id) window.turnstile?.remove(id) }
   }, [])
   return conTurnstile ? <div ref={caja} /> : null
 }
