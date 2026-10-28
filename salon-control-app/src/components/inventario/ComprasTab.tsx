@@ -39,7 +39,7 @@ export default function ComprasTab({ onRegistrarCompra }: { onRegistrarCompra: (
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="tabla-tarjetas w-full text-sm">
           <thead className="bg-gray-50 text-left text-gray-500">
             <tr><th className="px-4 py-2">Fecha</th><th className="px-4 py-2">Proveedor</th><th className="px-4 py-2">Productos</th><th className="px-4 py-2">Folio</th><th className="px-4 py-2 text-right">Total</th><th className="px-4 py-2">Pago</th></tr>
           </thead>
@@ -50,10 +50,10 @@ export default function ComprasTab({ onRegistrarCompra }: { onRegistrarCompra: (
                 <tr key={c.id} className="border-t">
                   <td className="px-4 py-2 whitespace-nowrap">{c.fecha}</td>
                   <td className="px-4 py-2">{nombre(c.proveedorId)}</td>
-                  <td className="px-4 py-2 text-gray-600">{c.items.map(i => `${i.nombre} ×${i.cantidad}`).join(', ')}</td>
-                  <td className="px-4 py-2">{c.folio || '—'}</td>
-                  <td className="px-4 py-2 text-right font-medium">{formatCurrency(c.total)}</td>
-                  <td className="px-4 py-2">{gasto ? (gasto.pagado ? 'Pagada' : <span className="text-orange-700">Pendiente</span>) : <span className="text-gray-400">Sin gasto</span>}</td>
+                  <td className="px-4 py-2 text-gray-600" data-label="Productos">{c.items.map(i => `${i.nombre} ×${i.cantidad}`).join(', ')}</td>
+                  <td className="px-4 py-2" data-label="Folio">{c.folio || '—'}</td>
+                  <td className="px-4 py-2 md:text-right font-medium" data-label="Total">{formatCurrency(c.total)}</td>
+                  <td className="px-4 py-2" data-label="Pago">{gasto ? (gasto.pagado ? 'Pagada' : <span className="text-orange-700">Pendiente</span>) : <span className="text-gray-400">Sin gasto</span>}</td>
                 </tr>
               );
             })}

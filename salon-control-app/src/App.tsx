@@ -30,6 +30,7 @@ import { useRolSalon, NOMBRE_ROL } from "./db/salon";
 import { LoginSalon, PantallaSinSalon } from "./components/auth/AccesoSalon";
 import Bandeja from "./components/avisos/Bandeja";
 import EstadoSync from "./components/avisos/EstadoSync";
+import AvisoInstalar from "./components/AvisoInstalar";
 
 // Páginas solo para la dueña (la empleada no las ve en el menú ni por URL)
 const SOLO_DUENA = new Set(["/reportes", "/configuracion"]);
@@ -159,8 +160,9 @@ function Marco() {
       {/* Barra lateral fija en pantallas grandes */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-marca-dorado/15 bg-marca-negro lg:block">{menu}</aside>
 
-      {/* Barra superior y cajón en celular y tableta */}
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-marca-dorado/20 bg-marca-negro/95 px-4 text-white backdrop-blur lg:hidden">
+      {/* Barra superior y cajón en celular y tableta. Sin backdrop-blur: haría que la campana y «Valorar» (fixed, dentro
+          de la barra) midieran lo que la barra y se vieran transparentes encima de la página */}
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-marca-dorado/20 bg-marca-negro px-4 text-white lg:hidden">
         <Link to="/citas" className="flex items-center gap-2.5">
           <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-8 w-auto" />
           <span className="text-[11px] uppercase tracking-[0.26em] text-marca-champan">{actual?.label ?? "CB Control"}</span>
@@ -187,6 +189,7 @@ function Marco() {
       <main className="w-full lg:pl-64">
         <div className="px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
           <div className="mx-auto max-w-7xl">
+            <AvisoInstalar />
             <Routes>
               <Route path="/" element={<Navigate to="/citas" replace />} />
               <Route path="/citas" element={<CitasPage />} />

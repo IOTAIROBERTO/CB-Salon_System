@@ -35,6 +35,11 @@ const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
 window.addEventListener('error', handleGlobalError);
 window.addEventListener('unhandledrejection', handleUnhandledRejection);
 
+// App instalable en celular y computadora, y avisos de la campana con la app cerrada (public/sw.js)
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+}
+
 // Configuración de desarrollo
 if (import.meta.env.DEV) {
   console.group('🚀 Beauty Salon Total Control - Development Mode');

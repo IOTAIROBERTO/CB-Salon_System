@@ -25,13 +25,13 @@ export default function ServicioRow({ servicio, onEdit, onDelete }: ServicioRowP
           </div>
         ) : null}
       </td>
-      <td className="p-4 text-green-600 font-semibold">
+      <td className="p-4 text-green-600 font-semibold" data-label="Precio sugerido">
         {formatPrice(servicio.precioSugerido)}
       </td>
-      <td className="p-4 text-blue-600 font-semibold">
+      <td className="p-4 text-blue-600 font-semibold" data-label="Anticipo sugerido">
         {formatPrice(servicio.anticipoSugerido)}
       </td>
-      <td className="p-4 text-purple-600 font-semibold text-center">
+      <td className="p-4 text-purple-600 font-semibold md:text-center" data-label="Comisión">
         {servicio.comision ? `${servicio.comision}%` : '-'}
       </td>
       <td className="p-4">

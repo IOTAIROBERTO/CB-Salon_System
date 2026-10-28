@@ -14,7 +14,7 @@ export default function ClientesStats({ stats }: ClientesStatsProps) {
   } = stats;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
       <div className="bg-white p-4 rounded-lg shadow border">
         <p className="text-sm text-gray-600">Total Clientes</p>
         <p className="text-2xl font-bold text-gray-900">{totalClientes}</p>

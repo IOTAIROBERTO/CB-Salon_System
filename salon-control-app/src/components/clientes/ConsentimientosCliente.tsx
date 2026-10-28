@@ -74,7 +74,7 @@ export default function ConsentimientosCliente({ clienteId }: { clienteId: strin
         <div key={c.id} className="flex items-center justify-between gap-2 text-xs bg-amber-50 rounded p-2">
           <span>{vigente(c) ? `Por firmar en la app · vence ${new Date(c.vence!).toLocaleDateString('es-MX')}` : 'Enlace vencido sin firmar'}</span>
           <span className="flex gap-1">
-            <button type="button" onClick={() => setPidiendo({ citaId: c.citaId })} className="text-purple-700 hover:underline">{vigente(c) ? 'Enlace' : 'Nuevo enlace'}</button>
+            <button type="button" onClick={() => setPidiendo({ citaId: c.citaId })} className="px-2 text-purple-700 hover:underline">{vigente(c) ? 'Enlace' : 'Nuevo enlace'}</button>
             {esDuena && <button type="button" onClick={() => db.consentimientos.delete(c.id)} className="text-red-600 p-1" title="Quitar"><Trash2 size={12} /></button>}
           </span>
         </div>

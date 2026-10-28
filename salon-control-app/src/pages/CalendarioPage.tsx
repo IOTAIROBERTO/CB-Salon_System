@@ -8,7 +8,8 @@ import { useOcupadoGoogle } from '../hooks/useAgenda';
 
 export default function CalendarioPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [viewMode, setViewMode] = useState<'month' | 'dia'>('month');
+    // En celular el mes no deja leer nada: arranca en la agenda del día (el mes sigue a un toque)
+    const [viewMode, setViewMode] = useState<'month' | 'dia'>(() => innerWidth < 640 ? 'dia' : 'month');
     const [dia, setDia] = useState(fechaLocalISO());
     const moverDia = (n: number) => { const d = new Date(`${dia}T12:00:00`); d.setDate(d.getDate() + n); setDia(fechaLocalISO(d)); };
 
@@ -80,7 +81,7 @@ export default function CalendarioPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                 <div className="flex items-center gap-3">
                     <div className="bg-purple-600 p-2 rounded-lg text-white">
                         <CalendarIcon size={24} />
@@ -91,7 +92,7 @@ export default function CalendarioPage() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:gap-4">
                     <div className="flex items-center bg-gray-100 rounded-lg p-1">
                         <button
                             onClick={() => setViewMode('month')}
@@ -107,9 +108,9 @@ export default function CalendarioPage() {
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-2 border-l pl-4">
+                    <div className="flex items-center gap-1 sm:gap-2 sm:border-l sm:pl-4">
                         <button onClick={() => viewMode === 'dia' ? moverDia(-1) : handlePrevMonth()} className="p-2 hover:bg-gray-100 rounded-lg" aria-label="Anterior"><ChevronLeft size={20} /></button>
-                        <h2 className="text-lg font-bold text-gray-800 min-w-[150px] text-center">
+                        <h2 className="text-base sm:text-lg font-bold text-gray-800 sm:min-w-[150px] text-center">
                             {viewMode === 'dia'
                                 ? new Date(`${dia}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
                                 : `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
@@ -130,7 +131,7 @@ export default function CalendarioPage() {
                     ))}
                 </div>
 
-                <div className="grid grid-cols-7 auto-rows-[120px]">
+                <div className="grid grid-cols-7 auto-rows-[84px] sm:auto-rows-[120px]">
                     {calendarGrid.map((item, idx) => {
                         const items = getItemsForDate(item.fullDate || '');
                         const isToday = item.fullDate === fechaLocalISO();
@@ -140,7 +141,7 @@ export default function CalendarioPage() {
                                 key={idx}
                                 onClick={() => { if (item.fullDate) { setDia(item.fullDate); setViewMode('dia'); } }}
                                 title={item.fullDate ? 'Ver la agenda del día' : undefined}
-                                className={`border-r border-b p-2 transition-colors hover:bg-gray-50/50 relative ${item.fullDate ? 'cursor-pointer' : ''} ${!item.day ? 'bg-gray-50/30' : ''} ${isToday ? 'bg-purple-50/30' : ''}`}
+                                className={`border-r border-b p-1 sm:p-2 transition-colors hover:bg-gray-50/50 relative ${item.fullDate ? 'cursor-pointer' : ''} ${!item.day ? 'bg-gray-50/30' : ''} ${isToday ? 'bg-purple-50/30' : ''}`}
                             >
                                 {item.day && (
                                     <span className={`text-sm font-bold ${isToday ? 'bg-purple-600 text-white w-6 h-6 flex items-center justify-center rounded-full' : 'text-gray-400'}`}>
@@ -148,7 +149,7 @@ export default function CalendarioPage() {
                                     </span>
                                 )}
 
-                                <div className="mt-1 space-y-1 overflow-y-auto max-h-[85px] custom-scrollbar">
+                                <div className="mt-1 space-y-1 overflow-y-auto max-h-[52px] sm:max-h-[85px] custom-scrollbar">
                                     {items.map((entry, i) => {
                                         if (entry.type === 'google') {
                                             const g = entry.data as any;

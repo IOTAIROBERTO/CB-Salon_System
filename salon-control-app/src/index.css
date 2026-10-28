@@ -123,3 +123,45 @@ main .text-2xl.font-bold, main .text-3xl.font-bold {
   line-height: 1.1;
   letter-spacing: -0.01em;
 }
+
+/* Celular y tableta (dedo): botones y listas de al menos 40 px y botones de ícono de 40×40, sin rehacer cada pantalla.
+   :where() pesa cero, así cualquier clase de la pantalla (hidden, flex, w-full…) sigue mandando. En computadora no cambia.
+   Botón de ícono = con aria-label o title (o la X de cerrar) y sin más hijos que íconos: los que llevan bloques adentro
+   (citas de la agenda) quedan como están. Lo que se abre fuera de <main> (campana, valoración) lleva la clase .tocable. */
+@media (pointer: coarse) {
+  :where(main, .tocable) :where(button, select) { min-height: 40px; }
+  :where(main, .tocable) :where(button:is([aria-label], [title], :has(> svg.lucide-x)):not(:has(> :not(svg)))) {
+    min-width: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Un campo dentro de una fila flex puede encogerse (si no, empuja botones fuera de la pantalla en celular) */
+:where(input, select, textarea) { min-width: 0; }
+
+/* Tablas: si no caben a lo ancho (celular), se desplazan de lado dentro de su tarjeta en vez de quedar cortadas */
+div:has(> table) { overflow-x: auto !important; }
+
+/* Modales: 90 % de lo que de verdad se ve (en Safari del iPhone 90vh queda debajo de la barra del navegador) */
+.max-h-\[90vh\] { max-height: 90dvh; }
+
+/* Tablas que en celular se vuelven tarjetas (una por renglón): clase tabla-tarjetas en el <table>; un <td> con
+   data-label muestra ese rótulo arriba de su valor (y esos van uno junto al otro). En pantallas medianas y grandes sigue
+   siendo tabla. */
+@media (max-width: 767px) {
+  .tabla-tarjetas thead { display: none; }
+  .tabla-tarjetas, .tabla-tarjetas tbody, .tabla-tarjetas tr, .tabla-tarjetas td { display: block; width: 100%; }
+  .tabla-tarjetas tr { padding: 0.75rem 1rem; }
+  .tabla-tarjetas td { padding: 0.2rem 0; white-space: normal; }
+  .tabla-tarjetas td[data-label] { display: inline-block; width: auto; margin-right: 1.5rem; vertical-align: top; }
+  .tabla-tarjetas td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #7A746B;
+  }
+}

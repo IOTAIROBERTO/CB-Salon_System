@@ -27,7 +27,7 @@ export default function CitaDetalleModal({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold">Detalle de Cita</h2>
-          <button onClick={onClose}>
+          <button onClick={onClose} aria-label="Cerrar">
             <XCircle size={20} />
           </button>
         </div>

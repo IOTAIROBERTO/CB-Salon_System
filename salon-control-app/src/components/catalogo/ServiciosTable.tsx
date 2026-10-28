@@ -23,7 +23,7 @@ export default function ServiciosTable({ servicios, onEdit, onDelete }: Servicio
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <table className="w-full">
+      <table className="tabla-tarjetas w-full">
         <thead className="bg-gray-50">
           <tr>
             <th className="p-4 text-left font-semibold text-gray-900">Servicio</th>

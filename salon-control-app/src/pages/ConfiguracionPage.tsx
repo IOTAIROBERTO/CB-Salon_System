@@ -62,7 +62,7 @@ export default function ConfiguracionPage() {
   if (loading) return <div>Cargando configuración...</div>;
 
   return (
-    <div className="w-full max-w-none space-y-6 p-6">
+    <div className="w-full max-w-none space-y-6 lg:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-bold text-gray-900">Configuración</h1>
@@ -76,8 +76,8 @@ export default function ConfiguracionPage() {
         )}
       </div>
 
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div className="border-b border-gray-200 overflow-x-auto">
+        <nav className="-mb-px flex space-x-6 whitespace-nowrap sm:space-x-8">
           <button onClick={() => setActiveTab('general')} className={`pb-2 border-b-2 ${activeTab === 'general' ? 'border-purple-600' : 'border-transparent'}`}>General</button>
           <button onClick={() => setActiveTab('email')} className={`pb-2 border-b-2 ${activeTab === 'email' ? 'border-purple-600' : 'border-transparent'}`}>Email Marketing</button>
           <button onClick={() => setActiveTab('whatsapp')} className={`pb-2 border-b-2 ${activeTab === 'whatsapp' ? 'border-purple-600' : 'border-transparent'}`}>WhatsApp</button>
@@ -93,7 +93,7 @@ export default function ConfiguracionPage() {
       {activeTab === 'agenda' && <AgendaTab />}
 
       {activeTab === 'general' && (
-        <div className="bg-white p-6 rounded-lg shadow space-y-4">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-4">
           <h3 className="font-semibold text-lg">Información del Negocio</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -149,7 +149,7 @@ A nombre de: …`}
       )}
 
       {activeTab === 'email' && (
-        <div className="bg-white p-6 rounded-lg shadow space-y-6">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-6">
           <div className="flex justify-between">
             <h3 className="font-semibold text-lg">Configuración EmailJS</h3>
             {getEmailStatus() ?
@@ -211,7 +211,7 @@ A nombre de: …`}
       )}
 
       {activeTab === 'whatsapp' && (
-        <div className="bg-white p-6 rounded-lg shadow space-y-4">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-4">
           <h3 className="font-semibold text-lg">WhatsApp</h3>
           <p className="text-gray-600">Actualmente el sistema usa WhatsApp Web para enviar mensajes directamente desde tu navegador.</p>
           <div className="bg-green-50 p-4 rounded flex items-center gap-2 text-green-800">
@@ -240,7 +240,7 @@ A nombre de: …`}
       )}
 
       {activeTab === 'google' && (
-        <div className="bg-white p-6 rounded-lg shadow space-y-4 text-sm text-gray-700">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-4 text-sm text-gray-700">
           <h3 className="font-semibold text-lg text-gray-800">Google Calendar</h3>
           <p>
             La conexión vive en el servidor: no hay que conectar nada desde este navegador ni volver a dar permiso.

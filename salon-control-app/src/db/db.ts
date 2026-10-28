@@ -248,6 +248,18 @@ export interface Aviso {
     refId?: string; // id de la cita, clienta o pedido
     clienteId?: string;
     leido?: boolean;
+    push?: string; // ISO: cuándo lo mandó el Worker cb-avisos a los celulares (Web Push)
+}
+
+/** Dispositivo que recibe los avisos de la campana con la app cerrada (Web Push; los manda el Worker cb-avisos) */
+export interface SuscripcionPush {
+    id: string; // push_ + huella del endpoint: el mismo dispositivo no se repite
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    usuario?: string; // correo de quien lo activó
+    dispositivo?: string; // iPhone, Android o Computadora
+    fecha: string; // ISO
 }
 
 export interface TarjetaRegalo {
@@ -350,6 +362,7 @@ export class SalonDatabase extends Dexie {
     movimientosSaldo!: Table<MovimientoSaldo>;
     avisos!: Table<Aviso>;
     fotos!: Table<FotoCita>;
+    suscripciones!: Table<SuscripcionPush>;
 
     // New Tables
     documentos!: Table<SalonDocument>;
@@ -405,6 +418,12 @@ export class SalonDatabase extends Dexie {
             fotos: 'id, citaId, clienteId'
         });
 
+        // Tabla nueva: registrarla también en Dexie Cloud (export --schema / import) antes de publicar, o la
+        // sincronización se traba en silencio
+        this.version(7).stores({
+            suscripciones: 'id'
+        });
+
         this.cloud.configure({
             databaseUrl: DEXIE_CLOUD_URL,
             requireAuth: true, // Pide iniciar sesión por email antes de abrir la base
@@ -447,7 +466,7 @@ export class SalonDatabase extends Dexie {
 const TABLAS_DEL_SALON = new Set([
     'clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos', 'configuracion',
     'empleados', 'campanas', 'plantillas', 'automatizaciones', 'empleadoEvents',
-    'proveedores', 'compras', 'consentimientos', 'tarjetasRegalo', 'movimientosSaldo', 'avisos', 'fotos'
+    'proveedores', 'compras', 'consentimientos', 'tarjetasRegalo', 'movimientosSaldo', 'avisos', 'fotos', 'suscripciones'
 ]);
 
 let realmSalonId: string | undefined;

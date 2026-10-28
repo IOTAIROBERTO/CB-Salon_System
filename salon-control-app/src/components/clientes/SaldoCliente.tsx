@@ -38,9 +38,9 @@ export default function SaldoCliente({ clienteId }: { clienteId: string }) {
         <button type="button" onClick={activar} disabled={!folio.trim()} className="flex items-center gap-1 text-sm px-3 py-1 rounded bg-gray-900 text-white disabled:opacity-40"><Gift size={14} /> Activar</button>
       </div>
       {esDuena && (
-        <div className="flex gap-2 mb-2">
+        <div className="flex flex-wrap gap-2 mb-2">
           <input type="number" min="0" value={abono.monto} onChange={e => setAbono({ ...abono, monto: e.target.value })} placeholder="Abono $" className="w-24 border rounded px-2 py-1 text-sm" />
-          <input value={abono.concepto} onChange={e => setAbono({ ...abono, concepto: e.target.value })} placeholder="Motivo (pedido no recogido, ajuste…)" className="flex-1 border rounded px-2 py-1 text-sm" />
+          <input value={abono.concepto} onChange={e => setAbono({ ...abono, concepto: e.target.value })} placeholder="Motivo (pedido no recogido, ajuste…)" className="min-w-[9rem] flex-1 border rounded px-2 py-1 text-sm" />
           <button type="button" onClick={abonar} className="text-sm px-3 py-1 rounded border">Abonar</button>
         </div>
       )}

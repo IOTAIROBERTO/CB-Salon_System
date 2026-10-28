@@ -49,11 +49,14 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
   `acceso/verificar`, `mi-club`, `firma/<id>` (consentimiento con enlace personal que crea CB Control; pantalla `#/firmar/<id>`,
   sin entrar al Club). Código en `api/` y `functions/api/`. Lee y escribe la base de CB Control (Dexie Cloud).
 - **`avisos/`**: Worker `cb-avisos` que corre cada 10 minutos y manda por WhatsApp la confirmación de la cita (cuando el
-  salón la confirma en CB Control) y el recordatorio del día anterior; y cada minuto copia las citas a Google Calendar.
-  Publicar: `npx wrangler deploy --config avisos/wrangler.toml`.
+  salón la confirma en CB Control) y el recordatorio del día anterior; cada minuto copia las citas a Google Calendar y,
+  aparte (cron `*/1`), manda al celular del salón cada aviso nuevo de la campana con Web Push (`api/push.ts`: los celulares
+  que activaron «Avisos en este dispositivo» en CB Control, tabla `suscripciones`). Publicar: `npx wrangler deploy --config avisos/wrangler.toml`.
 - **Secretos** (Cloudflare, nunca en el repo), en el proyecto de Pages `cristinaborquez-app` y en el Worker `cb-avisos`:
   `DEXIE_CLIENT_ID`, `DEXIE_CLIENT_SECRET`, `SESION_SECRETO` (solo Pages), `WA_TOKEN`, `WA_PHONE_ID`, `WA_AVISOS`
-  (números del salón que reciben avisos, separados por coma, con 52 adelante), `GOOGLE_CUENTA_SERVICIO`, `GOOGLE_CALENDARIO`.
+  (números del salón que reciben avisos, separados por coma, con 52 adelante), `GOOGLE_CUENTA_SERVICIO`, `GOOGLE_CALENDARIO`,
+  `VAPID_PRIVADA` (solo el Worker; su llave pública `VAPID_PUBLICA` va en `avisos/wrangler.toml` y en CB Control
+  `src/components/avisos/AvisosCelular.tsx`: si se cambia el par, cada celular vuelve a activar sus avisos).
   `TURNSTILE_SECRETO` (solo Pages): «no soy robot» en agendar, Club y código. Encender en orden: primero la llave pública en
   `src/components/NoSoyRobot.tsx` y publicar, después el secreto (al revés la API rechazaría la app vieja).
 - **Contra citas falsas** (sin vencimiento automático): Turnstile; con WhatsApp conectado, solo aparta horario quien confirma
@@ -63,6 +66,7 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
 - **Pruebas locales**: `npm run build`, luego `npm run dexie:falso` (base falsa, puerto 8799) y `npm run api:local` (app + API en
   8788; enlace de prueba `/#/firmar/firma_00000000000000000000000000000001`). Pruebas: `scripts/*.check.ts` (comando en cada archivo).
   Google simulado: `npx esbuild scripts/google.check.ts --bundle --platform=node --format=esm --log-level=warning | node --input-type=module`.
+  Web Push (cifrado contra el vector del RFC 8291, VAPID y avisos de la campana): igual con `scripts/push.check.ts`.
 
 ## Google Calendar (`api/google.ts`)
 

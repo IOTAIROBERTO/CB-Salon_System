@@ -18,6 +18,19 @@ La galería pública vive en `/galeria/` y la página de reseñas en `/resenas/`
 - Los datos del negocio (ventas, finanzas) **nunca** van al repositorio: el sitio es público.
 - `dexie-cloud.key` es secreto y está en `.gitignore`.
 
+## Celular e instalación
+
+- Es una PWA (`public/manifest.webmanifest`, `public/sw.js`): se instala desde Chrome (Android o computadora: aviso
+  «Instalar» arriba de cada pantalla) o desde Safari en iPhone (Compartir → Agregar a pantalla de inicio). Abre en
+  pantalla completa en Citas. El service worker es «red primero» y nunca toca Dexie Cloud ni `/api`.
+- Avisos con la app cerrada: campana → «Activar avisos» (en iPhone, iOS 16.4+ y con la app instalada). La suscripción
+  queda en la tabla `suscripciones` y el Worker `cb-avisos` (`../app-clientas/avisos`) manda cada aviso nuevo de la campana
+  y el recordatorio de citas sin confirmar. «Probar» crea un aviso de prueba que llega en menos de un minuto.
+- En pantallas táctiles, `src/index.css` agranda botones a 40 px y las tablas con la clase `tabla-tarjetas` se vuelven
+  tarjetas en celular (las demás se desplazan de lado).
+- Tabla nueva en `src/db/db.ts` = registrarla en Dexie Cloud antes de publicar (`npx dexie-cloud export --schema`,
+  agregarla, `npx dexie-cloud import`); si no, la sincronización se traba en silencio.
+
 ## Diseño
 
 Paleta y letras del brand book: negro `#111111`, dorado `#C29B57`, marfil `#F6F1E9`; Cormorant Garamond para

@@ -26,7 +26,7 @@ export default function VentasPage() {
   return (
     <div className="w-full max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <div>
           <h1 className="font-bold text-gray-900">Ventas</h1>
           <p className="text-gray-600 mt-1">
@@ -39,19 +39,19 @@ export default function VentasPage() {
       <TarjetasRegalo />
 
       {/* Estadísticas rápidas */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="text-sm text-gray-600">Total de Ventas</div>
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+        <div className="bg-white p-3 sm:p-4 rounded-lg shadow border">
+          <div className="text-xs sm:text-sm text-gray-600">Total de Ventas</div>
           <div className="text-2xl font-bold text-green-600">{ventas.length}</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="text-sm text-gray-600">Ingresos Totales</div>
+        <div className="bg-white p-3 sm:p-4 rounded-lg shadow border">
+          <div className="text-xs sm:text-sm text-gray-600">Ingresos Totales</div>
           <div className="text-2xl font-bold text-green-600">
             ${ventas.reduce((sum, v) => sum + (v.total || 0), 0).toLocaleString()}
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="text-sm text-gray-600">Promedio por Venta</div>
+        <div className="bg-white p-3 sm:p-4 rounded-lg shadow border">
+          <div className="text-xs sm:text-sm text-gray-600">Promedio por Venta</div>
           <div className="text-2xl font-bold text-green-600">
             ${ventas.length > 0 ? Math.round(ventas.reduce((sum, v) => sum + (v.total || 0), 0) / ventas.length).toLocaleString() : 0}
           </div>

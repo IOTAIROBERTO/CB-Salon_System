@@ -84,7 +84,7 @@ export default function AgendaDia({ fecha }: { fecha: string }) {
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-purple-100 border border-purple-400" /> Pendiente</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-400" /> Confirmada o en curso</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 border border-green-400" /> Cobrada</span>
-        <span>Rayado: proceso, se puede agendar otra clienta · Gris: descanso o bloqueo · Clic en una cita para moverla</span>
+        <span>Rayado: proceso, se puede agendar otra clienta · Gris: descanso o bloqueo · Toca una cita para moverla</span>
       </div>
       {moviendo && <ReagendarModal cita={moviendo} onClose={() => setMoviendo(null)} onSave={saveCita} />}
     </div>

@@ -5,14 +5,25 @@ import { db, type Aviso } from '../../db/db';
 import { enlaceWhatsApp } from '../../utils/lealtad';
 import { fechaLocalISO } from '../../utils/dateValidation';
 import ValorarSolicitud from './ValorarSolicitud';
+import AvisosCelular, { suscripcionActual } from './AvisosCelular';
 
 // Bandeja del salón: lo que las clientas hacen solas en la app (citas, altas al Club) llega aquí en tiempo real
-// por Dexie Cloud. Con la ventana abierta también sale una notificación del navegador. Arriba, fija, la lista de
-// citas de la app que siguen sin confirmar (no vencen solas: se quedan aquí hasta que alguien las confirme o cancele).
+// por Dexie Cloud. Con la ventana abierta también sale una notificación del navegador (si el dispositivo no tiene los
+// avisos con la app cerrada, AvisosCelular: esos ya llegan por Web Push). Arriba, fija, la lista de citas de la app que
+// siguen sin confirmar (no vencen solas: se quedan aquí hasta que alguien las confirme o cancele).
 const ICONO = { cita: CalendarCheck, club: Crown, pedido: ShoppingBag, sistema: Bell } as const;
 
 // Compartido entre las campanas (barra lateral, cajón y encabezado móvil): cada aviso notifica una sola vez
 let vistos: Set<string> | null = null;
+
+/** Notificación con la ventana abierta. En Android `new Notification` no existe (lanza error): va por el service worker. */
+async function notificar(a: Aviso) {
+  if (!('Notification' in window) || Notification.permission !== 'granted' || await suscripcionActual()) return;
+  const opciones = { body: a.detalle, icon: './icons/icon-192.png', tag: a.id };
+  const reg = await navigator.serviceWorker?.getRegistration();
+  if (reg) await reg.showNotification(a.titulo, opciones);
+  else new Notification(a.titulo, opciones);
+}
 
 const hace = (iso: string) => {
   const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
@@ -40,8 +51,7 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
     for (const a of avisos) {
       if (vistos.has(a.id)) continue;
       vistos.add(a.id);
-      if (!a.leido && 'Notification' in window && Notification.permission === 'granted')
-        new Notification(a.titulo, { body: a.detalle, icon: './marca/CB_monograma_dorado.svg', tag: a.id });
+      if (!a.leido) notificar(a).catch(() => { /* sin permiso o sin soporte: el aviso sigue en la campana */ });
     }
   }, [avisos]);
 
@@ -59,7 +69,6 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
     if (suyos.length) await db.avisos.bulkUpdate(suyos.map(a => ({ key: a.id, changes: { leido: true } })));
   };
   const fechaCorta = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
-  const pedirPermiso = () => 'Notification' in window && Notification.requestPermission();
 
   const whatsapp = (a: Aviso) => {
     const c = clientes.find(x => x.id === a.clienteId);
@@ -74,31 +83,30 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
   return (
     <>
       <button onClick={() => setAbierta(true)} aria-label={`Avisos${sinLeer ? `: ${sinLeer} sin leer` : ''}`}
-        className={`relative rounded-md p-2 ${oscuro ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+        className={`relative rounded-md p-2.5 ${oscuro ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
         <Bell size={19} strokeWidth={1.5} />
         {porConfirmar.length > 0
           ? <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-medium text-white" title="Citas de la app por confirmar">{porConfirmar.length}</span>
           : sinLeer > 0 && <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-marca-dorado px-1 text-[10px] font-medium text-marca-negro">{sinLeer}</span>}
       </button>
 
+      {/* text-gray-900: en celular la campana vive dentro de la barra negra (text-white) */}
       {abierta && (
-        <div className="fixed inset-0 z-[60]">
+        <div className="fixed inset-0 z-[60] text-gray-900">
           <div onClick={() => setAbierta(false)} className="absolute inset-0 bg-black/40" />
-          <aside className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-white shadow-2xl">
+          <aside className="tocable absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b px-5 py-4">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.28em] text-marca-dorado-prof">Bandeja</p>
                 <h2 className="text-2xl text-gray-900">Avisos de la app</h2>
               </div>
-              <button onClick={() => setAbierta(false)} className="rounded-md p-2 text-gray-500 hover:bg-gray-100" aria-label="Cerrar"><X size={20} /></button>
+              <button onClick={() => setAbierta(false)} className="rounded-md p-2.5 text-gray-500 hover:bg-gray-100" aria-label="Cerrar"><X size={20} /></button>
             </div>
             <div className="flex items-center justify-between gap-2 border-b px-5 py-2 text-xs text-gray-500">
               <span>{citas.length} cita{citas.length === 1 ? '' : 's'} por confirmar</span>
-              <div className="flex gap-3">
-                {'Notification' in window && Notification.permission === 'default' && <button onClick={pedirPermiso} className="text-marca-dorado-prof hover:underline">Activar notificaciones</button>}
-                {sinLeer > 0 && <button onClick={marcarTodo} className="hover:underline">Marcar todo leído</button>}
-              </div>
+              {sinLeer > 0 && <button onClick={marcarTodo} className="min-h-[40px] hover:underline">Marcar todo leído</button>}
             </div>
+            <AvisosCelular />
             <div className="flex-1 overflow-y-auto">
               {porConfirmar.length > 0 && (
                 <div className="border-b bg-red-50/60 px-5 py-4">
@@ -110,11 +118,11 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
                     return (
                       <div key={c.id} className="mt-3 flex items-center gap-3">
                         <div className="min-w-0 flex-1 text-sm">
-                          <p className="truncate font-medium text-gray-900">{cl?.nombre || 'Clienta'} · {fechaCorta(c.fecha)} {c.hora}</p>
+                          <p className="font-medium text-gray-900">{cl?.nombre || 'Clienta'} · {fechaCorta(c.fecha)} {c.hora}</p>
                           <p className="truncate text-gray-600">{sv?.nombre || 'Servicio'}{c.montoAnticipo ? ` · anticipo $${c.montoAnticipo.toLocaleString('es-MX')} ${c.anticipoConfirmado ? 'pagado' : 'pendiente'}` : ''}</p>
                         </div>
-                        {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="rounded-md border bg-white p-2 text-gray-700 hover:bg-gray-50" aria-label="WhatsApp"><MessageCircle size={14} /></a>}
-                        <button onClick={() => valorar(c.id)} className="flex items-center gap-1 rounded-md bg-marca-negro px-3 py-1.5 text-xs text-white hover:bg-gray-800"><Check size={13} /> Valorar</button>
+                        {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-white text-gray-700 hover:bg-gray-50" aria-label="WhatsApp"><MessageCircle size={15} /></a>}
+                        <button onClick={() => valorar(c.id)} className="flex min-h-[40px] shrink-0 items-center gap-1 rounded-md bg-marca-negro px-3 text-xs text-white hover:bg-gray-800"><Check size={13} /> Valorar</button>
                       </div>
                     );
                   })}
@@ -138,17 +146,17 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
                         {a.detalle && <p className="mt-0.5 text-sm text-gray-600">{a.detalle}</p>}
                         <div className="mt-2 flex flex-wrap gap-2">
                           {pendiente && (
-                            <button onClick={() => a.refId && valorar(a.refId)} className="flex items-center gap-1 rounded-md bg-marca-negro px-3 py-1.5 text-xs text-white hover:bg-gray-800">
+                            <button onClick={() => a.refId && valorar(a.refId)} className="flex min-h-[40px] items-center gap-1 rounded-md bg-marca-negro px-3 text-xs text-white hover:bg-gray-800">
                               <Check size={13} /> Valorar cita
                             </button>
                           )}
                           {wa && (
                             <a href={wa} target="_blank" rel="noopener noreferrer" onClick={() => marcar(a)}
-                              className="flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+                              className="flex min-h-[40px] items-center gap-1 rounded-md border px-3 text-xs text-gray-700 hover:bg-gray-50">
                               <MessageCircle size={13} /> WhatsApp
                             </a>
                           )}
-                          {!a.leido && <button onClick={() => marcar(a)} className="px-2 py-1.5 text-xs text-gray-500 hover:underline">Leído</button>}
+                          {!a.leido && <button onClick={() => marcar(a)} className="min-h-[40px] px-3 text-xs text-gray-500 hover:underline">Leído</button>}
                         </div>
                       </div>
                     </div>

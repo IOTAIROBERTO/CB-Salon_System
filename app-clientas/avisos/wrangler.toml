@@ -1,10 +1,15 @@
-# Worker con horario: avisos automáticos a clientas (confirmación y recordatorio por WhatsApp, cada 10 min)
-# y espejo de citas en Google Calendar (cada minuto).
-# Publicar: npx wrangler deploy --config avisos/wrangler.toml   ·   Secretos: los mismos de la app (DEXIE_*, WA_*, GOOGLE_*)
+# Worker con horario: avisos automáticos a clientas (confirmación y recordatorio por WhatsApp, cada 10 min),
+# espejo de citas en Google Calendar (cada minuto) y avisos de la campana al celular del salón (Web Push, cada minuto).
+# Publicar: npx wrangler deploy --config avisos/wrangler.toml
+# Secretos: los mismos de la app (DEXIE_*, WA_*, GOOGLE_*) y VAPID_PRIVADA (npx wrangler secret put VAPID_PRIVADA --config avisos/wrangler.toml)
 name = "cb-avisos"
 main = "index.ts"
 compatibility_date = "2025-10-01"
 workers_dev = false   # solo corre por horario: sin dirección pública
 
 [triggers]
-crons = ["*/10 * * * *", "* * * * *"]
+crons = ["*/10 * * * *", "* * * * *", "*/1 * * * *"]   # «*/1» = avisos al celular (ver index.ts)
+
+[vars]
+# Llave pública VAPID (no es secreta): la misma que VAPID_PUBLICA en CB Control (src/components/avisos/AvisosCelular.tsx)
+VAPID_PUBLICA = "BGoobnbfocVogm_zUv4BuqZsOnqiljCzYKhDacJmH5Sl4uShmZVYPeuDgjVQPwf2pZEQXizmCBLpZs-hqhoYrYk"

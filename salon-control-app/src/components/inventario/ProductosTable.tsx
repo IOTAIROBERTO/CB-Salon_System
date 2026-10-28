@@ -21,7 +21,7 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
   return (
     <div className="bg-white rounded-lg shadow border overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className="tabla-tarjetas min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -60,7 +60,7 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
                     {producto.categoria}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4 whitespace-nowrap" data-label="Stock">
                   <div>
                     <span className={`px-2 py-1 rounded-full text-sm font-medium ${getStockColor(producto)}`}>
                       {producto.cantidad} unidades
@@ -70,7 +70,7 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4 whitespace-nowrap" data-label="Precio">
                   <div className="text-lg font-semibold text-gray-900">
                     {formatCurrency(producto.precio)}
                   </div>
@@ -92,7 +92,7 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
                     );
                   })()}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-lg font-semibold text-green-600">
+                <td className="px-6 py-4 whitespace-nowrap text-lg font-semibold text-green-600" data-label="Valor total">
                   {formatCurrency(producto.cantidad * producto.precio)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

@@ -47,18 +47,23 @@ export default function AgendaTab() {
             const h = cfg.horario[d];
             return (
               <div key={d} className="flex flex-wrap items-center gap-2 text-sm">
-                <label className="w-28 flex items-center gap-2">
+                <label className="w-full sm:w-28 flex items-center gap-2">
                   <input type="checkbox" checked={!!h} onChange={e => setDia(d, e.target.checked ? { abre: '10:00', cierra: '19:00' } : null)} />
                   {nombre}
                 </label>
+                {/* Cada par de horas va junto: en celular se acomodan en renglones, sin partir «abre a cierra» */}
                 {h ? (<>
-                  <input type="time" value={h.abre} onChange={e => setDia(d, { ...h, abre: e.target.value })} className={campo} aria-label={`${nombre} abre`} />
-                  <span>a</span>
-                  <input type="time" value={h.cierra} onChange={e => setDia(d, { ...h, cierra: e.target.value })} className={campo} aria-label={`${nombre} cierra`} />
-                  <span className="text-gray-500 ml-2">Descanso</span>
-                  <input type="time" value={h.descansoDe || ''} onChange={e => setDia(d, { ...h, descansoDe: e.target.value || undefined })} className={campo} aria-label={`${nombre} descanso desde`} />
-                  <span>a</span>
-                  <input type="time" value={h.descansoA || ''} onChange={e => setDia(d, { ...h, descansoA: e.target.value || undefined })} className={campo} aria-label={`${nombre} descanso hasta`} />
+                  <span className="flex items-center gap-2">
+                    <input type="time" value={h.abre} onChange={e => setDia(d, { ...h, abre: e.target.value })} className={campo} aria-label={`${nombre} abre`} />
+                    <span>a</span>
+                    <input type="time" value={h.cierra} onChange={e => setDia(d, { ...h, cierra: e.target.value })} className={campo} aria-label={`${nombre} cierra`} />
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="w-full text-gray-500 sm:ml-2 sm:w-auto">Descanso</span>
+                    <input type="time" value={h.descansoDe || ''} onChange={e => setDia(d, { ...h, descansoDe: e.target.value || undefined })} className={campo} aria-label={`${nombre} descanso desde`} />
+                    <span>a</span>
+                    <input type="time" value={h.descansoA || ''} onChange={e => setDia(d, { ...h, descansoA: e.target.value || undefined })} className={campo} aria-label={`${nombre} descanso hasta`} />
+                  </span>
                 </>) : <span className="text-gray-400">Cerrado</span>}
               </div>
             );

@@ -64,3 +64,7 @@ export async function uno<T = any>(env: EnvDexie, tabla: string, id: string): Pr
 /** Crea o reemplaza objetos (cada uno con realmId) */
 export const guardar = (env: EnvDexie, tabla: string, objetos: object[]) =>
   pedir(env, `/all/${encodeURIComponent(tabla)}`, { method: 'POST', body: JSON.stringify(objetos) });
+
+/** Borra un objeto por id (usar solo con ids que ya se leyeron con `leer`/`uno`: así es del salón) */
+export const borrar = (env: EnvDexie, tabla: string, id: string) =>
+  pedir(env, `/all/${encodeURIComponent(tabla)}/${encodeURIComponent(id)}`, { method: 'DELETE' });

@@ -27,12 +27,14 @@ export default function ClientesCards({ clientes, onEdit, onDelete }: ClientesCa
             <div className="flex gap-2">
               <button
                 onClick={() => onEdit(cliente)}
+                aria-label="Editar cliente"
                 className="text-blue-600 hover:text-blue-900 p-1"
               >
                 <Edit size={18} />
               </button>
               <button
                 onClick={() => handleDelete(cliente)}
+                aria-label="Eliminar cliente"
                 className="text-red-600 hover:text-red-900 p-1"
               >
                 <Trash2 size={18} />

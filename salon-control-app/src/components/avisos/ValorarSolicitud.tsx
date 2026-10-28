@@ -59,8 +59,8 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
   const ver = (src: string) => { const w = window.open('', '_blank'); if (!w || !src.startsWith('data:image/')) return; const img = w.document.createElement('img'); img.src = src; img.style.maxWidth = '100%'; w.document.body.appendChild(img); };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[92vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-xl bg-white p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+    <div className="tocable fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-2 text-gray-900 sm:p-4" onClick={onClose}>
+      <div className="max-h-[96dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-xl bg-white p-4 shadow-xl sm:p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.28em] text-marca-dorado-prof">Valorar solicitud</p>
@@ -109,7 +109,7 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
 
         <div className="flex flex-wrap gap-2">
           {whatsapp
-            ? <a href={whatsapp} target="_blank" rel="noopener noreferrer" onClick={() => guardar()} className="flex items-center gap-1 rounded-md bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700"><MessageCircle size={15} /> Guardar y mandar WhatsApp</a>
+            ? <a href={whatsapp} target="_blank" rel="noopener noreferrer" onClick={() => guardar()} className="flex min-h-[40px] items-center gap-1 rounded-md bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700"><MessageCircle size={15} /> Guardar y mandar WhatsApp</a>
             : <span className="text-xs text-amber-700">La clienta no tiene teléfono de 10 dígitos.</span>}
           <button onClick={async () => { await guardar({ estado: 'confirmada' }); onClose(); }}
             disabled={pideAnticipo && !recibido}

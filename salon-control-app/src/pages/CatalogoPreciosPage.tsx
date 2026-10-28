@@ -46,7 +46,7 @@ export default function CatalogoPreciosPage() {
     `px-4 py-2 rounded-t-lg border-b-2 text-sm font-medium whitespace-nowrap ${activa ? 'border-purple-600 text-purple-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-800'}`;
 
   return (
-    <div className="w-full max-w-none space-y-6 p-6">
+    <div className="w-full max-w-none space-y-6 lg:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-bold text-gray-900">Catálogo y listas de precios</h1>

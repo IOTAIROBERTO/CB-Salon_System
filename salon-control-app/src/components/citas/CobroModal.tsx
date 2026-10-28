@@ -256,7 +256,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold">Finalizar y Cobrar</h2>
-          <button onClick={onClose}>
+          <button onClick={onClose} aria-label="Cerrar">
             <X size={20} />
           </button>
         </div>

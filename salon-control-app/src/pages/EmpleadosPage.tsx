@@ -273,7 +273,7 @@ export default function EmpleadosPage() {
                         <div className="bg-purple-600 px-4 pt-4 text-white">
                             <div className="flex justify-between items-center mb-2">
                                 <h3 className="text-lg font-bold">{selectedEmpleadoId ? 'Editar Empleado' : 'Registro de Empleado'}</h3>
-                                <button onClick={() => setShowModal(false)} className="hover:bg-purple-700 p-1 rounded-lg"><X size={20} /></button>
+                                <button onClick={() => setShowModal(false)} aria-label="Cerrar" className="hover:bg-purple-700 p-1 rounded-lg"><X size={20} /></button>
                             </div>
                             {selectedEmpleadoId && (
                                 <div className="flex gap-4 text-sm mt-2">
