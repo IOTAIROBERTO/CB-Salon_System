@@ -176,7 +176,8 @@ export interface Servicio {
     duracion: number;
     tiempoProceso?: number; // Minutos de espera (tinte actuando): quien atiende queda libre
     tiempoCierre?: number; // Minutos activos al final (enjuague, secado, peinado)
-    descripcion?: string;
+    descripcion?: string; // notas internas del salón (nunca se muestran a clientas)
+    descripcionApp?: string; // lo que ve la clienta en «Más info» de la app
     comision?: number;
     categoria?: string;
     archivado?: boolean; // Fuera del catálogo (uñas, «otros»); se conserva por las citas viejas

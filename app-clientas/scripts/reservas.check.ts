@@ -14,7 +14,7 @@ while (new Date(`${lunes}T12:00:00Z`).getUTCDay() !== 1) lunes = dia(Math.round(
 const tablas: Record<string, any[]> = {
   configuracion: [{ id: 'settings', realmId: 'r' }],
   servicios: [{ id: 's1', nombre: 'Corte de cabello', categoria: 'corte', precioSugerido: 500, duracion: 60 },
-    { id: 's07', nombre: 'Retoque de raíz', precioSugerido: 550, duracion: 90, descripcion: 'Color solo en la raíz que creció.' }],
+    { id: 's07', nombre: 'Retoque de raíz', precioSugerido: 550, duracion: 90, descripcionApp: 'Color solo en la raíz que creció.', descripcion: 'Nota interna: 27 de 54 cobros' }],
   empleados: [], empleadoEvents: [], clientes: [], citas: [], avisos: [], fotos: []
 };
 const whatsapp: string[] = [];
@@ -88,6 +88,7 @@ assert.match((await paraHoy.json()).error, /WhatsApp/);
 const catalogo = (await (await atender(new Request('https://app/api/servicios'), base as any, ctx)).json()).servicios;
 assert.equal(catalogo.find((x: any) => x.id === 's07').descripcion.startsWith('Color solo en la raíz'), true);
 assert.equal(catalogo.find((x: any) => x.id === 's07').categoria, 'otros');
+assert.ok(!JSON.stringify(catalogo).includes('Nota interna'));   // las notas internas nunca salen a la app
 
 // Preguntas del cabello y fotos: quedan en la cita y en «fotos»; lo inválido se descarta; el aviso lo resume
 const jpg = 'data:image/jpeg;base64,' + 'A'.repeat(400);

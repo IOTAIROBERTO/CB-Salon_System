@@ -32,7 +32,7 @@ export const useServicioModal = () => {
       duracion: servicio.duracion || 60,
       tiempoProceso: servicio.tiempoProceso || 0,
       tiempoCierre: servicio.tiempoCierre || 0,
-      descripcion: servicio.descripcion || '',
+      descripcionApp: servicio.descripcionApp || '',
       categoria: servicio.categoria || ''
     });
     setEditingServicio(servicio);

@@ -29,6 +29,7 @@ import { db } from "./db/db";
 import { useRolSalon, NOMBRE_ROL } from "./db/salon";
 import { LoginSalon, PantallaSinSalon } from "./components/auth/AccesoSalon";
 import Bandeja from "./components/avisos/Bandeja";
+import EstadoSync from "./components/avisos/EstadoSync";
 
 // Páginas solo para la dueña (la empleada no las ve en el menú ni por URL)
 const SOLO_DUENA = new Set(["/reportes", "/configuracion"]);
@@ -118,7 +119,7 @@ function Marco() {
           <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-10 w-auto" />
           <span className="font-display text-2xl leading-none text-white">CB <em className="text-marca-dorado">Control</em></span>
         </Link>
-        <span className="hidden lg:block"><Bandeja /></span>
+        <span className="hidden items-center gap-1 lg:flex"><EstadoSync /><Bandeja /></span>
       </div>
       <nav className="flex-1 space-y-7 overflow-y-auto px-3 pb-6">
         {secciones.map(s => (
@@ -165,6 +166,7 @@ function Marco() {
           <span className="text-[11px] uppercase tracking-[0.26em] text-marca-champan">{actual?.label ?? "CB Control"}</span>
         </Link>
         <div className="flex items-center gap-1">
+          <EstadoSync />
           <Bandeja />
           <button onClick={() => setMenuAbierto(true)} className="rounded-md p-2 hover:bg-white/10" aria-label="Abrir menú">
             <Menu size={22} strokeWidth={1.5} />

@@ -153,9 +153,9 @@ export default function ServicioModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Descripción para la app («Más info»)</label>
-              <textarea rows={2} value={formData.descripcion || ''} onChange={(e) => updateFormData('descripcion', e.target.value)}
+              <textarea rows={2} value={formData.descripcionApp || ''} onChange={(e) => updateFormData('descripcionApp', e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Qué es este servicio, en palabras de clienta. Vacío = el texto de la app." />
+                placeholder="Qué es este servicio, en palabras de clienta. Vacío = sin «Más info»." />
             </div>
 
             <div>

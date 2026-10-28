@@ -1,7 +1,6 @@
-// Lo que la app toma de CB Control (una sola fuente de verdad): datos del salón, políticas, catálogo y reglas del Club.
-// Cuando exista la API (Cloudflare Workers), el catálogo y los puntos de cada clienta vendrán de ahí.
+// Lo que la app toma de CB Control (una sola fuente de verdad): datos del salón, políticas y reglas del Club.
+// El catálogo (nombres, precios, descripciones) llega en vivo de la API: nunca se copia aquí.
 import { DATOS_SALON, POLITICAS, POLITICAS_RESERVA } from '@salon/data/datosSalon'
-import catalogo from '@salon/data/servicios_dataset.json'
 
 export { DATOS_SALON, POLITICAS, POLITICAS_RESERVA }
 export { MENU_ANTOJOS, CORTESIAS_SIEMPRE } from '@salon/data/menuAntojos'
@@ -16,11 +15,6 @@ const CATEGORIAS: Record<string, string> = {
   color: 'Color', corte: 'Corte', tratamiento: 'Tratamientos', maquillaje: 'Maquillaje', peinado: 'Peinado'
 }
 export const nombreCategoria = (c: string) => CATEGORIAS[c] || 'Otros'
-
-/** Servicios del salón en Hermosillo con precios 2027 (los de novia fuera de la ciudad se cotizan por WhatsApp) */
-export const SERVICIOS: Servicio[] = (catalogo as { id: string; nombre: string; categoria: string; precio2027: number; anticipo2027: number; duracion: number }[])
-  .filter(s => s.precio2027 > 0 && !/for[aá]neo/i.test(s.nombre))
-  .map(s => ({ id: s.id, nombre: s.nombre, categoria: s.categoria, precio: s.precio2027, anticipo: s.anticipo2027, duracion: s.duracion }))
 
 export const pesos = (n: number) => `$${n.toLocaleString('es-MX')}`
 

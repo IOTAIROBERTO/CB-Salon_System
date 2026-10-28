@@ -100,8 +100,8 @@ const enLinea = (s: any) => !s.archivado && Number(s.precioSugerido) > 0 && !/fo
 async function servicios(env: Env) {
   const lista = (await leer<any>(env, 'servicios')).filter(enLinea)
     .map(s => ({ id: s.id, nombre: s.nombre, categoria: s.categoria || 'otros', precio: s.precioSugerido, anticipo: s.anticipoSugerido || 0, duracion: s.duracion || 60,
-      descripcion: s.descripcion || '' }));   // la escribe Cristina en Catálogo (sin texto, no hay «Más info»)
-  return new Response(JSON.stringify({ servicios: lista }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+      descripcion: s.descripcionApp || '' }));   // «Descripción para la app» de Catálogo; `descripcion` son notas internas y nunca salen
+  return json({ servicios: lista });   // sin caché: un cambio en CB Control se ve en la app en cuanto llega a la nube
 }
 
 /** GET /api/disponibilidad?servicioId=s17&desde=2027-01-04&dias=7 → horas libres por día (sin nombres de nadie) */

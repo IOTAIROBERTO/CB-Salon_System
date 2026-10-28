@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Camera, Check, MessageCircle, X } from 'lucide-react'
 import Encabezado from '@/components/Encabezado'
-import { NOMBRE_CLUB, POLITICAS_RESERVA, SERVICIOS, enlaceWhatsApp, nombreCategoria, pesos, type Servicio } from '@/salon'
+import { NOMBRE_CLUB, POLITICAS_RESERVA, enlaceWhatsApp, nombreCategoria, pesos, type Servicio } from '@/salon'
 import { reducirFoto } from '@/fotos'
 import { fechaCumple } from '@/components/UnirmeClub'
 import { crearCita, disponibilidad, misDatos, pedirCodigo, recordarDatos, serviciosEnLinea, sesion, verificarCodigo, type DiaLibre } from '@/api'
@@ -17,9 +17,10 @@ const categoriasDe = (lista: Servicio[]) => [...new Set(lista.map(s => s.categor
 const horas = (min: number) => min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ''}` : `${min} min`
 
 export default function Agendar() {
-  // Catálogo vivo de CB Control; mientras carga (o si la API falla) se muestra el de la app
+  // Catálogo vivo de CB Control (nombres y precios de hoy). Si la API falla no se muestra uno viejo: se ofrece WhatsApp
   const [catalogo, setCatalogo] = useState<Servicio[] | null>(null)
-  useEffect(() => { serviciosEnLinea().then(l => setCatalogo(l.length ? l : SERVICIOS)).catch(() => setCatalogo(SERVICIOS)) }, [])
+  const [sinCatalogo, setSinCatalogo] = useState(false)
+  useEffect(() => { serviciosEnLinea().then(setCatalogo).catch(() => setSinCatalogo(true)) }, [])
   const categorias = categoriasDe(catalogo || [])
   const [elegido, setElegido] = useState<Servicio | null>(null)
   const [datos, setDatos] = useState(misDatos)
@@ -120,7 +121,8 @@ export default function Agendar() {
           <p className="text-marca-negro">¿No sabes cuál pedir?</p>
           <p className="mt-1 text-marca-gris">Elige el que más se parezca: con tus fotos Cristina te dice cuál necesitas y su precio antes de tu cita. Toca «Más info» para ver qué es cada uno, o <a href={enlaceWhatsApp('Hola, no sé qué servicio pedir. Te mando fotos de mi cabello:')} className="underline">pregúntanos por WhatsApp</a>.</p>
         </div>
-        {!catalogo && <p className="text-sm text-marca-gris">Cargando servicios…</p>}
+        {!catalogo && !sinCatalogo && <p className="text-sm text-marca-gris">Cargando servicios…</p>}
+        {sinCatalogo && <p className="text-sm text-marca-gris">No pudimos cargar los servicios. Revisa tu internet o <a href={enlaceWhatsApp('Hola, quiero agendar una cita.')} className="underline">agenda por WhatsApp</a>.</p>}
         {categorias.map(cat => (
           <section key={cat} id={`cat-${cat}`} className="scroll-mt-16">
             <p className="rotulo">{nombreCategoria(cat)}</p>
