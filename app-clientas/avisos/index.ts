@@ -56,8 +56,18 @@ export async function vencerPedidos(env: Env, ahora = Date.now()) {
   const avisar = (p: any, tipo: string, titulo: string, detalle: string) => guardar(env, 'avisos', [{
     id: `avi_${tipo}_${p.id}`, fecha: marca, tipo: 'pedido', titulo, detalle, refId: p.id, clienteId: p.clienteId, leido: false, realmId: p.realmId
   }]);
-  for (const p of vencidos) {
+  // Dexie Cloud reemplaza el objeto entero: se relee justo antes de escribir para no borrar un pago o una entrega que el
+  // salón registró mientras tanto (ponytail: queda una ventana de milisegundos; sin escrituras parciales no se cierra del todo)
+  const sigue = async (p: any) => {
+    const actual = await uno<any>(env, 'pedidos', p.id);
+    return actual?.estado === p.estado && !actual.entregadoEn ? actual : null;
+  };
+  let nVencidos = 0, nNoRecogidos = 0;
+  for (const visto of vencidos) {
+    const p = await sigue(visto);
+    if (!p) continue;
     await guardar(env, 'pedidos', [{ ...p, estado: 'vencido', motivo: 'No se pagó a tiempo' }]);
+    nVencidos++;
     // La cita solo se cancela si seguía esperando este pago: si el salón ya la confirmó o recibió su anticipo, se respeta
     const cita = p.citaId ? await uno<any>(env, 'citas', p.citaId) : null;
     const cancelada = !!cita && cita.estado === 'pendiente' && !cita.anticipoConfirmado;
@@ -65,14 +75,17 @@ export async function vencerPedidos(env: Env, ahora = Date.now()) {
     await avisar(p, 'vencido', `Venció sin pago: ${await quien(p)}`, `${pesos(p.total)}${p.items.length ? ` (${productos(p)})` : ''}. `
       + `${cancelada ? `Su cita del ${fechaLegible(cita.fecha)} a las ${cita.hora} se canceló y el horario quedó libre. ` : ''}${p.items.length ? 'Los productos volvieron a la venta.' : ''}`);
   }
-  for (const p of noRecogidos) {
+  for (const visto of noRecogidos) {
+    const p = await sigue(visto);
+    if (!p) continue;
+    nNoRecogidos++;
     // Política de pedidos: pasados 10 días, lo pagado queda como saldo a favor (abono con id fijo: nunca se duplica)
     await guardar(env, 'movimientosSaldo', [{ id: `sal_pedido_${p.id}`, clienteId: p.clienteId, fecha: marca, monto: p.totalProductos,
       concepto: `Productos pagados que no se recogieron en 10 días (${productos(p)})`, realmId: p.realmId }]);
     await guardar(env, 'pedidos', [{ ...p, estado: 'no_recogido', motivo: 'No lo recogió en 10 días' }]);
     await avisar(p, 'no_recogido', `No recogió su pedido: ${await quien(p)}`, `${productos(p)}: volvió a la venta y ${pesos(p.totalProductos)} quedaron como su saldo a favor.`);
   }
-  return { vencidos: vencidos.length, noRecogidos: noRecogidos.length };
+  return { vencidos: nVencidos, noRecogidos: nNoRecogidos };
 }
 
 const HORA = 3600 * 1000;

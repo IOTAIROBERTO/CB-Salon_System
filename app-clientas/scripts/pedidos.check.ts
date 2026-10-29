@@ -22,6 +22,7 @@ const tablas: Record<string, any[]> = {
   clientes: [], empleados: [], empleadoEvents: [], citas: [], avisos: [], fotos: [], movimientosSaldo: [], pedidos: []
 };
 for (const filas of Object.values(tablas)) for (const f of filas) f.realmId ??= 'r';
+let trasLeerPedidos: (() => void) | null = null;   // simula al salón escribiendo justo después de que el Worker leyó
 globalThis.fetch = (async (entrada: any, init: any = {}) => {
   const url = new URL(String(entrada));
   const resp = (d: unknown, status = 200) => new Response(d === null ? null : JSON.stringify(d), { status });
@@ -29,7 +30,9 @@ globalThis.fetch = (async (entrada: any, init: any = {}) => {
   const [, , tabla, id] = url.pathname.split('/');
   if ((init.method || 'GET') === 'POST') { for (const o of JSON.parse(init.body)) tablas[tabla] = [...tablas[tabla].filter(f => f.id !== o.id), o]; return resp(null); }
   if (id) { const f = tablas[tabla].find(x => x.id === decodeURIComponent(id)); return f ? resp(f) : resp(null, 404); }
-  return resp(tablas[tabla].filter(f => [...url.searchParams].every(([k, v]) => f[k] === v)));
+  const lista = resp(tablas[tabla].filter(f => [...url.searchParams].every(([k, v]) => f[k] === v)));
+  if (tabla === 'pedidos' && trasLeerPedidos) { trasLeerPedidos(); trasLeerPedidos = null; }
+  return lista;
 }) as typeof fetch;
 
 const env = { DEXIE_URL: 'http://dexie', DEXIE_CLIENT_ID: 'x', DEXIE_CLIENT_SECRET: 'y' } as any;
@@ -124,5 +127,17 @@ assert.deepEqual(await vencerPedidos(env), { vencidos: 0, noRecogidos: 1 });
 assert.deepEqual(tablas.movimientosSaldo.filter(m => m.clienteId === 'kP').map(m => m.monto), [450]);
 assert.equal(tablas.pedidos.find(p => p.id === 'pPag').estado, 'no_recogido');
 assert.equal((await vencerPedidos(env)).noRecogidos, 0);
+
+// 9. El salón registra el pago (o la entrega) mientras el Worker revisa: el Worker no lo pisa ni abona saldo
+tablas.pedidos.push({ id: 'pCarrera', clienteId: 'kC', items: [], totalProductos: 0, anticipo: 150, total: 150, estado: 'por_pagar',
+  venceEn: new Date(Date.now() - 1000).toISOString(), creado: '', enlace: 'e'.repeat(32), realmId: 'r' });
+trasLeerPedidos = () => Object.assign(tablas.pedidos.find(p => p.id === 'pCarrera'), { estado: 'pagado', pagadoEn: 'ya' });
+assert.deepEqual(await vencerPedidos(env), { vencidos: 0, noRecogidos: 0 });
+assert.equal(tablas.pedidos.find(p => p.id === 'pCarrera').estado, 'pagado');
+tablas.pedidos.push({ id: 'pEntrega', clienteId: 'kE', items: [{ productoId: 'p1', nombre: 'Shampoo matizador', cantidad: 1, precio: 450 }], totalProductos: 450,
+  anticipo: 0, total: 450, estado: 'pagado', recogerHasta: new Date(Date.now() - 1000).toISOString(), creado: '', enlace: 'f'.repeat(32), realmId: 'r' });
+trasLeerPedidos = () => Object.assign(tablas.pedidos.find(p => p.id === 'pEntrega'), { estado: 'entregado', entregadoEn: 'ya' });
+assert.equal((await vencerPedidos(env)).noRecogidos, 0);
+assert.ok(!tablas.movimientosSaldo.some(m => m.clienteId === 'kE'));
 
 console.log('pedidos ok');
