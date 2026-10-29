@@ -40,7 +40,7 @@ export const recordarDatos = (d: Partial<MisDatos>) => {
   try { localStorage.setItem(CLAVE, JSON.stringify({ ...misDatos(), ...d })) } catch { /* modo privado */ }
 }
 export const olvidarDatos = () => {
-  try { localStorage.removeItem(CLAVE); localStorage.removeItem(CLAVE_CITAS) } catch { /* modo privado */ }
+  try { localStorage.removeItem(CLAVE); localStorage.removeItem(CLAVE_CITAS); localStorage.removeItem(CLAVE_PEDIDOS) } catch { /* modo privado */ }
 }
 
 /** «Mi cita»: enlace personal de cada cita (<id>.<secreto>) para verla, cambiarla o cancelarla sin cuenta */
@@ -50,6 +50,26 @@ export interface VistaCita {
   precio: number; precioAcordado: boolean; anticipo: number; anticipoPagado: boolean; formaAnticipo?: string; datosPago: string
   anticipoASaldo?: number; anticipoPerdido?: number; sinCosto: boolean; puedeCancelar: boolean; puedeReagendar: boolean
   resumen: string; aceptadaEn?: string; porAceptar: boolean; puedeCambiarServicio: boolean
+  pedido: PedidoVista | null   // lo que paga junto (productos del carrito + anticipo) y hasta cuándo
+}
+
+/** «Mi carrito»: productos de la app y pedidos con plazo de pago */
+export interface ProductoApp { id: string; nombre: string; precio: number; descripcion: string; foto: string; disponible: number }
+export const productosApp = () => llamar<{ productos: ProductoApp[] }>('productos').then(r => r.productos)
+export interface PedidoVista {
+  items: { productoId: string; nombre: string; cantidad: number; precio: number }[]; totalProductos: number; anticipo: number; total: number
+  estado: 'por_pagar' | 'pagado' | 'entregado' | 'vencido' | 'no_recogido' | 'cancelado'; venceEn?: string; recogerHasta?: string
+  datosPago?: string; puedeCancelar?: boolean
+}
+export const crearPedido = (datos: object) =>
+  llamar<{ pedido: { enlace: string; total?: number; venceEn?: string } }>('pedidos', { method: 'POST', body: JSON.stringify(datos) })
+export const miPedido = (ref: string) => llamar<PedidoVista>(`pedido/${encodeURIComponent(ref)}`)
+export const cancelarMiPedido = (ref: string) => llamar<PedidoVista>(`pedido/${encodeURIComponent(ref)}/cancelar`, { method: 'POST', body: '{}' })
+/** Pedidos de solo productos hechos en este celular (para volver a su enlace) */
+const CLAVE_PEDIDOS = 'cb-mis-pedidos'
+export const pedidosGuardados = (): string[] => { try { return JSON.parse(localStorage.getItem(CLAVE_PEDIDOS) || '[]') } catch { return [] } }
+export const guardarPedido = (ref: string) => {
+  try { localStorage.setItem(CLAVE_PEDIDOS, JSON.stringify([ref, ...pedidosGuardados().filter(x => x !== ref)].slice(0, 10))) } catch { /* modo privado */ }
 }
 const rutaCita = (ref: string) => `cita/${encodeURIComponent(ref)}`
 export const miCita = (ref: string) => llamar<VistaCita>(rutaCita(ref))

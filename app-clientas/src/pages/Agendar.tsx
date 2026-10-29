@@ -7,6 +7,7 @@ import { reducirFoto } from '@/fotos'
 import { fechaCumple } from '@/components/UnirmeClub'
 import { citasGuardadas, crearCita, disponibilidad, guardarCita, misDatos, olvidarDatos, pedirCodigo, recordarDatos, serviciosEnLinea, sesion, verificarCodigo, type DiaLibre } from '@/api'
 import ElegirHorario from '@/components/ElegirHorario'
+import { leerCarrito, paraApartar, totalCarrito, vaciarCarrito } from '@/carrito'
 import Ventana from '@/components/Ventana'
 import NoSoyRobot, { conTurnstile } from '@/components/NoSoyRobot'
 import { useEnVivo } from '@/vivo'
@@ -29,6 +30,7 @@ function VistaPrevia({ servicio, fecha, hora, nombre, telefono, valoracion, onAc
   // Si en este teléfono ya pidió ese servicio, mejor cambiar esa cita que pedir otra
   const ya = citasGuardadas().find(c => c.servicio === servicio.nombre && c.fecha >= new Date().toLocaleDateString('en-CA'))
   const renglon = 'flex gap-4 border-b border-marca-linea/70 py-3 last:border-0'
+  const carrito = leerCarrito()
   return (
     <Ventana onCerrar={onCerrar}>
         <div className="flex items-start justify-between gap-4">
@@ -44,6 +46,11 @@ function VistaPrevia({ servicio, fecha, hora, nombre, telefono, valoracion, onAc
             <span className="text-marca-negro">Desde {pesos(servicio.precio)}<span className="block text-marca-gris">{valoracion ? 'Con tus fotos y respuestas Cristina te confirma el precio final antes de tu cita.' : 'Cristina te confirma el precio final antes de tu cita.'}</span></span></div>
           <div className={renglon}><span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Anticipo</span>
             <span className="text-marca-negro">{servicio.anticipo > 0 ? <>{pesos(servicio.anticipo)} para apartar<span className="block text-marca-gris">Te pasamos cómo pagarlo al confirmar. En la app no se cobra nada.</span></> : 'Sin anticipo'}</span></div>
+          {carrito.length > 0 && (
+            <div className={renglon}><span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Productos</span>
+              <span className="text-marca-negro">{carrito.map(i => `${i.cantidad} × ${i.nombre}`).join(', ')} · {pesos(totalCarrito(carrito))}
+                <span className="block text-marca-gris">Se apartan con tu cita y los pagas junto con tu anticipo: cuando Cristina la confirme tendrás 48 horas para pagar (y nunca después de 48 horas antes de tu cita). Si no, tu cita y tus productos se liberan solos.</span></span></div>
+          )}
           <div className={renglon}><span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">A nombre de</span><span className="min-w-0 break-words text-marca-negro">{nombre || '—'} · {telefono || '—'}</span></div>
         </div>
         <ul className="mt-3 list-disc space-y-1 border-l border-marca-dorado pl-7 text-xs leading-relaxed text-marca-gris">
@@ -136,10 +143,11 @@ export default function Agendar() {
     if (!elegido || !hora) return
     setRevisando(false); setEnviando(true); setError('')
     try {
-      const r = await crearCita({ servicioId: elegido.id, fecha, hora, ...datos, notas, club, sitio: trampa, turnstile: robot, acepta: true,
+      const carrito = leerCarrito()
+      const r = await crearCita({ servicioId: elegido.id, fecha, hora, ...datos, notas, club, sitio: trampa, turnstile: robot, acepta: true, productos: paraApartar(carrito),
         ...(pideValoracion ? { valoracion: cabello, fotos } : {}) })
       if (recordar) recordarDatos({ ...datos, ultimoServicio: elegido.id }); else olvidarDatos()
-      if (r.cita.enlace) guardarCita({ ref: r.cita.enlace, fecha: r.cita.fecha, hora: r.cita.hora, servicio: r.cita.servicio })
+      if (r.cita.enlace) { guardarCita({ ref: r.cita.enlace, fecha: r.cita.fecha, hora: r.cita.hora, servicio: r.cita.servicio }); vaciarCarrito() }
       setLista(r.cita)
       setReto('')
       otroRobot()

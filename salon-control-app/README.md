@@ -32,6 +32,11 @@ La galería pública vive en `/galeria/` y la página de reseñas en `/resenas/`
   cambia o cancela su cita (política de 48 h: anticipo a saldo a favor o perdido). «No llegó» en la cita del día libera
   la agenda y deja el anticipo como perdido; la tarjeta y Valorar avisan cuántas veces faltó. En Reportes, el anticipo
   que se queda el salón cuenta como ingreso.
+- Pedidos de la app («Mi carrito» de las clientas, `src/db/pedidos.ts`, reglas en `src/utils/pedidos.ts`): en Inventario,
+  el botón del celular pone un producto «en la app» (con descripción y foto). Lo que una clienta aparta (por pagar o
+  pagado) no se puede vender en el salón: Ventas e Inventario muestran solo lo disponible y `registrarVenta` lo vuelve a
+  revisar. Ventas → Pedidos de la app: «Llegó el pago» (pago manual; Mercado Pago tiene ya su lugar en `Pedido`),
+  «Entregado» (crea la venta) y cancelar. Los plazos (48 h para pagar, 10 días para recoger) los vence el Worker.
 - Tabla nueva en `src/db/db.ts` = registrarla en Dexie Cloud antes de publicar (`npx dexie-cloud export --schema`,
   agregarla, `npx dexie-cloud import`); si no, la sincronización se traba en silencio.
 
@@ -58,7 +63,7 @@ Pruebas de la lógica pura (agenda, Club, pagos, proveedores, saldo):
 npx esbuild scripts/agenda.check.ts --bundle --platform=node --log-level=warning | node
 ```
 
-(Cambia `agenda` por `lealtad`, `pagos`, `proveedores` o `saldo`.)
+(Cambia `agenda` por `cobro`, `lealtad`, `pagos`, `pedidos`, `proveedores` o `saldo`.)
 
 Tipos: `npx tsc -p tsconfig.app.json --noEmit` debe dar 0 errores (el despliegue corre `npx vite build`, que no
 los revisa). ESLint está pendiente: `eslint.config.js` es para ESLint 9 y el proyecto tiene instalado ESLint 8.

@@ -7,6 +7,8 @@ import Productos from './pages/Productos'
 import MiClub from './pages/MiClub'
 import Firmar from './pages/Firmar'
 import MiCita from './pages/MiCita'
+import MiPedido from './pages/MiPedido'
+import MiCarrito from './components/MiCarrito'
 import { DatosVivos } from './vivo'
 
 const PESTANAS = [
@@ -48,9 +50,11 @@ export default function App() {
           <Route path="/club" element={<MiClub />} />
           <Route path="/firmar/:id" element={<Firmar />} />
           <Route path="/cita/:ref" element={<MiCita />} />
+          <Route path="/pedido/:ref" element={<MiPedido />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
+      <MiCarrito />
       <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-marca-linea/60 bg-white/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-md">
           {PESTANAS.map(({ a, texto, Icono }) => (

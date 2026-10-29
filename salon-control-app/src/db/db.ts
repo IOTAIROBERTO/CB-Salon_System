@@ -9,6 +9,7 @@ import type { ConfigAgenda } from '../utils/agenda';
 import type { Zona } from '../utils/zonas';
 import type { ListasPrecios } from '../utils/precios';
 import type { ParametrosCirculo } from '../utils/lealtad';
+import type { EstadoPedido, ItemPedido } from '../utils/pedidos';
 
 // Interfaces for new tables
 export interface Expense {
@@ -142,7 +143,7 @@ export interface Cita {
     formaAnticipo?: 'transferencia' | 'deposito' | 'salon' | 'incluido' | 'sin';
     googleAdoptar?: string; // id del evento que se apuntó a mano en Google: el Worker lo adopta en vez de crear otra copia
     // Cancelada por la clienta desde «Mi cita» o marcada «no llegó» (política de 48 h)
-    canceladaPor?: 'clienta' | 'salon';
+    canceladaPor?: 'clienta' | 'salon' | 'sistema'; // sistema: venció sin pago («Mi carrito»)
     canceladaEn?: string; // ISO
     anticipoASaldo?: number; // anticipo pagado que pasó a su saldo a favor (canceló con 48 h o más)
     anticipoPerdido?: number; // anticipo pagado que se queda el salón (canceló tarde o no llegó)
@@ -212,6 +213,35 @@ export interface Producto {
     stockMinimo?: number;
     fechaUltimaCompra?: string;
     proveedorId?: string; // Proveedor dado de alta (proveedor queda como nombre)
+    // Venta en la app de clientas («Mi carrito»)
+    enApp?: boolean; // se muestra y se puede apartar en la app
+    descripcionApp?: string; // lo que ve la clienta
+    foto?: string; // JPEG reducido (data URL)
+}
+
+/** Pedido de la app («Mi carrito», utils/pedidos.ts): productos y el anticipo de su cita se pagan juntos con plazo; lo
+ *  apartado no se vende en la tienda. Sin `venceEn` espera a que Cristina valore la cita (el plazo corre al aceptar). */
+export interface Pedido {
+    id: string;
+    clienteId: string;
+    citaId?: string; // la cita que se aparta con este pago (su anticipo va aquí)
+    items: ItemPedido[]; // precios congelados al apartar
+    totalProductos: number;
+    anticipo: number; // anticipo de la cita que se paga en este pedido (0 si se paga en el salón o no hay)
+    total: number;
+    estado: EstadoPedido;
+    creado: string; // ISO
+    venceEn?: string; // ISO: hasta cuándo puede pagar; después vence solo (Worker cb-avisos)
+    pagadoEn?: string;
+    formaPago?: 'transferencia' | 'deposito' | 'efectivo' | 'tarjeta' | 'mercadopago';
+    recogerHasta?: string; // ISO: pagado + 10 días
+    entregadoEn?: string;
+    ventaId?: string; // venta que se registró al entregar
+    enlace: string; // secreto del enlace «Mi pedido» (solo productos): <id>.<enlace>
+    // Lugar para el pago en línea: al conectar Mercado Pago, la API crea aquí la preferencia (con date_of_expiration =
+    // venceEn y external_reference = id) y su aviso de pago marca el pedido como pagado
+    mercadoPago?: { preferenciaId?: string; pagoId?: string; link?: string };
+    motivo?: string; // por qué venció o se canceló
 }
 
 export interface Proveedor {
@@ -375,6 +405,7 @@ export class SalonDatabase extends Dexie {
     avisos!: Table<Aviso>;
     fotos!: Table<FotoCita>;
     suscripciones!: Table<SuscripcionPush>;
+    pedidos!: Table<Pedido>;
 
     // New Tables
     documentos!: Table<SalonDocument>;
@@ -436,6 +467,11 @@ export class SalonDatabase extends Dexie {
             suscripciones: 'id'
         });
 
+        // «Mi carrito»: también registrarla en Dexie Cloud antes de publicar
+        this.version(8).stores({
+            pedidos: 'id, clienteId, estado, citaId'
+        });
+
         this.cloud.configure({
             databaseUrl: DEXIE_CLOUD_URL,
             requireAuth: true, // Pide iniciar sesión por email antes de abrir la base
@@ -478,7 +514,7 @@ export class SalonDatabase extends Dexie {
 const TABLAS_DEL_SALON = new Set([
     'clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos', 'configuracion',
     'empleados', 'campanas', 'plantillas', 'automatizaciones', 'empleadoEvents',
-    'proveedores', 'compras', 'consentimientos', 'tarjetasRegalo', 'movimientosSaldo', 'avisos', 'fotos', 'suscripciones'
+    'proveedores', 'compras', 'consentimientos', 'tarjetasRegalo', 'movimientosSaldo', 'avisos', 'fotos', 'suscripciones', 'pedidos'
 ]);
 
 let realmSalonId: string | undefined;

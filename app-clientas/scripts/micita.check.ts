@@ -18,7 +18,7 @@ const tablas: Record<string, any[]> = {
   servicios: [{ id: 's1', nombre: 'Corte de cabello', categoria: 'corte', precioSugerido: 500, anticipoSugerido: 150, duracion: 60 },
     { id: 's2', nombre: 'Peinado', categoria: 'peinado', precioSugerido: 800, anticipoSugerido: 200, duracion: 60 }],
   clientes: [{ id: 'k1', nombre: 'Laura Pérez Soto', telefono: '6621234567' }],
-  empleados: [], empleadoEvents: [], citas: [], avisos: [], fotos: [], movimientosSaldo: []
+  empleados: [], empleadoEvents: [], citas: [], avisos: [], fotos: [], movimientosSaldo: [], pedidos: [], inventario: []
 };
 for (const filas of Object.values(tablas)) for (const f of filas) f.realmId ??= 'r';
 globalThis.fetch = (async (entrada: any, init: any = {}) => {
@@ -156,7 +156,8 @@ assert.equal(cita(idEva).aceptadaEn, undefined);
 v = await (await pedir(`cita/${refEva}/aceptar`, { ...visto, precio: 950 })).json();
 assert.deepEqual([v.estado, v.porAceptar, !!v.aceptadaEn], ['pendiente', false, true]);
 assert.deepEqual(cita(idEva).aceptacion.precio + cita(idEva).aceptacion.anticipo, 1250);
-assert.ok(tablas.avisos.some(a => /Aceptó su cita/.test(a.titulo) && /Falta su anticipo/.test(a.detalle)));
+assert.ok(tablas.avisos.some(a => /Aceptó su cita/.test(a.titulo) && /para pagar \$300/.test(a.detalle)));
+assert.equal(tablas.pedidos.find(p => p.citaId === idEva)?.anticipo, 300);   // el anticipo por transferencia, con su plazo
 assert.equal((await pedir(`cita/${refEva}/aceptar`, { ...visto, precio: 950 })).status, 409);   // ya aceptada
 const enSalon = { id: 'salon1', clienteId: 'k1', servicioId: 's1', fecha: lejos, hora: '18:00', estado: 'pendiente', precioAcordado: 500,
   montoAnticipo: 150, formaAnticipo: 'salon', enlace: 'b'.repeat(32), realmId: 'r' };

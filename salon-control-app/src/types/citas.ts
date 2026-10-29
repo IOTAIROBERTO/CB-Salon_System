@@ -40,7 +40,7 @@ export interface Cita {
   recordatorio?: string; // ISO: ya se le recordó la cita (WhatsApp oficial o a mano desde «Hoy»)
   aceptadaEn?: string; // ISO: la clienta aceptó en «Mi cita» el resumen, precio final y anticipo
   anticipoASaldo?: number; // anticipo que pasó a su saldo a favor (canceló con 48 h o más)
-  canceladaPor?: 'clienta' | 'salon';
+  canceladaPor?: 'clienta' | 'salon' | 'sistema';
   reagendadaEn?: string; // ISO: la clienta la cambió desde «Mi cita»
   enlace?: string; // secreto del enlace «Mi cita» (db.ts)
 }

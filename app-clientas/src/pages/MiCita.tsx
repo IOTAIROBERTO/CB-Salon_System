@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { CalendarPlus, Check, Copy, MapPin, MessageCircle, RefreshCw, X } from 'lucide-react'
 import Encabezado from '@/components/Encabezado'
 import ElegirHorario from '@/components/ElegirHorario'
+import PagoPedido from '@/components/PagoPedido'
 import Ventana from '@/components/Ventana'
 import { aceptarMiCita, cancelarMiCita, disponibilidad, guardarCita, miCita, misDatos, olvidarCita, reagendarMiCita, serviciosEnLinea, type DiaLibre, type ServicioEnLinea, type VistaCita } from '@/api'
 import { ENLACE_MAPA, enlaceWhatsApp, pesos } from '@/salon'
@@ -147,7 +148,7 @@ export default function MiCita() {
               <div className="renglon">
                 <span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Anticipo</span>
                 <span className="min-w-0 flex-1 text-marca-negro">{pesos(cita.anticipo)} · {cita.anticipoPagado ? 'recibido, se descuenta del total' : cita.formaAnticipo === 'salon' ? 'lo pagas en el salón' : 'pendiente'}
-                  {cita.datosPago && (
+                  {cita.datosPago && !cita.pedido && (
                     <span className="mt-2 block rounded-sm bg-marca-marfil p-3 text-sm leading-relaxed text-marca-grafito">
                       <span className="block whitespace-pre-line">{cita.datosPago}</span>
                       <button onClick={() => navigator.clipboard?.writeText(cita.datosPago).then(() => setCopiado(true))}
@@ -165,6 +166,7 @@ export default function MiCita() {
               <span className="text-sm leading-relaxed text-marca-negro">{salon.direccion}<span className="mt-1 flex items-center gap-1 text-[11px] uppercase tracking-[0.2em] text-marca-dorado-prof"><MapPin size={13} /> Cómo llegar</span></span>
             </a>
           </section>
+          {cita.pedido && <PagoPedido p={{ ...cita.pedido, datosPago: cita.datosPago }} conCita />}
         </div>
 
         <aside className="space-y-3 lg:sticky lg:top-24">

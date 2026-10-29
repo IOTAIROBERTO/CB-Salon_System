@@ -6,6 +6,7 @@ import {
   NOMBRE_NIVEL, beneficiosDisponibles, costoPuntos, datosBeneficio, estadoCirculo, parametrosDe, permanentesDe, siguienteNivel, textoSaldoPuntos
 } from '../../salon-control-app/src/utils/lealtad';
 import { saldoDe } from '../../salon-control-app/src/utils/saldo';
+import { apartados, disponible, plazoDePago, totalItems, type ItemPedido } from '../../salon-control-app/src/utils/pedidos';
 import { CHECKS_CLIENTA, OPCIONES_REDES, VERSION_CONSENTIMIENTO, textoFirmado } from '../../salon-control-app/src/utils/consentimiento';
 import { DATOS_SALON } from '../../salon-control-app/src/data/datosSalon';
 import { MENU_ANTOJOS, esCategoriaBreak } from '../../salon-control-app/src/data/menuAntojos';
@@ -278,7 +279,16 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
     montoAnticipo: s.anticipoSugerido || 0, anticipoConfirmado: false, atiendeId: libre.personaId, origen: 'app', realmId: ag.realmId,
     valoracion, enlace: secretoNuevo(), politicasAceptadas: body.acepta === true ? new Date().toISOString() : undefined
   };
-  await guardar(env, 'citas', [cita]);
+  // «Mi carrito»: los productos quedan apartados con la cita y se pagan junto con su anticipo cuando acepte la valoración
+  // (el plazo corre desde ahí). Revisar existencia, guardar la cita y apartar van juntos con el candado de inventario.
+  const conCarrito = Array.isArray(body.productos) && body.productos.length > 0;
+  const apartar = async () => {
+    const items = conCarrito ? await itemsDelCarrito(env, body.productos) : [];
+    await guardar(env, 'citas', [cita]);
+    if (items.length) await guardar(env, 'pedidos', [pedidoNuevo(ag.realmId, cliente.id, items, { citaId: cita.id })]);
+    return items;
+  };
+  const itemsCita = conCarrito ? await conInventario(env, apartar) : await apartar();
   // Las fotos van aparte (pesan) y no deben tumbar la cita: si fallan, la cita queda y el aviso lo dice.
   // Sin teléfono verificado, tope diario de solicitudes con fotos (nadie llena la base ni cuelga imágenes a una ficha
   // ajena por montones); con el WhatsApp oficial conectado, solo agenda quien verificó su teléfono.
@@ -294,7 +304,7 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
   if (sesion) ctx.waitUntil(plantilla(env, d.telefono, 'cita_recibida', [d.nombre.split(' ')[0], s.nombre, fechaLegible(fecha), hora]));
   await aviso(env, ctx, ag.realmId, {
     tipo: 'cita', titulo: `Nueva cita desde la app: ${cliente.nombre}`,
-    detalle: `${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${notas ? ` · «${notas}»` : ''}${resumenValoracion(valoracion)}${fotos.length ? ` · ${fotosGuardadas ? `${fotosGuardadas} foto(s)${sesion ? '' : ' (teléfono sin verificar)'}` : 'mandó fotos pero no se guardaron: pídeselas por WhatsApp'}` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
+    detalle: `${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${itemsCita.length ? ` · aparta ${resumenItems(itemsCita)} (${pesos(totalItems(itemsCita))})` : ''}${notas ? ` · «${notas}»` : ''}${resumenValoracion(valoracion)}${fotos.length ? ` · ${fotosGuardadas ? `${fotosGuardadas} foto(s)${sesion ? '' : ' (teléfono sin verificar)'}` : 'mandó fotos pero no se guardaron: pídeselas por WhatsApp'}` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
     refId: cita.id, clienteId: cliente.id
   });
   return respuesta(cita.id, `${cita.id}.${cita.enlace}`);
@@ -436,7 +446,9 @@ async function citaDeEnlace(env: Env, ref: string) {
 
 /** Lo que ve la clienta de su cita (nada de su ficha; los datos de pago del salón solo si su anticipo sigue pendiente) */
 async function vistaCita(env: Env, cita: any) {
-  const [settings, servicio] = await Promise.all([uno<any>(env, 'configuracion', 'settings'), uno<any>(env, 'servicios', cita.servicioId)]);
+  const [settings, servicio, pedidos] = await Promise.all([uno<any>(env, 'configuracion', 'settings'), uno<any>(env, 'servicios', cita.servicioId),
+    leer<any>(env, 'pedidos', { citaId: cita.id })]);
+  const pedido = pedidos.sort((a, b) => String(b.creado).localeCompare(String(a.creado)))[0];
   const faltan = horasPara(cita), abierta = ABIERTAS.includes(cita.estado) && faltan > 0;
   const anticipo = Number(cita.montoAnticipo) || 0, pagado = !!cita.anticipoConfirmado;
   return {
@@ -444,7 +456,10 @@ async function vistaCita(env: Env, cita: any) {
     duracion: servicio?.duracion, fecha: cita.fecha, hora: cita.hora, estado: cita.estado,
     precio: cita.precioAcordado ?? servicio?.precioSugerido ?? 0, precioAcordado: cita.precioAcordado != null,
     anticipo, anticipoPagado: pagado, formaAnticipo: cita.formaAnticipo,
-    datosPago: anticipo && !pagado && ['transferencia', 'deposito'].includes(cita.formaAnticipo) ? settings?.datosPago || '' : '',
+    datosPago: pedido?.estado === 'por_pagar' || (anticipo && !pagado && ['transferencia', 'deposito'].includes(cita.formaAnticipo)) ? settings?.datosPago || '' : '',
+    // Lo que paga junto (productos del carrito + anticipo) y hasta cuándo; sin `venceEn` espera la valoración
+    pedido: pedido ? { items: pedido.items, totalProductos: pedido.totalProductos, anticipo: pedido.anticipo, total: pedido.total, estado: pedido.estado,
+      venceEn: pedido.venceEn, recogerHasta: pedido.recogerHasta } : null,
     anticipoASaldo: cita.anticipoASaldo, anticipoPerdido: cita.anticipoPerdido,
     sinCosto: faltan >= HORAS_SIN_COSTO, puedeCancelar: abierta,
     puedeReagendar: abierta && faltan >= HORAS_SIN_COSTO && !!servicio && enLinea(servicio),
@@ -484,15 +499,26 @@ async function aceptarPorEnlace(env: Env, ctx: ExecutionContext, ref: string, re
   if (!loQueVio(cita)) throw cambio;
   const anticipo = Number(cita.montoAnticipo) || 0;
   const faltaAnticipo = anticipo > 0 && !cita.anticipoConfirmado && ['transferencia', 'deposito'].includes(cita.formaAnticipo);
+  // Lo que se paga junto: productos apartados con la cita + su anticipo; corre el plazo (48 h y nunca después de 48 h antes)
+  const previo = (await leer<any>(env, 'pedidos', { citaId: cita.id })).find(p => p.estado === 'por_pagar');
+  const porPagar = (faltaAnticipo ? anticipo : 0) + (previo?.totalProductos || 0);
+  let pedido: any = null;
+  if (porPagar > 0) {
+    const vence = plazoDePago(Date.now(), Date.parse(`${cita.fecha}T${cita.hora}:00-07:00`));
+    if (vence <= Date.now()) throw new ErrorCliente('Tu cita ya está muy cerca para pagar en línea. Escríbenos por WhatsApp.', 409);
+    pedido = { ...(previo || pedidoNuevo(cita.realmId, cita.clienteId, [], { citaId: cita.id })), anticipo: faltaAnticipo ? anticipo : 0, total: porPagar,
+      venceEn: new Date(vence).toISOString() };
+    await guardar(env, 'pedidos', [pedido]);
+  }
   const nueva = {
-    ...cita, aceptadaEn: new Date().toISOString(), ...(faltaAnticipo ? {} : { estado: 'confirmada' }),
+    ...cita, aceptadaEn: new Date().toISOString(), ...(porPagar > 0 ? {} : { estado: 'confirmada' }),
     aceptacion: { precio: cita.precioAcordado, anticipo, resumen: cita.resumenClienta || '', ip: request.headers.get('CF-Connecting-IP') || undefined }
   };
   await guardar(env, 'citas', [nueva]);
   const [cliente, servicio] = await Promise.all([uno<any>(env, 'clientes', cita.clienteId), uno<any>(env, 'servicios', cita.servicioId)]);
   await aviso(env, ctx, cita.realmId, {
     tipo: 'cita', titulo: `Aceptó su cita desde la app: ${cliente?.nombre || 'Clienta'}`,
-    detalle: `${servicio?.nombre || 'Servicio'} · ${fechaLegible(cita.fecha)} a las ${cita.hora}: ${pesos(cita.precioAcordado)}${anticipo ? `, anticipo ${pesos(anticipo)}` : ''}. ${faltaAnticipo ? 'Falta su anticipo para confirmarla.' : 'Quedó confirmada.'}`,
+    detalle: `${servicio?.nombre || 'Servicio'} · ${fechaLegible(cita.fecha)} a las ${cita.hora}: ${pesos(cita.precioAcordado)}${anticipo ? `, anticipo ${pesos(anticipo)}` : ''}. ${pedido ? `Tiene hasta el ${hasta(pedido.venceEn)} para pagar ${pesos(pedido.total)}${pedido.items.length ? ` (incluye ${resumenItems(pedido.items)})` : ''}; si no, se cancela sola.` : 'Quedó confirmada.'}`,
     refId: cita.id, clienteId: cita.clienteId
   });
   return json(await vistaCita(env, nueva));
@@ -516,6 +542,8 @@ async function cancelarPorEnlace(env: Env, ctx: ExecutionContext, ref: string) {
     concepto: `Anticipo de la cita del ${fechaLegible(cita.fecha)} (la canceló con más de 48 h)`, citaId: cita.id, realmId: cita.realmId }]);
   try { await guardar(env, 'citas', [nueva]); }
   catch (e) { if (nueva.anticipoASaldo) await borrar(env, 'movimientosSaldo', abono).catch(() => {}); throw e; }
+  const porPagar = (await leer<any>(env, 'pedidos', { citaId: cita.id })).filter(p => p.estado === 'por_pagar');
+  if (porPagar.length) await guardar(env, 'pedidos', porPagar.map(p => ({ ...p, estado: 'cancelado', motivo: 'Canceló su cita' })));
   const [cliente, servicio] = await Promise.all([uno<any>(env, 'clientes', cita.clienteId), uno<any>(env, 'servicios', cita.servicioId)]);
   await aviso(env, ctx, cita.realmId, {
     tipo: 'cita', titulo: `Canceló su cita desde la app: ${cliente?.nombre || 'Clienta'}`,
@@ -564,6 +592,114 @@ async function reagendarPorEnlace(env: Env, ctx: ExecutionContext, ref: string, 
     refId: cita.id, clienteId: cita.clienteId
   });
   return json(await vistaCita(env, nueva));
+}
+
+// ---------- «Mi carrito»: productos de la app y pedidos con plazo de pago (utils/pedidos.ts) ----------
+// Los productos y el anticipo de su cita se pagan juntos: 48 h para pagar y nunca después de 48 h antes de su cita; sin
+// pago a tiempo vence solo (Worker cb-avisos). Lo apartado no se ofrece en la app ni se vende en la tienda. Precios del
+// Inventario al apartar (nunca los que mande la app). ponytail: sin descuento del Club en la app (en la tienda sí); se
+// agrega cuando Mi tarjeta tenga sesión verificada.
+
+/** GET /api/productos → lo que se vende en la app con sus piezas disponibles (existencia menos lo apartado) */
+async function productosApp(env: Env) {
+  const [inventario, pedidos] = await Promise.all([leer<any>(env, 'inventario'), leer<any>(env, 'pedidos')]);
+  const aparts = apartados(pedidos);
+  return json({ productos: inventario.filter(p => p.enApp && Number(p.precio) > 0).map(p => ({
+    id: p.id, nombre: p.nombre, precio: Number(p.precio), descripcion: p.descripcionApp || '', foto: p.foto || '', disponible: disponible(p, aparts)
+  })) });
+}
+
+/** Valida lo que pidió y lo arma con los precios del Inventario; falla si ya no hay suficientes piezas disponibles */
+async function itemsDelCarrito(env: Env, pedidos: unknown): Promise<ItemPedido[]> {
+  const lista = (Array.isArray(pedidos) ? pedidos : []).slice(0, 10)
+    .map((x: any) => ({ productoId: String(x?.productoId || ''), cantidad: Math.floor(Number(x?.cantidad)) }))
+    .filter(x => x.productoId && x.cantidad >= 1 && x.cantidad <= 20);
+  if (!lista.length) return [];
+  const [inventario, todos] = await Promise.all([leer<any>(env, 'inventario'), leer<any>(env, 'pedidos')]);
+  const aparts = apartados(todos);
+  return lista.map(x => {
+    const p = inventario.find(i => i.id === x.productoId && i.enApp && Number(i.precio) > 0);
+    if (!p) throw new ErrorCliente('Uno de tus productos ya no está en la app. Revisa tu carrito.', 409);
+    if (disponible(p, aparts) < x.cantidad) throw new ErrorCliente(`Ya no hay suficientes piezas de ${p.nombre}. Revisa tu carrito.`, 409);
+    return { productoId: p.id, nombre: p.nombre, cantidad: x.cantidad, precio: Number(p.precio) };
+  });
+}
+
+/** Apartar inventario: una operación a la vez (candado atómico corto) para que dos clientas no se lleven la última pieza.
+ *  ponytail: candado global de 3 s; por producto si un día hay muchas compras a la vez. */
+async function conInventario<T>(env: Env, f: () => Promise<T>) {
+  if (!await permitido(env, 'inventario', 1, 3)) throw new ErrorCliente('Hay mucho movimiento en este momento. Intenta de nuevo en unos segundos.', 429);
+  return f();
+}
+
+const pedidoNuevo = (realmId: string, clienteId: string, items: ItemPedido[], extra: object = {}) => {
+  const totalProductos = totalItems(items);
+  return { id: id('ped'), clienteId, items, totalProductos, anticipo: 0, total: totalProductos, estado: 'por_pagar', creado: new Date().toISOString(),
+    enlace: secretoNuevo(), realmId, ...extra };
+};
+const resumenItems = (items: ItemPedido[]) => items.map(i => `${i.cantidad} × ${i.nombre}`).join(', ');
+/** «jueves, 30 de octubre a las 10:00» (hora de Hermosillo) */
+const hasta = (iso: string) => { const l = new Date(Date.parse(iso) - 7 * 3600 * 1000).toISOString(); return `${fechaLegible(l.slice(0, 10))} a las ${l.slice(11, 16)}`; };
+
+/** POST /api/pedidos → solo productos (sin cita): 48 h para pagar; recoge en el salón en 10 días */
+async function crearPedido(env: Env, ctx: ExecutionContext, body: any, sesion: Sesion | null, sinApartar = '') {
+  const d = validarClienta(sesion ? { ...body, telefono: sesion.tel } : body);
+  if (sinApartar) {   // sin «no soy robot»: nada se aparta; el salón lo ve y decide (misma respuesta)
+    if (!await cabeSinRobot(env)) return json({ ok: true, pedido: { enlace: '' } }, 201);
+    const settings = await uno<any>(env, 'configuracion', 'settings');
+    await aviso(env, ctx, settings?.realmId, { tipo: 'pedido', titulo: `Pedido por confirmar a mano: ${d.nombre}`,
+      detalle: `Tel. ${d.telefono}. La solicitud ${sinApartar}: no se apartó nada.` }, { whatsapp: false });
+    return json({ ok: true, pedido: { enlace: '' } }, 201);
+  }
+  const settings = await uno<any>(env, 'configuracion', 'settings');
+  if (!settings?.realmId) throw new Error('Sin realm del salón en configuración');
+  // Tope sin teléfono verificado: 2 pedidos por pagar por teléfono (nadie aparta todo el inventario con datos inventados)
+  const { cliente } = await clientaPorTelefono(env, settings.realmId, d, false, !!sesion);
+  const abiertos = (await leer<any>(env, 'pedidos', { clienteId: cliente.id })).filter(p => p.estado === 'por_pagar' && !p.citaId);
+  if (!sesion && abiertos.length >= 2) throw new ErrorCliente('Ya tienes pedidos por pagar. Págalos o cancélalos desde tu enlace antes de apartar otro.', 409);
+  const pedido = await conInventario(env, async () => {
+    const items = await itemsDelCarrito(env, body.productos);
+    if (!items.length) throw new ErrorCliente('Tu carrito está vacío');
+    const p = { ...pedidoNuevo(settings.realmId, cliente.id, items), venceEn: new Date(plazoDePago(Date.now())).toISOString() };
+    await guardar(env, 'pedidos', [p]);
+    return p;
+  });
+  await aviso(env, ctx, settings.realmId, {
+    tipo: 'pedido', titulo: `Pedido desde la app: ${cliente.nombre}`,
+    detalle: `${resumenItems(pedido.items)} · ${pesos(pedido.total)}. Tiene hasta el ${hasta(pedido.venceEn)} para pagar.`, clienteId: cliente.id, refId: pedido.id
+  });
+  return json({ ok: true, pedido: { enlace: `${pedido.id}.${pedido.enlace}`, total: pedido.total, venceEn: pedido.venceEn } }, 201);
+}
+
+async function pedidoDeEnlace(env: Env, ref: string) {
+  const punto = ref.lastIndexOf('.'), secreto = ref.slice(punto + 1);
+  const p = punto > 0 && /^[a-f0-9]{32}$/.test(secreto) ? await uno<any>(env, 'pedidos', ref.slice(0, punto)) : null;
+  if (!p?.enlace || !iguales(String(p.enlace), secreto)) throw new ErrorCliente('Este enlace no es válido. Escríbenos por WhatsApp.', 404);
+  return p;
+}
+
+/** Lo que ve la clienta de un pedido (nada de su ficha; datos de pago del salón solo si está por pagar) */
+async function vistaPedido(env: Env, p: any) {
+  const settings = p.estado === 'por_pagar' ? await uno<any>(env, 'configuracion', 'settings') : null;
+  return {
+    items: p.items, totalProductos: p.totalProductos, anticipo: p.anticipo, total: p.total, estado: p.estado, venceEn: p.venceEn,
+    recogerHasta: p.recogerHasta, datosPago: settings?.datosPago || '', puedeCancelar: p.estado === 'por_pagar' && !p.citaId
+  };
+}
+
+/** POST /api/pedido/<enlace>/cancelar → solo por pagar: lo apartado se libera (lo pagado se arregla con el salón) */
+async function cancelarPedidoPorEnlace(env: Env, ctx: ExecutionContext, ref: string) {
+  const previo = await pedidoDeEnlace(env, ref);
+  if (previo.estado !== 'por_pagar' || previo.citaId) throw new ErrorCliente('Este pedido ya no se puede cancelar desde aquí. Escríbenos por WhatsApp.', 409);
+  if (!await permitido(env, `mi-pedido:${previo.id}`, 1, 5)) throw new ErrorCliente('Espera unos segundos y vuelve a intentarlo.', 429);
+  const p = await pedidoDeEnlace(env, ref);
+  if (p.estado !== 'por_pagar') throw new ErrorCliente('Este pedido ya no se puede cancelar desde aquí.', 409);
+  const nuevo = { ...p, estado: 'cancelado', motivo: 'Lo canceló la clienta' };
+  await guardar(env, 'pedidos', [nuevo]);
+  const cliente = await uno<any>(env, 'clientes', p.clienteId);
+  await aviso(env, ctx, p.realmId, { tipo: 'pedido', titulo: `Canceló su pedido: ${cliente?.nombre || 'Clienta'}`,
+    detalle: `${resumenItems(p.items)}. Lo apartado volvió a la venta.`, clienteId: p.clienteId, refId: p.id }, { whatsapp: false });
+  return json(await vistaPedido(env, nuevo));
 }
 
 async function sesionDe(request: Request, env: Env) {
@@ -619,6 +755,13 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
     if (request.method === 'GET' && ruta === 'servicios') return await servicios(env);
     if (request.method === 'GET' && ruta === 'salon') return await datosDelSalon(env);
     if (request.method === 'GET' && ruta === 'disponibilidad') return await disponibilidad(env, url);
+    if (request.method === 'GET' && ruta === 'productos') return await productosApp(env);
+    const miPedido = ruta.match(/^pedido\/([^/]+?)(?:\/(cancelar))?$/);
+    if (miPedido && request.method === 'GET' && !miPedido[2]) return json(await vistaPedido(env, await pedidoDeEnlace(env, decodeURIComponent(miPedido[1]))));
+    if (miPedido && request.method === 'POST' && miPedido[2]) {
+      limitar(request.headers.get('CF-Connecting-IP') || 'local');
+      return await cancelarPedidoPorEnlace(env, ctx, decodeURIComponent(miPedido[1]));
+    }
     if (request.method === 'GET' && ruta === 'mi-club') return await miClub(env, await sesionDe(request, env));
     const miCita = ruta.match(/^cita\/([^/]+?)(?:\/(cancelar|reagendar|aceptar))?$/);
     if (miCita && request.method === 'GET' && !miCita[2]) return json(await vistaCita(env, await citaDeEnlace(env, decodeURIComponent(miCita[1]))));
@@ -636,7 +779,7 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
       const body: any = await request.json().catch(() => { throw new ErrorCliente('Datos inválidos'); });
       return await firmarConsentimiento(env, ctx, firma[1], body, request);
     }
-    if (request.method === 'POST' && ['citas', 'club', 'acceso/codigo', 'acceso/verificar'].includes(ruta)) {
+    if (request.method === 'POST' && ['citas', 'club', 'pedidos', 'acceso/codigo', 'acceso/verificar'].includes(ruta)) {
       const ip = request.headers.get('CF-Connecting-IP') || 'local';
       limitar(ip);
       const body: any = await request.json().catch(() => { throw new ErrorCliente('Datos inválidos'); });
@@ -653,6 +796,7 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
         return await pedirCodigo(env, body, ip);
       }
       const motivo = humano ? '' : SIN_ROBOT;
+      if (ruta === 'pedidos') return await crearPedido(env, ctx, body, sesion, motivo);
       return ruta === 'citas' ? await crearCita(env, ctx, body, sesion, motivo) : await unirseClub(env, ctx, body, sesion, motivo);
     }
     return json({ error: 'No encontrado' }, 404);

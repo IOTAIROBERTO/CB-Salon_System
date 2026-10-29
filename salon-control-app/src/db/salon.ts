@@ -24,7 +24,7 @@ const PERMISOS: Record<RolSalon, DBPermissionSet> = {
   duena: { manage: '*' },
   empleada: {
     manage: ['clientes', 'citas', 'ventas', 'servicios', 'inventario', 'gastos',
-             'campanas', 'plantillas', 'automatizaciones', 'proveedores', 'compras', 'avisos', 'fotos', 'suscripciones'],
+             'campanas', 'plantillas', 'automatizaciones', 'proveedores', 'compras', 'avisos', 'fotos', 'suscripciones', 'pedidos'],
     add: ['consentimientos']
   }
 };
@@ -76,7 +76,7 @@ export const hayDatosPrivados = async () => {
 const tablasDelSalon = (): Table<any>[] =>
   [db.clientes, db.citas, db.ventas, db.servicios, db.inventario, db.gastos, db.configuracion,
    db.empleados, db.campanas, db.plantillas, db.automatizaciones, db.empleadoEvents,
-   db.proveedores, db.compras, db.consentimientos, db.tarjetasRegalo, db.movimientosSaldo, db.avisos, db.fotos, db.suscripciones];
+   db.proveedores, db.compras, db.consentimientos, db.tarjetasRegalo, db.movimientosSaldo, db.avisos, db.fotos, db.suscripciones, db.pedidos];
 
 /** Crea el realm del salón (los datos privados los mueve moverPrivadosAlSalon) */
 export const crearRealmSalon = () =>
