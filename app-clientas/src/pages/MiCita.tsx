@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { CalendarPlus, Check, Copy, MapPin, MessageCircle, RefreshCw, X } from 'lucide-react'
 import Encabezado from '@/components/Encabezado'
 import ElegirHorario from '@/components/ElegirHorario'
-import { cancelarMiCita, disponibilidad, guardarCita, miCita, olvidarCita, reagendarMiCita, type DiaLibre, type VistaCita } from '@/api'
+import { cancelarMiCita, disponibilidad, guardarCita, miCita, misDatos, olvidarCita, reagendarMiCita, type DiaLibre, type VistaCita } from '@/api'
 import { ENLACE_MAPA, enlaceWhatsApp, pesos } from '@/salon'
 import { useEnVivo, useSalon } from '@/vivo'
 
@@ -49,6 +49,7 @@ function calendario(c: VistaCita, direccion: string) {
 export default function MiCita() {
   const { ref = '' } = useParams()
   const salon = useSalon().salon
+  const nombre = misDatos().nombre.split(' ')[0]   // el que ella guardó en su teléfono: la API no manda datos de su ficha
   const [cita, setCita] = useState<VistaCita | null>(null)
   const [error, setError] = useState('')
   const [modo, setModo] = useState<'' | 'cancelar' | 'cambiar'>('')
@@ -100,7 +101,7 @@ export default function MiCita() {
 
   return (
     <>
-      <Encabezado rotulo={`Tu cita${cita.nombre ? `, ${cita.nombre}` : ''}`} titulo={cita.servicio} />
+      <Encabezado rotulo={`Tu cita${nombre ? `, ${nombre}` : ''}`} titulo={cita.servicio} />
       <main className="contenido space-y-6 px-6 pb-8 lg:grid lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start lg:gap-14 lg:space-y-0">
         <div className="space-y-6">
           <section className={`rounded-sm p-5 ${e.color}`}>
@@ -177,7 +178,7 @@ export default function MiCita() {
               <p className="text-xs leading-relaxed text-marca-gris">Faltan menos de 48 horas: para cambiarla, escríbenos por WhatsApp.</p>
             )}
             {cita.puedeCancelar && <button onClick={() => { setModo('cancelar'); setAviso('') }} className="boton-claro w-full"><X size={15} strokeWidth={1.5} /> Cancelar mi cita</button>}
-            <a href={enlaceWhatsApp(`Hola, soy ${cita.nombre}. Sobre mi cita de ${cita.servicio} el ${largo(cita.fecha)} a las ${cita.hora}: `)} className="boton-claro w-full"><MessageCircle size={16} strokeWidth={1.5} /> Escríbenos</a>
+            <a href={enlaceWhatsApp(`Hola${nombre ? `, soy ${nombre}` : ''}. Sobre mi cita de ${cita.servicio} el ${largo(cita.fecha)} a las ${cita.hora}: `)} className="boton-claro w-full"><MessageCircle size={16} strokeWidth={1.5} /> Escríbenos</a>
             {!futura && <Link to="/agendar" className="boton w-full">Agendar otra cita</Link>}
             <p className="pt-2 text-xs leading-relaxed text-marca-gris">Cambios o cancelaciones con al menos 48 horas: conservas tu anticipo (si cancelas, queda como saldo a favor). Con menos, o si no llegas, se pierde.</p>
           </>)}

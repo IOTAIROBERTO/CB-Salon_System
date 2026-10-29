@@ -43,10 +43,10 @@ assert.match(r.cita.enlace, /^cita_app_[\w]+\.[a-f0-9]{32}$/);
 const ref = r.cita.enlace, id = ref.split('.')[0];
 assert.equal(cita(id).enlace, ref.split('.')[1]);
 
-// 2. Ver: solo su nombre de pila, sin teléfono; datos de pago solo si su anticipo por transferencia sigue pendiente
+// 2. Ver: nada de su ficha (ni nombre: con un teléfono ajeno sin verificar se sabría de quién es); datos de pago solo
+// si su anticipo por transferencia sigue pendiente
 let v = await (await pedir(`cita/${ref}`)).json();
-assert.equal(v.nombre, 'Laura');
-assert.ok(!JSON.stringify(v).includes('6621234567') && !JSON.stringify(v).includes('Soto'));
+assert.ok(!/6621234567|Laura|Soto/.test(JSON.stringify(v)));
 assert.deepEqual([v.estado, v.precio, v.precioAcordado, v.anticipo, v.anticipoPagado, v.datosPago, v.puedeCancelar, v.puedeReagendar],
   ['pendiente', 500, false, 150, false, '', true, true]);
 Object.assign(cita(id), { precioAcordado: 650, formaAnticipo: 'transferencia' });
@@ -67,7 +67,8 @@ v = await (await pedir(`cita/${ref}/reagendar`, { fecha: otroLejos, hora: '15:00
 assert.deepEqual([v.fecha, v.hora, v.estado], [otroLejos, '15:00', 'pendiente']);
 assert.equal(cita(id).recordatorio, undefined);
 assert.ok(tablas.avisos.some(a => /Cambió su cita/.test(a.titulo) && a.refId === id));
-// Cambiar dentro de la misma hora no choca consigo misma
+// Cambiar dentro de la misma hora no choca consigo misma (pasados los 5 s del candado de la escritura anterior)
+await new Promise(r => setTimeout(r, 5100));
 assert.equal((await pedir(`cita/${ref}/reagendar`, { fecha: otroLejos, hora: '15:30' })).status, 200);
 
 // 4. «No llegó» y canceladas no ocupan: ese horario vuelve a estar libre
@@ -75,11 +76,18 @@ tablas.citas.find(c => c.id === 'otra').estado = 'no_llego';
 const libres = await (await pedir(`disponibilidad?servicioId=s1&desde=${otroLejos}&dias=1`)).json();
 assert.ok(libres.dias[0].horas.includes('12:00'));
 
-// 5. Cancelar con 48 h o más y anticipo pagado: pasa a saldo a favor, una sola vez
+// 5. Cancelar con 48 h o más y anticipo pagado: pasa a saldo a favor, una sola vez. Cancelar y cambiar al mismo tiempo:
+// solo pasa una (la otra espera), así la cita no queda viva con el anticipo además en su saldo
 Object.assign(cita(id), { anticipoConfirmado: true, montoAnticipo: 150, estado: 'confirmada' });
-v = await (await pedir(`cita/${ref}/cancelar`, {})).json();
+await new Promise(r => setTimeout(r, 5100));   // el candado de 5 s del último cambio de arriba
+let [rc, rr] = await Promise.all([pedir(`cita/${ref}/cancelar`, {}), pedir(`cita/${ref}/reagendar`, { fecha: otroLejos, hora: '17:00' })]);
+assert.deepEqual([rc.status, rr.status].sort(), [200, 429]);
+assert.equal(tablas.movimientosSaldo.length, rc.status === 200 ? 1 : 0);   // nunca cita viva y además saldo a favor
+if (rc.status === 429) { await new Promise(r => setTimeout(r, 5100)); rc = await pedir(`cita/${ref}/cancelar`, {}); }   // ganó el cambio
+v = await rc.json();
 assert.deepEqual([v.estado, v.anticipoASaldo, v.puedeCancelar, v.puedeReagendar], ['cancelada', 150, false, false]);
-assert.equal((await pedir(`cita/${ref}/cancelar`, {})).status, 409);
+assert.equal((await pedir(`cita/${ref}/cancelar`, {})).status, 409);   // ya cancelada: se rechaza sin tocar el candado
+assert.equal(cita(id).estado, 'cancelada');
 assert.deepEqual(tablas.movimientosSaldo.map(m => [m.clienteId, m.monto, m.citaId]), [['k1', 150, id]]);
 assert.ok(tablas.avisos.some(a => /Canceló su cita/.test(a.titulo) && /saldo a favor/.test(a.detalle)));
 assert.equal(ingresoCita(cita(id)), 150);   // ingreso al recibirlo; al usar el saldo en otro cobro ya no vuelve a contar

@@ -9,7 +9,7 @@ import { saldoDe } from '../../salon-control-app/src/utils/saldo';
 import { CHECKS_CLIENTA, OPCIONES_REDES, VERSION_CONSENTIMIENTO, textoFirmado } from '../../salon-control-app/src/utils/consentimiento';
 import { DATOS_SALON } from '../../salon-control-app/src/data/datosSalon';
 import { MENU_ANTOJOS, esCategoriaBreak } from '../../salon-control-app/src/data/menuAntojos';
-import { guardar, leer, uno, type EnvDexie } from './dexie';
+import { borrar, guardar, leer, uno, type EnvDexie } from './dexie';
 import { calendariosAgenda, ocupadoGoogle, type EnvGoogle } from './google';
 import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
 import { DIAS_SESION, MIN_RETO, codigoNuevo, firmar, huellaCodigo, leerFirmado, type Reto, type Sesion } from './sesion';
@@ -401,9 +401,10 @@ async function firmarConsentimiento(env: Env, ctx: ExecutionContext, id: string,
 
 // ---------- «Mi cita»: la clienta ve, cambia o cancela su cita con un enlace personal ----------
 // Enlace = <id de la cita>.<secreto>: el secreto (32 hex al azar) vive en la cita (campo `enlace`); lo pone la API al
-// apartar y CB Control al mandar la nota de reserva o la valoración. Sin cuenta ni código, y sin mostrar teléfono ni
-// apellido. Política de reserva: con 48 h o más puede cambiarla o cancelarla y conserva su anticipo (si cancela, pasa a
-// su saldo a favor); con menos solo puede cancelar y el anticipo se pierde.
+// apartar y CB Control al mandar la nota de reserva o la valoración. Sin cuenta ni código, y sin ningún dato de la ficha
+// (ni nombre: quien aparta con un teléfono ajeno sin verificar sabría de quién es). Política de reserva: con 48 h o más
+// puede cambiarla o cancelarla y conserva su anticipo (si cancela, pasa a su saldo a favor); con menos solo puede
+// cancelar y el anticipo se pierde.
 export const HORAS_SIN_COSTO = 48;
 const ABIERTAS = ['pendiente', 'confirmada'];
 export const secretoNuevo = () => [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -412,6 +413,14 @@ export const horasPara = (c: { fecha: string; hora: string }, ahora = Date.now()
 const pesos = (n: number) => `$${Number(n || 0).toLocaleString('es-MX')}`;
 const iguales = (a: string, b: string) => a.length === b.length && [...a].reduce((x, c, i) => x | (c.charCodeAt(0) ^ b.charCodeAt(i)), 0) === 0;
 
+/** Justo antes de escribir al cancelar o cambiar: una escritura por cita cada pocos segundos (candado atómico del
+ *  Durable Object) y la cita leída otra vez ya con el candado. Así dos acciones al mismo tiempo no se pisan (cancelar y
+ *  cambiar a la vez dejaría la cita viva y el anticipo además en su saldo). Lo que se rechaza antes no gasta el candado. */
+async function conCandado(env: Env, ref: string, id: string) {
+  if (!await permitido(env, `mi-cita:${id}`, 1, 5)) throw new ErrorCliente('Estamos guardando tu cambio. Espera unos segundos y vuelve a intentarlo.', 429);
+  return citaDeEnlace(env, ref);
+}
+
 async function citaDeEnlace(env: Env, ref: string) {
   const punto = ref.lastIndexOf('.'), secreto = ref.slice(punto + 1);
   const cita = punto > 0 && /^[a-f0-9]{32}$/.test(secreto) ? await uno<any>(env, 'citas', ref.slice(0, punto)) : null;
@@ -419,15 +428,13 @@ async function citaDeEnlace(env: Env, ref: string) {
   return cita;
 }
 
-/** Lo que ve la clienta de su cita (solo su nombre de pila; los datos de pago solo si su anticipo sigue pendiente) */
+/** Lo que ve la clienta de su cita (nada de su ficha; los datos de pago del salón solo si su anticipo sigue pendiente) */
 async function vistaCita(env: Env, cita: any) {
-  const [settings, servicio, cliente] = await Promise.all([
-    uno<any>(env, 'configuracion', 'settings'), uno<any>(env, 'servicios', cita.servicioId), uno<any>(env, 'clientes', cita.clienteId)
-  ]);
+  const [settings, servicio] = await Promise.all([uno<any>(env, 'configuracion', 'settings'), uno<any>(env, 'servicios', cita.servicioId)]);
   const faltan = horasPara(cita), abierta = ABIERTAS.includes(cita.estado) && faltan > 0;
   const anticipo = Number(cita.montoAnticipo) || 0, pagado = !!cita.anticipoConfirmado;
   return {
-    nombre: String(cliente?.nombre || '').split(' ')[0], servicio: servicio?.nombre || 'Tu servicio', servicioId: cita.servicioId,
+    servicio: servicio?.nombre || 'Tu servicio', servicioId: cita.servicioId,
     duracion: servicio?.duracion, fecha: cita.fecha, hora: cita.hora, estado: cita.estado,
     precio: cita.precioAcordado ?? servicio?.precioSugerido ?? 0, precioAcordado: cita.precioAcordado != null,
     anticipo, anticipoPagado: pagado, formaAnticipo: cita.formaAnticipo,
@@ -440,16 +447,22 @@ async function vistaCita(env: Env, cita: any) {
 
 /** POST /api/cita/<enlace>/cancelar → con 48 h o más su anticipo pagado pasa a saldo a favor; con menos, se pierde */
 async function cancelarPorEnlace(env: Env, ctx: ExecutionContext, ref: string) {
-  const cita = await citaDeEnlace(env, ref);
-  if (!ABIERTAS.includes(cita.estado) || horasPara(cita) <= 0) throw new ErrorCliente('Esta cita ya no se puede cancelar desde aquí. Escríbenos por WhatsApp.', 409);
+  const abierta = (c: any) => ABIERTAS.includes(c.estado) && horasPara(c) > 0;
+  const previa = await citaDeEnlace(env, ref);
+  if (!abierta(previa)) throw new ErrorCliente('Esta cita ya no se puede cancelar desde aquí. Escríbenos por WhatsApp.', 409);
+  const cita = await conCandado(env, ref, previa.id);
+  if (!abierta(cita)) throw new ErrorCliente('Esta cita ya no se puede cancelar desde aquí. Escríbenos por WhatsApp.', 409);
   const aTiempo = horasPara(cita) >= HORAS_SIN_COSTO, pagado = cita.anticipoConfirmado ? Number(cita.montoAnticipo) || 0 : 0;
   const ahora = new Date().toISOString();
   const nueva = { ...cita, estado: 'cancelada', canceladaPor: 'clienta', canceladaEn: ahora,
     ...(pagado ? (aTiempo ? { anticipoASaldo: pagado } : { anticipoPerdido: pagado }) : {}) };
-  // El abono va primero y con id fijo por cita: si algo falla a la mitad o se cancela dos veces, no se duplica
-  if (nueva.anticipoASaldo) await guardar(env, 'movimientosSaldo', [{ id: `sal_cancelada_${cita.id}`, clienteId: cita.clienteId, fecha: ahora, monto: pagado,
+  // El abono va primero y con id fijo por cita (cancelar dos veces no lo duplica); si la cita no se pudo guardar como
+  // cancelada, el abono se quita: nunca queda saldo a favor con la cita viva
+  const abono = `sal_cancelada_${cita.id}`;
+  if (nueva.anticipoASaldo) await guardar(env, 'movimientosSaldo', [{ id: abono, clienteId: cita.clienteId, fecha: ahora, monto: pagado,
     concepto: `Anticipo de la cita del ${fechaLegible(cita.fecha)} (la canceló con más de 48 h)`, citaId: cita.id, realmId: cita.realmId }]);
-  await guardar(env, 'citas', [nueva]);
+  try { await guardar(env, 'citas', [nueva]); }
+  catch (e) { if (nueva.anticipoASaldo) await borrar(env, 'movimientosSaldo', abono).catch(() => {}); throw e; }
   const [cliente, servicio] = await Promise.all([uno<any>(env, 'clientes', cita.clienteId), uno<any>(env, 'servicios', cita.servicioId)]);
   await aviso(env, ctx, cita.realmId, {
     tipo: 'cita', titulo: `Canceló su cita desde la app: ${cliente?.nombre || 'Clienta'}`,
@@ -476,8 +489,11 @@ async function reagendarPorEnlace(env: Env, ctx: ExecutionContext, ref: string, 
   const libres = (await libresDelDia(env, ag, fecha, cita.servicioId, cita.id)).filter(h => h.hora === hora);
   const libre = libres.find(h => h.personaId === cita.atiendeId) || libres[0];
   if (!libre) throw new ErrorCliente('Ese horario se acaba de ocupar. Elige otro, por favor.', 409);
+  const actual = await conCandado(env, ref, cita.id);
+  if (actual.estado !== cita.estado || actual.fecha !== cita.fecha || actual.hora !== cita.hora)
+    throw new ErrorCliente('Tu cita acaba de cambiar. Revísala y vuelve a intentarlo.', 409);
   // Sin `recordatorio`: el del día anterior se vuelve a mandar para la fecha nueva
-  const nueva = { ...cita, fecha, hora, atiendeId: libre.personaId, recordatorio: undefined, reagendadaEn: new Date().toISOString() };
+  const nueva = { ...actual, fecha, hora, atiendeId: libre.personaId, recordatorio: undefined, reagendadaEn: new Date().toISOString() };
   await guardar(env, 'citas', [nueva]);
   const cliente = await uno<any>(env, 'clientes', cita.clienteId);
   await aviso(env, ctx, cita.realmId, {

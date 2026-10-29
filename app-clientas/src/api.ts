@@ -45,7 +45,7 @@ export const olvidarDatos = () => {
 
 /** «Mi cita»: enlace personal de cada cita (<id>.<secreto>) para verla, cambiarla o cancelarla sin cuenta */
 export interface VistaCita {
-  nombre: string; servicio: string; servicioId: string; duracion?: number; fecha: string; hora: string
+  servicio: string; servicioId: string; duracion?: number; fecha: string; hora: string
   estado: 'pendiente' | 'confirmada' | 'iniciada' | 'completada' | 'cancelada' | 'no_llego'
   precio: number; precioAcordado: boolean; anticipo: number; anticipoPagado: boolean; formaAnticipo?: string; datosPago: string
   anticipoASaldo?: number; anticipoPerdido?: number; sinCosto: boolean; puedeCancelar: boolean; puedeReagendar: boolean
