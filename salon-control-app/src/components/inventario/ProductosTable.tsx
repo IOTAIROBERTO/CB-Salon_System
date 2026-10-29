@@ -57,7 +57,7 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
               <tr key={producto.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
-                    <div className="font-medium text-gray-900">{producto.nombre}{producto.enApp && <span className="ml-2 rounded-full bg-marca-negro px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-marca-dorado">En la app</span>}</div>
+                    <div className="font-medium text-gray-900">{producto.nombre}{producto.enApp && <span className="ml-2 inline-block whitespace-nowrap rounded-full bg-marca-negro px-2 py-0.5 align-middle text-[10px] uppercase tracking-[0.14em] text-marca-dorado">En la app</span>}</div>
                     {producto.proveedor && (
                       <div className="text-sm text-gray-500">Proveedor: {producto.proveedor}</div>
                     )}

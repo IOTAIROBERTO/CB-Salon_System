@@ -73,10 +73,10 @@ export default function PedidosApp() {
         <div key={p.id} className={tarjeta}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="font-medium text-gray-900">{nombre(p)}</p>
-            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">Pagado · {p.formaPago}</span>
+            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">Pagado · {FORMAS.find(([f]) => f === p.formaPago)?.[1] || p.formaPago}</span>
           </div>
           <p className="text-sm text-gray-600">{p.items.map(i => `${i.cantidad} × ${i.nombre}`).join(' · ')}</p>
-          <p className="mt-1 text-xs text-gray-500">Apartado para ella: recoge en su cita o a más tardar el {p.recogerHasta ? new Date(p.recogerHasta).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }) : '—'}.</p>
+          <p className="mt-1 text-xs text-gray-500">Apartado para ella: recoge {p.citaId ? 'en su cita o ' : ''}a más tardar el {p.recogerHasta ? new Date(p.recogerHasta).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }) : '—'}.</p>
           <button onClick={intentar(async () => { if (confirm(`¿Entregaste el pedido a ${nombre(p)}? Se registra la venta y baja el stock.`)) await entregarPedido(p); })}
             className="mt-3 rounded-md bg-green-600 px-3 text-sm text-white hover:bg-green-700">Entregado</button>
         </div>

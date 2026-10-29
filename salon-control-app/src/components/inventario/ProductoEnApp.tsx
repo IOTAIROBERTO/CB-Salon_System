@@ -31,8 +31,8 @@ export default function ProductoEnApp({ producto, onClose }: { producto: Product
           </div>
           <button onClick={onClose} aria-label="Cerrar" className="p-1 text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
-        <label className="flex items-center gap-2 text-sm text-gray-800">
-          <input type="checkbox" checked={enApp} onChange={e => setEnApp(e.target.checked)} />
+        <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-sm text-gray-800">
+          <input type="checkbox" checked={enApp} onChange={e => setEnApp(e.target.checked)} className="h-5 w-5 shrink-0" />
           Se vende en la app (las clientas lo ven y lo apartan; solo se ofrece lo disponible)
         </label>
         <label className="block text-sm text-gray-700">Lo que lee la clienta
