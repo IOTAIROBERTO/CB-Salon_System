@@ -78,9 +78,11 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
   y políticas (la cita guarda `politicasAceptadas`). Cuando Cristina valora (precio final, anticipo y «Lo que haremos»),
   «Mi cita» le abre el resumen para aceptarlo (`/aceptar`, queda `aceptacion` como constancia); si no falta anticipo por
   transferencia, la cita queda confirmada al aceptar. Si Cristina cambia lo aceptado, la clienta lo vuelve a aceptar.
-- **Una cita por servicio**: no se aparta el mismo servicio dos veces ni un horario que se cruza con otra cita suya (sin
-  teléfono verificado llega como aviso «por confirmar a mano», sin revelar nada; verificado, se le dice). Antes de la
-  valoración puede cambiar de servicio en «Mi cita» en vez de pedir otra cita.
+- **Una cita por servicio**: con su teléfono verificado no se aparta el mismo servicio dos veces ni un horario que se
+  cruza con otra cita suya (se le dice por qué). Sin verificar no se revisa: cualquier respuesta distinta revelaría citas
+  de un número ajeno; ahí quedan los topes por teléfono, y con el WhatsApp oficial todas se verifican. Antes de la
+  valoración puede cambiar de servicio en «Mi cita» en vez de pedir otra cita. Al aceptar, la app manda lo que vio
+  (precio, anticipo y resumen): si Cristina lo cambió mientras tanto, se rechaza y lo vuelve a revisar.
 - **Reservar rápido**: con su permiso, el celular recuerda nombre, teléfono y último servicio («Lo de siempre»: servicio,
   hora y «Pedir»). «Recordar mis datos» se puede quitar al agendar.
 

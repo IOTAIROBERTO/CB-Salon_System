@@ -249,16 +249,17 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
   // y día (se sobrescribe), sin WhatsApp ni notas de texto libre.
   const abiertas = (await leer<any>(env, 'citas', { estado: 'pendiente' })).filter(c => c.origen === 'app');
   const clientas = await leer<any>(env, 'clientes');
-  // Una clienta no aparta dos veces: el mismo servicio ya pedido, o un horario que se cruza con otra cita suya. Con su
-  // teléfono verificado se le dice; sin verificar no (revelaría citas de un número ajeno): llega como aviso sin apartar.
-  const yaRegistrada = clientas.find(c => tel10(c.telefono) === d.telefono);
+  // Una clienta no aparta dos veces: el mismo servicio ya pedido, o un horario que se cruza con otra cita suya. Solo con
+  // su teléfono verificado (código por WhatsApp): sin verificar, cualquier respuesta distinta le diría a quien pruebe un
+  // número ajeno que esa persona ya tiene cita; ahí quedan los topes de arriba. Con el WhatsApp oficial todas se verifican.
+  const yaRegistrada = sesion && clientas.find(c => tel10(c.telefono) === d.telefono);
   const repetida = yaRegistrada ? await citaQueSeRepite(env, yaRegistrada.id, s.id, fecha, hora, ag.servicios) : '';
-  if (repetida && sesion) throw new ErrorCliente(`Ya tienes ${repetida}. Para cambiarla usa tu enlace «Mi cita» o escríbenos por WhatsApp.`, 409);
+  if (repetida) throw new ErrorCliente(`Ya tienes ${repetida}. Para cambiarla usa tu enlace «Mi cita» o escríbenos por WhatsApp.`, 409);
   const deEseTelefono = abiertas.filter(c => tel10(clientas.find(x => x.id === c.clienteId)?.telefono) === d.telefono).length;
   const deEseDia = abiertas.filter(c => c.fecha === fecha).length;
   const respuesta = (citaId: string, enlace = '') =>   // misma respuesta en todos los casos: no revela nada del número ni de los topes
     json({ ok: true, cita: { id: citaId, fecha, hora, servicio: s.nombre, anticipo: s.anticipoSugerido || 0, enlace } }, 201);
-  if (sinApartar || repetida || (sesion ? deEseTelefono >= 4 : (deEseTelefono >= 2 || deEseDia >= 6))) {   // con teléfono verificado: hasta 4 por confirmar y sin tope por día
+  if (sinApartar || (sesion ? deEseTelefono >= 4 : (deEseTelefono >= 2 || deEseDia >= 6))) {   // con teléfono verificado: hasta 4 por confirmar y sin tope por día
     // Cada solicitud de más es su propio aviso (id al azar: nada se reemplaza), sin WhatsApp ni notas libres;
     // pasado el tope diario se descarta en silencio (la respuesta no cambia)
     if (!sinApartar) {   // las de «no soy robot» ya pasaron por su propio tope arriba
@@ -267,7 +268,7 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
     }
     await aviso(env, ctx, ag.realmId, {
       tipo: 'cita', titulo: `Solicitud por confirmar a mano: ${d.nombre}`,
-      detalle: `Tel. ${d.telefono} pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}. ${sinApartar ? `La solicitud ${sinApartar}` : repetida ? `Ya tiene ${repetida}` : deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: no se apartó el horario.`
+      detalle: `Tel. ${d.telefono} pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}. ${sinApartar ? `La solicitud ${sinApartar}` : deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: no se apartó el horario.`
     }, { whatsapp: false });
     return respuesta('');
   }
@@ -466,14 +467,21 @@ async function citaQueSeRepite(env: Env, clienteId: string, servicioId: string, 
   return otra ? `una cita de ${servicios.find(x => x.id === otra.servicioId)?.nombre || 'servicio'} el ${fechaLegible(otra.fecha)} a las ${otra.hora}` : '';
 }
 
-/** POST /api/cita/<enlace>/aceptar → acepta el resumen que dejó Cristina al valorar. Queda la constancia de lo que
- *  aceptó; si no falta anticipo por transferencia o depósito, la cita queda confirmada en ese momento. */
-async function aceptarPorEnlace(env: Env, ctx: ExecutionContext, ref: string, request: Request) {
+/** POST /api/cita/<enlace>/aceptar {precio, anticipo, resumen} → acepta el resumen que dejó Cristina al valorar. Solo si
+ *  lo que vio la clienta (lo que manda la app) sigue igual: si Cristina lo cambió mientras tanto, 409 y lo revisa de
+ *  nuevo. Queda la constancia de lo que aceptó; si no falta anticipo por transferencia o depósito, queda confirmada. */
+async function aceptarPorEnlace(env: Env, ctx: ExecutionContext, ref: string, request: Request, b: any) {
   const porAceptar = (c: any) => ABIERTAS.includes(c.estado) && horasPara(c) > 0 && c.precioAcordado != null && !c.aceptadaEn;
+  // Lo que vio la clienta debe seguir igual; se revisa antes del candado (un rechazo no la hace esperar) y otra vez con él
+  const loQueVio = (c: any) => Number(b?.precio) === Number(c.precioAcordado) && Number(b?.anticipo) === (Number(c.montoAnticipo) || 0)
+    && String(b?.resumen ?? '') === (c.resumenClienta || '');
+  const cambio = new ErrorCliente('Cristina acaba de actualizar tu resumen. Revísalo de nuevo antes de aceptar.', 409);
   const previa = await citaDeEnlace(env, ref);
   if (!porAceptar(previa)) throw new ErrorCliente('Esta cita no tiene nada pendiente de aceptar.', 409);
+  if (!loQueVio(previa)) throw cambio;
   const cita = await conCandado(env, ref, previa.id);
   if (!porAceptar(cita)) throw new ErrorCliente('Esta cita no tiene nada pendiente de aceptar.', 409);
+  if (!loQueVio(cita)) throw cambio;
   const anticipo = Number(cita.montoAnticipo) || 0;
   const faltaAnticipo = anticipo > 0 && !cita.anticipoConfirmado && ['transferencia', 'deposito'].includes(cita.formaAnticipo);
   const nueva = {
@@ -618,7 +626,7 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
       limitar(request.headers.get('CF-Connecting-IP') || 'local');
       const ref = decodeURIComponent(miCita[1]);
       if (miCita[2] === 'cancelar') return await cancelarPorEnlace(env, ctx, ref);
-      if (miCita[2] === 'aceptar') return await aceptarPorEnlace(env, ctx, ref, request);
+      if (miCita[2] === 'aceptar') return await aceptarPorEnlace(env, ctx, ref, request, await request.json().catch(() => ({})));
       return await reagendarPorEnlace(env, ctx, ref, await request.json().catch(() => { throw new ErrorCliente('Datos inválidos'); }));
     }
     const firma = ruta.match(/^firma\/([^/]+)$/);

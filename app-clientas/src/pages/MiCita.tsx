@@ -228,7 +228,11 @@ export default function MiCita() {
                 <span className="text-marca-negro">{cita.anticipo > 0 ? <>{pesos(cita.anticipo)}{cita.anticipoPagado ? ' · ya recibido' : ''}<span className="block text-marca-gris">{cita.anticipoPagado ? 'Se descuenta del total.' : cita.formaAnticipo === 'salon' ? 'Lo pagas en el salón el día de tu cita.' : 'Al aceptar te mostramos cómo pagarlo; con él tu cita queda confirmada.'}</span></> : 'Sin anticipo: el pago completo es el día de tu cita.'}</span></div>
             </div>
             <p className="mt-3 border-l border-marca-dorado pl-3 text-xs leading-relaxed text-marca-gris">Cambios o cancelaciones con al menos 48 horas: conservas tu anticipo (si cancelas, queda como saldo a favor). Con menos, o si no llegas, se pierde.</p>
-            <button disabled={enviando} onClick={() => accion(aceptarMiCita.bind(null, ref), 'Listo: aceptaste tu cita. Le avisamos a Cristina.').then(() => setResumenAbierto(false))} className="boton mt-5 w-full disabled:opacity-40">
+            <button disabled={enviando} onClick={async () => {
+              await accion(() => aceptarMiCita(ref, cita), 'Listo: aceptaste tu cita. Le avisamos a Cristina.')
+              setResumenAbierto(false)
+              miCita(ref).then(c => { mostrar(c); if (c.porAceptar) setResumenAbierto(true) }).catch(() => {})   // si cambió, lo vuelve a ver
+            }} className="boton mt-5 w-full disabled:opacity-40">
               {enviando ? 'Guardando…' : 'Acepto'}
             </button>
             <a href={enlaceWhatsApp(`Hola${nombre ? `, soy ${nombre}` : ''}. Tengo una duda sobre mi cita de ${cita.servicio}: `)} className="boton-claro mt-2 w-full"><MessageCircle size={16} strokeWidth={1.5} /> Tengo dudas</a>
