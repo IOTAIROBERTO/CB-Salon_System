@@ -4,7 +4,9 @@ export interface Cita {
   servicioId: string;
   fecha: string;
   hora: string;
-  estado: 'pendiente' | 'confirmada' | 'iniciada' | 'completada' | 'cancelada';
+  estado: 'pendiente' | 'confirmada' | 'iniciada' | 'completada' | 'cancelada' | 'no_llego';
+  anticipoASaldo?: number; // anticipo que pasó a saldo a favor al cancelar a tiempo
+  anticipoPerdido?: number; // anticipo que se quedó el salón (canceló tarde o no llegó)
   precioFinal?: number;
   propina?: number;
   pagadoConSaldo?: number; // parte pagada con saldo a favor (ya contó como ingreso antes)
@@ -73,4 +75,4 @@ export interface ReportStats {
 }
 
 export type ReportPeriod = 'week' | 'month' | 'year';
-export type FiltroHistorial = 'todas' | 'completadas' | 'canceladas';
+export type FiltroHistorial = 'todas' | 'completadas' | 'canceladas' | 'no_llego';

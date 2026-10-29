@@ -31,6 +31,7 @@ export default function HistorialCitas({
             <option value="todas">Todas</option>
             <option value="completadas">Completadas</option>
             <option value="canceladas">Canceladas</option>
+            <option value="no_llego">No llegó</option>
           </select>
         </div>
       </div>

@@ -24,18 +24,47 @@ export const disponibilidad = (servicioId: string, dias = 14) =>
   llamar<{ dias: DiaLibre[]; servicio: { anticipo: number } }>(`disponibilidad?servicioId=${encodeURIComponent(servicioId)}&dias=${dias}`)
 
 export const crearCita = (datos: object) =>
-  llamar<{ cita: { id: string; fecha: string; hora: string; servicio: string; anticipo: number } }>('citas', { method: 'POST', body: JSON.stringify(datos) })
+  llamar<{ cita: { id: string; fecha: string; hora: string; servicio: string; anticipo: number; enlace: string } }>('citas', { method: 'POST', body: JSON.stringify(datos) })
 
 export const unirmeClub = (datos: object) =>
   llamar<{ ok: boolean }>('club', { method: 'POST', body: JSON.stringify(datos) })
 
-/** La app recuerda nombre y teléfono en este celular para no volver a escribirlos */
+/** La app recuerda en este celular (si la clienta quiere) su nombre, teléfono y último servicio para no volver a
+ *  escribirlos; solo aquí, nunca se mandan a otro lado. «Olvidar mis datos» los borra. */
 const CLAVE = 'cb-mis-datos'
-export const misDatos = (): { nombre: string; telefono: string; cumple: string } => {
+export interface MisDatos { nombre: string; telefono: string; cumple: string; ultimoServicio?: string }
+export const misDatos = (): MisDatos => {
   try { return { nombre: '', telefono: '', cumple: '', ...JSON.parse(localStorage.getItem(CLAVE) || '{}') } } catch { return { nombre: '', telefono: '', cumple: '' } }
 }
-export const recordarDatos = (d: { nombre: string; telefono: string; cumple?: string }) => {
-  try { localStorage.setItem(CLAVE, JSON.stringify(d)) } catch { /* modo privado */ }
+export const recordarDatos = (d: Partial<MisDatos>) => {
+  try { localStorage.setItem(CLAVE, JSON.stringify({ ...misDatos(), ...d })) } catch { /* modo privado */ }
+}
+export const olvidarDatos = () => {
+  try { localStorage.removeItem(CLAVE); localStorage.removeItem(CLAVE_CITAS) } catch { /* modo privado */ }
+}
+
+/** «Mi cita»: enlace personal de cada cita (<id>.<secreto>) para verla, cambiarla o cancelarla sin cuenta */
+export interface VistaCita {
+  nombre: string; servicio: string; servicioId: string; duracion?: number; fecha: string; hora: string
+  estado: 'pendiente' | 'confirmada' | 'iniciada' | 'completada' | 'cancelada' | 'no_llego'
+  precio: number; precioAcordado: boolean; anticipo: number; anticipoPagado: boolean; formaAnticipo?: string; datosPago: string
+  anticipoASaldo?: number; anticipoPerdido?: number; sinCosto: boolean; puedeCancelar: boolean; puedeReagendar: boolean
+}
+const rutaCita = (ref: string) => `cita/${encodeURIComponent(ref)}`
+export const miCita = (ref: string) => llamar<VistaCita>(rutaCita(ref))
+export const cancelarMiCita = (ref: string) => llamar<VistaCita>(`${rutaCita(ref)}/cancelar`, { method: 'POST', body: '{}' })
+export const reagendarMiCita = (ref: string, fecha: string, hora: string) =>
+  llamar<VistaCita>(`${rutaCita(ref)}/reagendar`, { method: 'POST', body: JSON.stringify({ fecha, hora }) })
+
+/** Las citas que se pidieron o abrieron en este celular (para mostrar la próxima en Inicio) */
+const CLAVE_CITAS = 'cb-mis-citas'
+export interface CitaGuardada { ref: string; fecha: string; hora: string; servicio: string }
+export const citasGuardadas = (): CitaGuardada[] => { try { return JSON.parse(localStorage.getItem(CLAVE_CITAS) || '[]') } catch { return [] } }
+export const guardarCita = (c: CitaGuardada) => {
+  try { localStorage.setItem(CLAVE_CITAS, JSON.stringify([c, ...citasGuardadas().filter(x => x.ref !== c.ref)].slice(0, 10))) } catch { /* modo privado */ }
+}
+export const olvidarCita = (ref: string) => {
+  try { localStorage.setItem(CLAVE_CITAS, JSON.stringify(citasGuardadas().filter(x => x.ref !== ref))) } catch { /* modo privado */ }
 }
 
 /** Entrada con código por WhatsApp: la sesión firmada se guarda en este celular (90 días) */

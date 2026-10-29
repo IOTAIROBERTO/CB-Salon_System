@@ -13,6 +13,7 @@ interface DatosReserva {
   anticipo?: number;
   anticipoPagado?: boolean;
   lugar?: string; // fuera del salón
+  miCita?: string; // enlace «Mi cita»: la clienta la ve, la cambia o la cancela sola
 }
 
 export const notaReserva = (d: DatosReserva) => {
@@ -25,6 +26,7 @@ export const notaReserva = (d: DatosReserva) => {
     d.precio ? `💲 Desde ${formatCurrency(d.precio)}: es el precio mínimo; el final se confirma en tu valoración` : '',
     d.anticipo ? `✅ Anticipo: ${formatCurrency(d.anticipo)} ${d.anticipoPagado ? '(recibido, se descuenta del total)' : '(pendiente: tu lugar queda apartado al recibirlo)'}` : '',
     d.lugar ? `📍 Servicio en ${d.lugar}, en la dirección que acordamos contigo.` : `📍 ${DATOS_SALON.direccion}\n${DATOS_SALON.comoLlegar}`,
+    d.miCita ? `\n🔗 Ve, cambia o cancela tu cita aquí: ${d.miCita}` : '',
     '',
     POLITICAS.cambios,
     '',

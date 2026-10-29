@@ -30,7 +30,7 @@ export default function CitasPage() {
   const [desdeGoogle, setDesdeGoogle] = useState<EventoGoogle | null>(null);   // evento de Google que se registra como cita
 
   const filteredCitas = useMemo(() => {
-    const cerrada = (c: { estado: string }) => c.estado === 'completada' || c.estado === 'cancelada';
+    const cerrada = (c: { estado: string }) => ['completada', 'cancelada', 'no_llego'].includes(c.estado);
     const clave = (c: { fecha: string; hora: string }) => `${c.fecha} ${c.hora}`;
     const ordenadas = [...citas].sort((a, b) =>
       Number(cerrada(a)) - Number(cerrada(b)) ||

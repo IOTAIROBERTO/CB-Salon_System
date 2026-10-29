@@ -4,6 +4,7 @@ import { Check, MessageCircle, X } from 'lucide-react';
 import { db, type Cita } from '../../db/db';
 import { enlaceWhatsApp } from '../../utils/lealtad';
 import { formatCurrency } from '../../utils/financialUtils';
+import { enlaceMiCita, urlMiCita, useFaltas } from '../../db/miCita';
 
 // Valorar una solicitud de la app (proceso estándar): Cristina ve cómo trae el cabello la clienta y sus fotos, fija
 // el precio acordado y el anticipo con su forma de pago, y manda el WhatsApp ya escrito. La cita se confirma aquí.
@@ -28,6 +29,9 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
   const [recibido, setRecibido] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [editado, setEditado] = useState(false);
+  const faltas = useFaltas(cita?.clienteId);
+  // Su enlace «Mi cita» va en el mensaje: ahí ve precio, anticipo y datos de pago, y la cambia o cancela sola
+  useEffect(() => { if (cita && !cita.enlace) enlaceMiCita(cita); }, [cita?.id, cita?.enlace]);
 
   useEffect(() => {   // valores iniciales: lo ya acordado o lo del catálogo
     if (!cita || !servicio) return;
@@ -41,10 +45,11 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
     if (!cita || !servicio) return '';
     const nombre = (cliente?.nombre || '').split(' ')[0];
     const base = `¡Hola, ${nombre}! Ya revisamos tu solicitud de ${servicio.nombre} para el ${fechaLarga(cita.fecha)} a las ${cita.hora}. El precio de tu servicio es ${formatCurrency(precio)}.`;
+    const miCita = cita.enlace ? `\n\nTu cita, siempre al día (y para cambiarla o cancelarla tú misma): ${urlMiCita(cita.id, cita.enlace)}` : '';
     if (forma === 'transferencia' || forma === 'deposito')
-      return `${base}\n\nPara confirmar tu cita, el anticipo es de ${formatCurrency(anticipo)} por ${forma === 'deposito' ? 'depósito' : 'transferencia'}:\n${datosPago || '(faltan los datos para el anticipo en Configuración → General)'}\n\nMándanos tu comprobante por aquí y tu cita queda confirmada. Cambios o cancelaciones con al menos 48 horas.`;
-    if (forma === 'salon') return `${base}\n\nTu cita queda confirmada. El anticipo de ${formatCurrency(anticipo)} lo pagas en el salón el día de tu cita. Cambios o cancelaciones con al menos 48 horas.`;
-    return `${base}\n\nTu cita queda confirmada; el pago lo haces completo el día de tu cita. Cambios o cancelaciones con al menos 48 horas.`;
+      return `${base}\n\nPara confirmar tu cita, el anticipo es de ${formatCurrency(anticipo)} por ${forma === 'deposito' ? 'depósito' : 'transferencia'}:\n${datosPago || '(faltan los datos para el anticipo en Configuración → General)'}\n\nMándanos tu comprobante por aquí y tu cita queda confirmada. Cambios o cancelaciones con al menos 48 horas.${miCita}`;
+    if (forma === 'salon') return `${base}\n\nTu cita queda confirmada. El anticipo de ${formatCurrency(anticipo)} lo pagas en el salón el día de tu cita. Cambios o cancelaciones con al menos 48 horas.${miCita}`;
+    return `${base}\n\nTu cita queda confirmada; el pago lo haces completo el día de tu cita. Cambios o cancelaciones con al menos 48 horas.${miCita}`;
   }, [cita, servicio, cliente, precio, anticipo, forma, datosPago]);
   useEffect(() => { if (!editado) setMensaje(sugerido); }, [sugerido, editado]);
 
@@ -66,6 +71,7 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
             <p className="text-[10px] uppercase tracking-[0.28em] text-marca-dorado-prof">Valorar solicitud</p>
             <h3 className="text-xl text-gray-900">{cliente?.nombre || 'Clienta'}</h3>
             <p className="text-sm text-gray-600">{servicio?.nombre} · {fechaLarga(cita.fecha)} {cita.hora}</p>
+            {faltas > 0 && <p className="mt-1 text-sm font-medium text-red-700">No llegó a {faltas} {faltas === 1 ? 'cita' : 'citas'}: conviene pedirle anticipo.</p>}
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Cerrar"><X size={18} /></button>
         </div>

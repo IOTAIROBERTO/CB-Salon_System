@@ -3,8 +3,12 @@ import { type Expense } from '../db/db';
 import { parseFechaLocal } from './dateValidation';
 
 /** Ingreso de una cita cobrada: lo pagado menos la propina (la propina no es venta) y menos lo
- * pagado con saldo a favor (ese dinero ya contó al venderse la tarjeta o al pagarse el pedido) */
-const ingresoCita = (c: Cita) => (c.precioFinal || 0) - (c.propina || 0) - (c.pagadoConSaldo || 0);
+ * pagado con saldo a favor (ese dinero ya contó al venderse la tarjeta o al pagarse el pedido).
+ * De una cita que no se hizo, el anticipo que se queda el salón: perdido (canceló tarde o no llegó) o pasado a saldo a
+ * favor (ingreso al recibirlo, como una tarjeta de regalo; al usarse en otro cobro ya no vuelve a contar). */
+export const ingresoCita = (c: Cita) => c.estado === 'completada'
+  ? (c.precioFinal || 0) - (c.propina || 0) - (c.pagadoConSaldo || 0)
+  : (c.anticipoPerdido || 0) + (c.anticipoASaldo || 0);
 
 export const calculateReportStats = (
   citas: Cita[],
@@ -12,7 +16,7 @@ export const calculateReportStats = (
   gastos: Expense[] = []
 ): ReportStats => {
   const citasCompletadas = citas.filter(c => c.estado === 'completada');
-  const totalIngresosCitas = citasCompletadas.reduce((sum, c) => sum + ingresoCita(c), 0);
+  const totalIngresosCitas = citas.reduce((sum, c) => sum + ingresoCita(c), 0);
   const totalIngresosVentas = ventas.reduce((sum, v) => sum + v.total, 0);
   const totalIngresos = totalIngresosCitas + totalIngresosVentas;
 
@@ -20,7 +24,7 @@ export const calculateReportStats = (
   const gananciaNeta = totalIngresos - totalGastos;
 
   const saldosPendientes = citas
-    .filter(c => c.estado !== 'cancelada')
+    .filter(c => c.estado !== 'cancelada' && c.estado !== 'no_llego')
     .reduce((sum, c) => sum + (c.saldoPendiente || 0), 0);
 
   return {
@@ -56,7 +60,7 @@ export const generateReportData = (
 
         const weekCitas = citas.filter(cita => {
           const citaDate = parseFechaLocal(cita.fecha);
-          return citaDate >= weekStart && citaDate <= weekEnd && cita.estado === 'completada';
+          return citaDate >= weekStart && citaDate <= weekEnd;
         });
 
         const weekVentas = ventas.filter(venta => {
@@ -74,7 +78,7 @@ export const generateReportData = (
           ingresosTotales: ingresosCitas + ingresosVentas,
           gastos: 0, // Placeholder for now or calculate per period if needed
           gananciaNeta: ingresosCitas + ingresosVentas,
-          servicios: weekCitas.length,
+          servicios: weekCitas.filter(c => c.estado === 'completada').length,
           ventasProductos: weekVentas.length
         });
       }
@@ -90,8 +94,7 @@ export const generateReportData = (
           const citaDate = parseFechaLocal(cita.fecha);
           return (
             citaDate.getMonth() === monthDate.getMonth() &&
-            citaDate.getFullYear() === monthDate.getFullYear() &&
-            cita.estado === 'completada'
+            citaDate.getFullYear() === monthDate.getFullYear()
           );
         });
 
@@ -113,7 +116,7 @@ export const generateReportData = (
           ingresosTotales: ingresosCitas + ingresosVentas,
           gastos: 0,
           gananciaNeta: ingresosCitas + ingresosVentas,
-          servicios: monthCitas.length,
+          servicios: monthCitas.filter(c => c.estado === 'completada').length,
           ventasProductos: monthVentas.length
         });
       }
@@ -127,7 +130,7 @@ export const generateReportData = (
 
         const yearCitas = citas.filter(cita => {
           const citaDate = parseFechaLocal(cita.fecha);
-          return citaDate.getFullYear() === yearDate.getFullYear() && cita.estado === 'completada';
+          return citaDate.getFullYear() === yearDate.getFullYear();
         });
 
         const yearVentas = ventas.filter(venta => {
@@ -145,7 +148,7 @@ export const generateReportData = (
           ingresosTotales: ingresosCitas + ingresosVentas,
           gastos: 0,
           gananciaNeta: ingresosCitas + ingresosVentas,
-          servicios: yearCitas.length,
+          servicios: yearCitas.filter(c => c.estado === 'completada').length,
           ventasProductos: yearVentas.length
         });
       }

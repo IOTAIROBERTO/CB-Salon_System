@@ -4,7 +4,7 @@ import { db } from '../../db/db';
 import { useAgenda } from '../../hooks/useAgenda';
 import useCitas from '../../hooks/useCitas';
 import ReagendarModal from './ReagendarModal';
-import { aMin, aHora, atiende, diaSemana, tramosCita, ocupacion, tiemposServicio } from '../../utils/agenda';
+import { aMin, aHora, atiende, diaSemana, libera, tramosCita, ocupacion, tiemposServicio } from '../../utils/agenda';
 
 const PX = 1.4; // píxeles por minuto
 
@@ -16,7 +16,7 @@ const PX = 1.4; // píxeles por minuto
 export default function AgendaDia({ fecha }: { fecha: string }) {
   const { config, personas } = useAgenda();
   const { saveCita } = useCitas();
-  const citas = (useLiveQuery(() => db.citas.where('fecha').equals(fecha).toArray(), [fecha]) || []).filter(c => c.estado !== 'cancelada');
+  const citas = (useLiveQuery(() => db.citas.where('fecha').equals(fecha).toArray(), [fecha]) || []).filter(c => !libera(c));
   const servicios = useLiveQuery(() => db.servicios.toArray()) || [];
   const clientes = useLiveQuery(() => db.clientes.toArray()) || [];
   const [moviendo, setMoviendo] = useState<any>(null);

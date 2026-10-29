@@ -29,6 +29,6 @@ export const POLITICAS_RESERVA = [
   'Tu solicitud aparta el horario mientras Cristina la revisa. Te confirmamos por WhatsApp.',
   'Los precios son «desde»: con tus fotos y respuestas Cristina te dice el precio de tu servicio antes de la cita.',
   'Si tu servicio lleva anticipo, al confirmar te pasamos los datos para enviarlo por transferencia o depósito, o acordamos pagarlo en el salón. En la app no se cobra nada.',
-  'Cambios o cancelaciones con al menos 48 horas: conservas tu anticipo. Con menos, o si no llegas, se pierde.',
+  'Tu cita la ves, la cambias o la cancelas tú misma desde tu enlace «Mi cita». Con al menos 48 horas conservas tu anticipo (si cancelas, queda como saldo a favor); con menos, o si no llegas, se pierde.',
   'Citas para el mismo día: solo por WhatsApp, según la agenda de Cristina.'
 ];

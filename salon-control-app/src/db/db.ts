@@ -106,7 +106,7 @@ export interface Cita {
     servicioId: string;
     fecha: string;
     hora: string;
-    estado: 'confirmada' | 'pendiente' | 'iniciada' | 'cancelada' | 'completada';
+    estado: 'confirmada' | 'pendiente' | 'iniciada' | 'cancelada' | 'completada' | 'no_llego';
     notas?: string;
     montoAnticipo?: number;
     anticipoConfirmado?: boolean;
@@ -141,6 +141,13 @@ export interface Cita {
     precioAcordado?: number; // precio que Cristina confirmó después de valorar (el de catálogo es «desde»)
     formaAnticipo?: 'transferencia' | 'deposito' | 'salon' | 'incluido' | 'sin';
     googleAdoptar?: string; // id del evento que se apuntó a mano en Google: el Worker lo adopta en vez de crear otra copia
+    // Cancelada por la clienta desde «Mi cita» o marcada «no llegó» (política de 48 h)
+    canceladaPor?: 'clienta' | 'salon';
+    canceladaEn?: string; // ISO
+    anticipoASaldo?: number; // anticipo pagado que pasó a su saldo a favor (canceló con 48 h o más)
+    anticipoPerdido?: number; // anticipo pagado que se queda el salón (canceló tarde o no llegó)
+    reagendadaEn?: string; // ISO: la clienta la cambió desde «Mi cita»
+    enlace?: string; // secreto (32 hex) del enlace «Mi cita» de la clienta: <id>.<enlace>
 }
 
 /** Fotos del cabello que manda la clienta con su solicitud (JPEG reducido, data URL) */

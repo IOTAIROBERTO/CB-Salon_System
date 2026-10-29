@@ -28,6 +28,10 @@ La galería pública vive en `/galeria/` y la página de reseñas en `/resenas/`
   y el recordatorio de citas sin confirmar. «Probar» crea un aviso de prueba que llega en menos de un minuto.
 - En pantallas táctiles, `src/index.css` agranda botones a 40 px y las tablas con la clase `tabla-tarjetas` se vuelven
   tarjetas en celular (las demás se desplazan de lado).
+- «Mi cita» y «No llegó» (`src/db/miCita.ts`): la nota de reserva y Valorar llevan el enlace con el que la clienta ve,
+  cambia o cancela su cita (política de 48 h: anticipo a saldo a favor o perdido). «No llegó» en la cita del día libera
+  la agenda y deja el anticipo como perdido; la tarjeta y Valorar avisan cuántas veces faltó. En Reportes, el anticipo
+  que se queda el salón cuenta como ingreso.
 - Tabla nueva en `src/db/db.ts` = registrarla en Dexie Cloud antes de publicar (`npx dexie-cloud export --schema`,
   agregarla, `npx dexie-cloud import`); si no, la sincronización se traba en silencio.
 

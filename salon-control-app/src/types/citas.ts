@@ -9,7 +9,7 @@ export interface Cita {
   servicioId: string;
   fecha: string;
   hora: string;
-  estado: "pendiente" | "confirmada" | "iniciada" | "completada" | "cancelada";
+  estado: "pendiente" | "confirmada" | "iniciada" | "completada" | "cancelada" | "no_llego";
   notas?: string;
   montoAnticipo?: number;
   anticipoConfirmado?: boolean;
@@ -33,6 +33,11 @@ export interface Cita {
   descripcionTrabajo?: string; // qué se trabajó y por qué se cobró así
   ubicacion?: string; // sin valor o 'salon' = en el salón; si no, id de zona (utils/zonas)
   atiendeId?: string; // quién la atiende ('cristina' o id de empleado)
+  anticipoPerdido?: number; // anticipo que se queda el salón (canceló tarde o no llegó)
+  anticipoASaldo?: number; // anticipo que pasó a su saldo a favor (canceló con 48 h o más)
+  canceladaPor?: 'clienta' | 'salon';
+  reagendadaEn?: string; // ISO: la clienta la cambió desde «Mi cita»
+  enlace?: string; // secreto del enlace «Mi cita» (db.ts)
 }
 
 export interface ModalState {

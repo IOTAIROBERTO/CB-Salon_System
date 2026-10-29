@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Check, MessageCircle, X } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Camera, Check, MessageCircle, RotateCcw, X } from 'lucide-react'
 import Encabezado from '@/components/Encabezado'
 import { NOMBRE_CLUB, POLITICAS_RESERVA, enlaceWhatsApp, nombreCategoria, pesos, type Servicio } from '@/salon'
 import { reducirFoto } from '@/fotos'
 import { fechaCumple } from '@/components/UnirmeClub'
-import { crearCita, disponibilidad, misDatos, pedirCodigo, recordarDatos, serviciosEnLinea, sesion, verificarCodigo, type DiaLibre } from '@/api'
+import { crearCita, disponibilidad, guardarCita, misDatos, olvidarDatos, pedirCodigo, recordarDatos, serviciosEnLinea, sesion, verificarCodigo, type DiaLibre } from '@/api'
+import ElegirHorario from '@/components/ElegirHorario'
 import NoSoyRobot, { conTurnstile } from '@/components/NoSoyRobot'
 import { useEnVivo } from '@/vivo'
 
@@ -28,6 +30,16 @@ export default function Agendar() {
   const categorias = categoriasDe(catalogo || [])
   const [elegido, setElegido] = useState<Servicio | null>(null)
   const [datos, setDatos] = useState(misDatos)
+  // Clienta que ya agendó en este celular: sus datos van en un renglón (sin volver a escribirlos) y su último servicio a un toque
+  const [editandoDatos, setEditandoDatos] = useState(() => !(misDatos().nombre && misDatos().telefono))
+  const [recordar, setRecordar] = useState(true)
+  const ultimo = catalogo?.find(s => s.id === datos.ultimoServicio)
+  // «Agendar otra vez» desde Inicio llega con ?servicio=<id>: se elige solo en cuanto carga el catálogo
+  const [params] = useSearchParams()
+  useEffect(() => {
+    const pedido = catalogo?.find(s => s.id === params.get('servicio'))
+    if (pedido) setElegido(e => e ?? pedido)
+  }, [catalogo, params])
   const [fecha, setFecha] = useState('')
   const [hora, setHora] = useState('')
   const [notas, setNotas] = useState('')
@@ -37,7 +49,7 @@ export default function Agendar() {
   const [cargando, setCargando] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState('')
-  const [lista, setLista] = useState<{ fecha: string; hora: string; servicio: string; anticipo: number } | null>(null)
+  const [lista, setLista] = useState<{ fecha: string; hora: string; servicio: string; anticipo: number; enlace: string } | null>(null)
   const formulario = useRef<HTMLElement>(null)
   const [robot, setRobot] = useState('')          // token de Turnstile (sirve una vez)
   const [vueltaRobot, setVueltaRobot] = useState(0)
@@ -83,7 +95,8 @@ export default function Agendar() {
     try {
       const r = await crearCita({ servicioId: elegido.id, fecha, hora, ...datos, notas, club, sitio: trampa, turnstile: robot,
         ...(pideValoracion ? { valoracion: cabello, fotos } : {}) })
-      recordarDatos(datos)
+      if (recordar) recordarDatos({ ...datos, ultimoServicio: elegido.id }); else olvidarDatos()
+      if (r.cita.enlace) guardarCita({ ref: r.cita.enlace, fecha: r.cita.fecha, hora: r.cita.hora, servicio: r.cita.servicio })
       setLista(r.cita)
       setReto('')
       otroRobot()
@@ -129,6 +142,16 @@ export default function Agendar() {
           <p className="text-marca-negro">¿No sabes cuál pedir?</p>
           <p className="mt-1 text-marca-gris">Elige el que más se parezca: con tus fotos Cristina te dice cuál necesitas y su precio antes de tu cita. Toca «Más info» para ver qué es cada uno, o <a href={enlaceWhatsApp('Hola, no sé qué servicio pedir. Te mando fotos de mi cabello:')} className="underline">pregúntanos por WhatsApp</a>.</p>
         </div>
+        {ultimo && !elegido && (
+          <button onClick={() => setElegido(ultimo)} className="tarjeta flex w-full items-center gap-4 text-left">
+            <RotateCcw size={18} strokeWidth={1.4} className="shrink-0 text-marca-dorado" />
+            <span className="min-w-0 flex-1">
+              <span className="rotulo block">Lo de siempre</span>
+              <span className="mt-1 block font-display text-xl text-marca-negro">{ultimo.nombre}</span>
+            </span>
+            <span className="text-[11px] uppercase tracking-[0.2em] text-marca-dorado-prof">Agendar</span>
+          </button>
+        )}
         {!catalogo && !sinCatalogo && <p className="text-sm text-marca-gris">Cargando servicios…</p>}
         {sinCatalogo && <p className="text-sm text-marca-gris">No pudimos cargar los servicios. Revisa tu internet o <a href={enlaceWhatsApp('Hola, quiero agendar una cita.')} className="underline">agenda por WhatsApp</a>.</p>}
         {categorias.map(cat => (
@@ -182,38 +205,10 @@ export default function Agendar() {
 
             {cargando && <p className="text-sm text-marca-gris">Buscando horarios libres…</p>}
             {dias && !cargando && (
-              <>
-                <div>
-                  <span className="rotulo text-marca-gris">Día</span>
-                  <div className="-mx-6 mt-2 flex gap-2 overflow-x-auto px-6 pb-1 [scrollbar-width:none]">
-                    {dias.map(d => {
-                      const f = new Date(`${d.fecha}T12:00:00`)
-                      const activo = d.fecha === fecha, vacio = !d.horas.length
-                      return (
-                        <button key={d.fecha} disabled={vacio} onClick={() => { setFecha(d.fecha); setHora('') }}
-                          className={`flex w-14 shrink-0 flex-col items-center rounded-sm border py-2 transition ${activo ? 'border-marca-negro bg-marca-negro text-white' : vacio ? 'border-marca-linea/50 text-marca-gris/40' : 'border-marca-linea text-marca-negro'}`}>
-                          <span className="text-[9px] uppercase tracking-[0.14em]">{f.toLocaleDateString('es-MX', { weekday: 'short' }).replace('.', '')}</span>
-                          <span className="font-display text-xl leading-tight">{f.getDate()}</span>
-                          <span className="text-[9px] uppercase tracking-[0.1em]">{f.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '')}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                  {!dias.some(d => d.horas.length) && <p className="mt-2 text-sm text-marca-gris">No hay horarios libres en las próximas dos semanas. Escríbenos y te buscamos lugar.</p>}
-                  <p className="mt-2 text-xs text-marca-gris">¿Para hoy? Cristina lo revisa en su agenda: <a href={enlaceWhatsApp(`Hola, ¿tienen espacio hoy para ${elegido.nombre}?`)} className="underline">escríbenos por WhatsApp</a>.</p>
-                </div>
-                {fecha && (
-                  <div>
-                    <span className="rotulo text-marca-gris">Hora</span>
-                    <div className="mt-2 grid grid-cols-4 gap-2">
-                      {dias.find(d => d.fecha === fecha)?.horas.map(h => (
-                        <button key={h} onClick={() => setHora(h)}
-                          className={`rounded-sm border py-2.5 text-sm tabular-nums transition ${hora === h ? 'border-marca-negro bg-marca-negro text-white' : 'border-marca-linea text-marca-negro'}`}>{h}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
+              <ElegirHorario dias={dias} fecha={fecha} hora={hora} onFecha={setFecha} onHora={setHora}>
+                {!dias.some(d => d.horas.length) && <p className="mt-2 text-sm text-marca-gris">No hay horarios libres en las próximas dos semanas. Escríbenos y te buscamos lugar.</p>}
+                <p className="mt-2 text-xs text-marca-gris">¿Para hoy? Cristina lo revisa en su agenda: <a href={enlaceWhatsApp(`Hola, ¿tienen espacio hoy para ${elegido.nombre}?`)} className="underline">escríbenos por WhatsApp</a>.</p>
+              </ElegirHorario>
             )}
 
             {pideValoracion && (
@@ -261,14 +256,28 @@ export default function Agendar() {
               </div>
             )}
 
-            <label className="block">
-              <span className="rotulo text-marca-gris">Nombre completo</span>
-              <input className="campo" autoComplete="name" value={datos.nombre} onChange={e => setDatos({ ...datos, nombre: e.target.value })} />
-            </label>
-            <label className="block">
-              <span className="rotulo text-marca-gris">Teléfono (WhatsApp)</span>
-              <input className="campo" type="tel" inputMode="tel" autoComplete="tel" value={datos.telefono} onChange={e => setDatos({ ...datos, telefono: e.target.value })} />
-            </label>
+            {editandoDatos ? (<>
+              <label className="block">
+                <span className="rotulo text-marca-gris">Nombre completo</span>
+                <input className="campo" autoComplete="name" value={datos.nombre} onChange={e => setDatos({ ...datos, nombre: e.target.value })} />
+              </label>
+              <label className="block">
+                <span className="rotulo text-marca-gris">Teléfono (WhatsApp)</span>
+                <input className="campo" type="tel" inputMode="tel" autoComplete="tel" value={datos.telefono} onChange={e => setDatos({ ...datos, telefono: e.target.value })} />
+              </label>
+              <label className="flex items-center gap-3 text-xs text-marca-gris">
+                <input type="checkbox" checked={recordar} onChange={e => setRecordar(e.target.checked)} className="h-4 w-4 accent-marca-dorado-prof" />
+                Recordar mis datos en este teléfono para la próxima vez
+              </label>
+            </>) : (
+              <div className="flex items-center gap-3 border-b border-marca-linea pb-3 text-sm">
+                <span className="min-w-0 flex-1">
+                  <span className="rotulo block text-marca-gris">Agendas como</span>
+                  <span className="mt-1 block truncate text-marca-negro">{datos.nombre} · {datos.telefono}</span>
+                </span>
+                <button type="button" onClick={() => setEditandoDatos(true)} className="py-2 text-[11px] uppercase tracking-[0.2em] text-marca-dorado-prof">Cambiar</button>
+              </div>
+            )}
             <label className="block">
               <span className="rotulo text-marca-gris">Notas</span>
               <textarea className="campo resize-none" rows={2} placeholder="Largo de tu cabello, color actual…" value={notas} onChange={e => setNotas(e.target.value)} />
@@ -323,8 +332,10 @@ export default function Agendar() {
               Cristina revisa tu solicitud y te escribe por WhatsApp con el precio de tu servicio{lista.anticipo ? ' y, para confirmar, los datos de tu anticipo' : ''}.
               Si tu servicio lo pide, también te llega tu consentimiento para firmarlo aquí en la app.
             </p>
+            {lista.enlace && <Link to={`/cita/${lista.enlace}`} className="boton w-full">Ver mi cita</Link>}
+            {lista.enlace && <p className="text-xs leading-relaxed text-marca-gris">Ahí ves cuándo queda confirmada, y la cambias o cancelas tú misma. También aparece en Inicio.</p>}
             <a href={enlaceWhatsApp(`Hola, soy ${datos.nombre.trim()}. Acabo de pedir mi cita en la app: ${lista.servicio}, el ${new Date(`${lista.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })} a las ${lista.hora}.${fotos.length ? ' Ya mandé fotos de mi cabello.' : ''}`)}
-              className="boton w-full"><MessageCircle size={16} strokeWidth={1.5} /> Avisar a Cristina por WhatsApp</a>
+              className={`${lista.enlace ? 'boton-claro' : 'boton'} w-full`}><MessageCircle size={16} strokeWidth={1.5} /> Avisar a Cristina por WhatsApp</a>
             <button onClick={() => { setLista(null); setElegido(null); setHora(''); setFecha(''); setFotos([]); setCabello({}) }} className="text-xs uppercase tracking-[0.2em] text-marca-dorado-prof">Agendar otra cita</button>
           </section>
         )}

@@ -58,6 +58,8 @@ export const aMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Numbe
 export const aHora = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 const solapa = (x: Tramo, y: Tramo) => x.de < y.a && y.de < x.a;
 export const atiende = (c: { atiendeId?: string }) => c.atiendeId || DUENA;
+/** Cancelada o «no llegó»: ya no ocupa a nadie */
+export const libera = (c: { estado?: string }) => c.estado === 'cancelada' || c.estado === 'no_llego';
 export const diaSemana = (fecha: string) => String(new Date(`${fecha}T12:00:00`).getDay()) as DiaSemana;
 
 /** Tiempos de un servicio: activo al inicio, proceso (libre) y activo al cierre */
@@ -95,7 +97,7 @@ const tramoBloqueo = (b: Bloqueo, fecha: string): Tramo | null => {
 export const ocupacion = (personaId: string, fecha: string, citas: CitaA[], servicios: ServicioA[], config: ConfigAgenda, ignorarCitaId?: string) => {
   const deCitas: Tramo[] = [];
   for (const c of citas) {
-    if (c.fecha !== fecha || c.estado === 'cancelada' || c.id === ignorarCitaId || atiende(c) !== personaId) continue;
+    if (c.fecha !== fecha || libera(c) || c.id === ignorarCitaId || atiende(c) !== personaId) continue;
     deCitas.push(...tramosDeCita(c, servicios, config.margen).tramos);
   }
   const fijos: Tramo[] = [];
@@ -161,7 +163,7 @@ export const choques = (cita: CitaA, citas: CitaA[], servicios: ServicioA[], con
       avisos.push(`Se cruza con el descanso (${h.descansoDe}–${h.descansoA})`);
   }
   for (const c of citas) {
-    if (c.id === cita.id || c.fecha !== cita.fecha || c.estado === 'cancelada' || atiende(c) !== quien) continue;
+    if (c.id === cita.id || c.fecha !== cita.fecha || libera(c) || atiende(c) !== quien) continue;
     if (tramosDeCita(c, servicios, config.margen).tramos.some(x => tramos.some(y => solapa(x, y)))) {
       const nombre = servicios.find(s => s.id === c.servicioId)?.nombre || 'otra cita';
       avisos.push(`Se cruza con la cita de las ${c.hora} (${nombre})`);

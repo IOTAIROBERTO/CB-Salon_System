@@ -8,9 +8,10 @@ export const useHistorialCitas = (citas: Cita[]) => {
   // Filtrar y ordenar citas para el historial
   const citasHistorial = useMemo(() => {
     return citas.filter(cita => {
-      const esCompletadaOCancelada = ['completada', 'cancelada'].includes(cita.estado);
+      const esCompletadaOCancelada = ['completada', 'cancelada', 'no_llego'].includes(cita.estado);
       if (filtroHistorial === 'completadas') return cita.estado === 'completada';
       if (filtroHistorial === 'canceladas') return cita.estado === 'cancelada';
+      if (filtroHistorial === 'no_llego') return cita.estado === 'no_llego';
       return esCompletadaOCancelada; // 'todas'
     }).sort((a, b) => 
       new Date(b.fechaCompletada || b.fecha).getTime() - 

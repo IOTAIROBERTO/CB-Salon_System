@@ -18,7 +18,10 @@ import {
   FileSignature,
   MapPin,
   Smartphone,
+  UserX,
 } from "lucide-react";
+import { enlaceMiCita, marcarNoLlego, useFaltas } from "../../db/miCita";
+import { fechaLocalISO } from "../../utils/dateValidation";
 import PedirFirma from "../clientes/PedirFirma";
 import { zonasDe, nombreUbicacion, SALON } from "../../utils/zonas";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -73,6 +76,7 @@ export default function CitaCard({
   const [anticipoInput, setAnticipoInput] = useState(cita.montoAnticipo?.toString() || "");
   const [isEditingAnticipo, setIsEditingAnticipo] = useState(false);
   const [pidiendoFirma, setPidiendoFirma] = useState(false);
+  const faltas = useFaltas(cita.clienteId);
 
   const cliente = clientes.find((c) => c.id === cita.clienteId)?.nombre || "Cliente no encontrado";
   const clienteData = clientes.find((c) => c.id === cita.clienteId);
@@ -176,6 +180,8 @@ export default function CitaCard({
         return "bg-green-100 text-green-800 border-green-200";
       case "cancelada":
         return "bg-red-100 text-red-800 border-red-200";
+      case "no_llego":
+        return "bg-gray-200 text-gray-800 border-gray-300";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
@@ -209,7 +215,7 @@ export default function CitaCard({
           {cita.estado !== "completada" && (
             <div className="flex items-center gap-2 mb-2">
               <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoColor(cita.estado)}`}>
-                {cita.estado.charAt(0).toUpperCase() + cita.estado.slice(1)}
+                {cita.estado === "no_llego" ? "No llegó" : cita.estado.charAt(0).toUpperCase() + cita.estado.slice(1)}
               </span>
               {(cita as { origen?: string }).origen && (
                 <span className="px-2 py-1 rounded-full text-[10px] uppercase tracking-[0.18em] bg-marca-negro text-marca-dorado">
@@ -223,6 +229,11 @@ export default function CitaCard({
             <div className="flex items-center gap-2">
               <User size={16} className="text-gray-400" />
               <span className="font-semibold text-gray-900">{cliente}</span>
+              {faltas > 0 && (
+                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-800" title="Citas a las que no llegó: conviene pedirle anticipo">
+                  Faltó {faltas} {faltas === 1 ? "vez" : "veces"}
+                </span>
+              )}
               {/* INDICADOR DE CUMPLEAÑOS MEJORADO */}
               {isCumpleanos && (
                 <div className="flex items-center gap-1 bg-marca-negro text-marca-dorado px-3 py-1 rounded-full text-[10px] uppercase tracking-[0.18em]">
@@ -434,6 +445,15 @@ export default function CitaCard({
             </div>
           )}
 
+          {/* Lo que hizo la clienta desde «Mi cita» y qué pasó con su anticipo */}
+          {(cita.canceladaPor === "clienta" || cita.reagendadaEn || cita.anticipoASaldo || cita.anticipoPerdido) && (
+            <p className="text-xs text-gray-600">
+              {cita.canceladaPor === "clienta" ? "La canceló la clienta desde la app. " : cita.estado !== "cancelada" && cita.reagendadaEn ? "La clienta la cambió desde la app. " : ""}
+              {cita.anticipoASaldo ? `Su anticipo de ${formatCurrency(cita.anticipoASaldo)} pasó a su saldo a favor.` : ""}
+              {cita.anticipoPerdido ? `Anticipo perdido: ${formatCurrency(cita.anticipoPerdido)}.` : ""}
+            </p>
+          )}
+
           {/* Trabajo fuera del salón */}
           {cita.ubicacion && cita.ubicacion !== "salon" && (
             <div className="flex items-center gap-1 text-sm font-medium text-amber-800">
@@ -494,6 +514,15 @@ export default function CitaCard({
               </button>
             )}
 
+            {(cita.estado === "confirmada" || cita.estado === "pendiente") && cita.fecha <= fechaLocalISO() && (
+              <button
+                onClick={() => confirm(`¿${cliente} no llegó? La cita deja de ocupar la agenda${cita.anticipoConfirmado && cita.montoAnticipo ? ` y el anticipo de ${formatCurrency(cita.montoAnticipo)} se queda como anticipo perdido` : ""}.`) && marcarNoLlego(cita)}
+                className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+              >
+                <UserX size={14} className="inline mr-1" /> No llegó
+              </button>
+            )}
+
             {cita.estado === "iniciada" && (
               <button
                 onClick={onOpenCobro}
@@ -517,7 +546,8 @@ export default function CitaCard({
                     precio: servicio?.precioSugerido,
                     anticipo: cita.montoAnticipo,
                     anticipoPagado: cita.anticipoConfirmado,
-                    lugar
+                    lugar,
+                    miCita: await enlaceMiCita(cita)
                   }));
                   if (enlace) window.open(enlace, '_blank', 'noopener'); else alert('La clienta no tiene un teléfono de 10 dígitos.');
                 }}

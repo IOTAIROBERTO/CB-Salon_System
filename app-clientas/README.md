@@ -46,7 +46,8 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
 ## API y automatización (Cloudflare)
 
 - **`/api`** (Pages Functions, misma dirección de la app): `servicios`, `disponibilidad`, `citas`, `club`, `acceso/codigo`,
-  `acceso/verificar`, `mi-club`, `firma/<id>` (consentimiento con enlace personal que crea CB Control; pantalla `#/firmar/<id>`,
+  `acceso/verificar`, `mi-club`, `cita/<id>.<secreto>` (+ `/cancelar`, `/reagendar`: «Mi cita», pantalla `#/cita/<enlace>`, ver
+  abajo), `firma/<id>` (consentimiento con enlace personal que crea CB Control; pantalla `#/firmar/<id>`,
   sin entrar al Club). Código en `api/` y `functions/api/`. Lee y escribe la base de CB Control (Dexie Cloud).
 - **`avisos/`**: Worker `cb-avisos` que corre cada 10 minutos y manda por WhatsApp la confirmación de la cita (cuando el
   salón la confirma en CB Control) y el recordatorio del día anterior; cada minuto manda al celular del salón cada aviso
@@ -67,6 +68,14 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
   8788; enlace de prueba `/#/firmar/firma_00000000000000000000000000000001`). Pruebas: `scripts/*.check.ts` (comando en cada archivo).
   Google simulado: `npx esbuild scripts/google.check.ts --bundle --platform=node --format=esm --log-level=warning | node --input-type=module`.
   Web Push (cifrado contra el vector del RFC 8291, VAPID y avisos de la campana): igual con `scripts/push.check.ts`.
+  «Mi cita» (ver, cambiar, cancelar, saldo a favor, «no llegó»): `scripts/micita.check.ts`; en local, `/#/cita/c1.00000000000000000000000000000001`.
+- **«Mi cita»**: cada cita tiene un enlace personal (`<id>.<secreto>`; el secreto vive en `cita.enlace`). Lo da la app al
+  agendar («Ver mi cita», y queda en Inicio como «Tu próxima cita») y CB Control lo pone en la nota de reserva y en el
+  WhatsApp de Valorar. La clienta ve estado, precio, anticipo (con datos de pago si falta) y dirección, la agrega a su
+  calendario, y la cambia (con 48 h o más, horarios reales) o la cancela sola: con 48 h o más su anticipo pagado pasa a
+  saldo a favor; con menos se queda como anticipo perdido. Nunca muestra su teléfono ni su apellido.
+- **Reservar rápido**: con su permiso, el celular recuerda nombre, teléfono y último servicio («Lo de siempre»: servicio,
+  hora y «Pedir»). «Recordar mis datos» se puede quitar al agendar.
 
 ## Google Calendar (`api/google.ts`)
 
