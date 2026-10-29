@@ -148,6 +148,11 @@ export interface Cita {
     anticipoPerdido?: number; // anticipo pagado que se queda el salón (canceló tarde o no llegó)
     reagendadaEn?: string; // ISO: la clienta la cambió desde «Mi cita»
     enlace?: string; // secreto (32 hex) del enlace «Mi cita» de la clienta: <id>.<enlace>
+    // Resumen que acepta la clienta en «Mi cita» después de la valoración
+    resumenClienta?: string; // «Lo que haremos»: lo escribe Cristina al valorar y lo ve la clienta
+    aceptadaEn?: string; // ISO: la clienta aceptó resumen, precio final y anticipo
+    aceptacion?: { precio: number; anticipo: number; resumen: string; ip?: string }; // lo que aceptó (constancia)
+    politicasAceptadas?: string; // ISO: aceptó la vista previa y las políticas al pedirla en la app
 }
 
 /** Fotos del cabello que manda la clienta con su solicitud (JPEG reducido, data URL) */

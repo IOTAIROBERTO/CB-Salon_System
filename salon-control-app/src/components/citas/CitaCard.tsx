@@ -217,6 +217,12 @@ export default function CitaCard({
               <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoColor(cita.estado)}`}>
                 {cita.estado === "no_llego" ? "No llegó" : cita.estado.charAt(0).toUpperCase() + cita.estado.slice(1)}
               </span>
+              {cita.precioAcordado != null && (cita.estado === "pendiente" || cita.estado === "confirmada") && (
+                <span className={`px-2 py-1 rounded-full text-[11px] ${cita.aceptadaEn ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}
+                  title={cita.aceptadaEn ? "Aceptó en su enlace el resumen, el precio y el anticipo" : "Aún no acepta en su enlace el resumen, el precio y el anticipo"}>
+                  {cita.aceptadaEn ? "Aceptó" : "Por aceptar"}
+                </span>
+              )}
               {(cita as { origen?: string }).origen && (
                 <span className="px-2 py-1 rounded-full text-[10px] uppercase tracking-[0.18em] bg-marca-negro text-marca-dorado">
                   Desde la {(cita as { origen?: string }).origen === 'bot' ? 'WhatsApp' : 'app'}

@@ -49,12 +49,15 @@ export interface VistaCita {
   estado: 'pendiente' | 'confirmada' | 'iniciada' | 'completada' | 'cancelada' | 'no_llego'
   precio: number; precioAcordado: boolean; anticipo: number; anticipoPagado: boolean; formaAnticipo?: string; datosPago: string
   anticipoASaldo?: number; anticipoPerdido?: number; sinCosto: boolean; puedeCancelar: boolean; puedeReagendar: boolean
+  resumen: string; aceptadaEn?: string; porAceptar: boolean; puedeCambiarServicio: boolean
 }
 const rutaCita = (ref: string) => `cita/${encodeURIComponent(ref)}`
 export const miCita = (ref: string) => llamar<VistaCita>(rutaCita(ref))
 export const cancelarMiCita = (ref: string) => llamar<VistaCita>(`${rutaCita(ref)}/cancelar`, { method: 'POST', body: '{}' })
-export const reagendarMiCita = (ref: string, fecha: string, hora: string) =>
-  llamar<VistaCita>(`${rutaCita(ref)}/reagendar`, { method: 'POST', body: JSON.stringify({ fecha, hora }) })
+export const reagendarMiCita = (ref: string, fecha: string, hora: string, servicioId?: string) =>
+  llamar<VistaCita>(`${rutaCita(ref)}/reagendar`, { method: 'POST', body: JSON.stringify({ fecha, hora, servicioId }) })
+/** Acepta el resumen que dejó Cristina al valorar (lo que se hará, precio final y anticipo) */
+export const aceptarMiCita = (ref: string) => llamar<VistaCita>(`${rutaCita(ref)}/aceptar`, { method: 'POST', body: '{}' })
 
 /** Las citas que se pidieron o abrieron en este celular (para mostrar la próxima en Inicio) */
 const CLAVE_CITAS = 'cb-mis-citas'

@@ -74,6 +74,13 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
   WhatsApp de Valorar. La clienta ve estado, precio, anticipo (con datos de pago si falta) y dirección, la agrega a su
   calendario, y la cambia (con 48 h o más, horarios reales) o la cancela sola: con 48 h o más su anticipo pagado pasa a
   saldo a favor; con menos se queda como anticipo perdido. Nunca muestra su teléfono ni su apellido.
+- **Vista previa y aceptación**: antes de pedir, la clienta revisa y acepta servicio, día y hora, precio «desde», anticipo
+  y políticas (la cita guarda `politicasAceptadas`). Cuando Cristina valora (precio final, anticipo y «Lo que haremos»),
+  «Mi cita» le abre el resumen para aceptarlo (`/aceptar`, queda `aceptacion` como constancia); si no falta anticipo por
+  transferencia, la cita queda confirmada al aceptar. Si Cristina cambia lo aceptado, la clienta lo vuelve a aceptar.
+- **Una cita por servicio**: no se aparta el mismo servicio dos veces ni un horario que se cruza con otra cita suya (sin
+  teléfono verificado llega como aviso «por confirmar a mano», sin revelar nada; verificado, se le dice). Antes de la
+  valoración puede cambiar de servicio en «Mi cita» en vez de pedir otra cita.
 - **Reservar rápido**: con su permiso, el celular recuerda nombre, teléfono y último servicio («Lo de siempre»: servicio,
   hora y «Pedir»). «Recordar mis datos» se puede quitar al agendar.
 
