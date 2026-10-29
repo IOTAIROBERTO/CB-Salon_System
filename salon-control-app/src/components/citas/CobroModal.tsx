@@ -11,6 +11,7 @@ import {
 import { db } from "../../db/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { registrarCanjes, canjearPuntos } from "../../db/circulo";
+import { precioBase } from "../../utils/cobro";
 import { useRolSalon } from "../../db/salon";
 import { usarSaldo } from "../../db/saldo";
 import { saldoDe, saldoUsable } from "../../utils/saldo";
@@ -54,8 +55,8 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   // Obtener el servicio actualmente seleccionado
   const servicioActual = servicios.find((s) => s.id === servicioSeleccionadoId);
 
-  // Cálculos base
-  const subtotalServicios = (servicioActual?.precioSugerido || 0) +
+  // Cálculos base: el precio acordado al valorar (si sigue siendo ese servicio) o el de catálogo
+  const subtotalServicios = precioBase(cita, servicioSeleccionadoId, servicios) +
     serviciosAdicionales.reduce((sum, s) => sum + s.precio, 0);
 
   // Cálculos base usando la nueva utilidad financiera
@@ -349,7 +350,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                     </select>
                   </div>
                   <span className="text-green-600 font-semibold ml-3">
-                    {formatCurrency(servicioActual?.precioSugerido || 0)}
+                    {formatCurrency(precioBase(cita, servicioSeleccionadoId, servicios))}
                   </span>
                 </div>
               </div>
