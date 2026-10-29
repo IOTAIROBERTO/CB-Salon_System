@@ -4,7 +4,7 @@
   "short_name": "CB Control",
   "description": "Sistema del salón Cristina Borquez: citas, clientas, ventas y avisos.",
   "lang": "es-MX",
-  "start_url": "./#/citas",
+  "start_url": "./#/hoy",
   "scope": "./",
   "display": "standalone",
   "background_color": "#111111",
