@@ -22,7 +22,18 @@ La galería pública vive en `/galeria/` y la página de reseñas en `/resenas/`
 
 - Es una PWA (`public/manifest.webmanifest`, `public/sw.js`): se instala desde Chrome (Android o computadora: aviso
   «Instalar» arriba de cada pantalla) o desde Safari en iPhone (Compartir → Agregar a pantalla de inicio). Abre en
-  pantalla completa en Citas. El service worker es «red primero» y nunca toca Dexie Cloud ni `/api`.
+  pantalla completa en «Hoy». El service worker es «red primero» y nunca toca Dexie Cloud ni `/api`.
+- **Hoy** (`src/pages/HoyPage.tsx`, la pantalla de inicio): solicitudes por valorar, anticipos por recibir («Recibido» la
+  confirma), citas del día con su siguiente paso (Iniciar → Cobrar, «No llegó»), recordatorio de mañana por WhatsApp con
+  el enlace «Mi cita» y cumpleañeras; la dueña ve lo cobrado hoy.
+- **Cobro exprés** (`components/hoy/CobroExpres.tsx`, `utils/cobro.ts`): precio acordado (o de catálogo) menos el
+  anticipo recibido; tocar el método cobra y guarda lo mismo que el cobro completo sin cambios (prueba:
+  `scripts/cobro.check.ts`). El cobro completo también parte del precio acordado al valorar.
+- **Nueva cita exprés** (`components/hoy/CitaExpres.tsx`): clienta por nombre o teléfono (un teléfono ya registrado usa
+  su ficha), sus últimos servicios, Hoy/Mañana y primer horario libre; al guardar, nota por WhatsApp con «Mi cita».
+- **Búsqueda global** (`components/BuscarGlobal.tsx`): lupa en el celular, barra lateral en computadora, Ctrl+K o «/».
+  Clientas (ficha, nueva cita, WhatsApp), citas y folios de tarjetas de regalo. `/clientes?ficha=<id>` abre una ficha y
+  `/citas?q=…` filtra las citas.
 - Avisos con la app cerrada: campana → «Activar avisos» (en iPhone, iOS 16.4+ y con la app instalada). La suscripción
   queda en la tabla `suscripciones` y el Worker `cb-avisos` (`../app-clientas/avisos`) manda cada aviso nuevo de la campana
   y el recordatorio de citas sin confirmar. «Probar» crea un aviso de prueba que llega en menos de un minuto.

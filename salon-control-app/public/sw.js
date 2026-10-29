@@ -38,5 +38,5 @@ self.addEventListener('push', e => {
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    .then(ventanas => ventanas.length ? ventanas[0].focus() : self.clients.openWindow('./#/citas')));
+    .then(ventanas => ventanas.length ? ventanas[0].focus() : self.clients.openWindow('./#/hoy')));
 });

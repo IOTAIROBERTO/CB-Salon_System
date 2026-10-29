@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useClientes } from '../hooks/useClientes';
 import { useClienteModal } from '../hooks/useClienteModal';
 import { useViewMode } from '../hooks/useViewMode';
@@ -35,6 +37,13 @@ export default function ClientesPage() {
   } = useClienteModal();
 
   const { viewMode, setViewMode } = useViewMode();
+
+  // Desde la búsqueda global: /clientes?ficha=<id> abre su ficha en cuanto carga
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const cliente = clientes.find(c => c.id === params.get('ficha'));
+    if (cliente) { openEditModal(cliente); setParams({}, { replace: true }); }
+  }, [params, clientes]);
 
   // Calcular datos derivados
   const stats = calculateStats(clientes);
