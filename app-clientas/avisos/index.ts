@@ -4,7 +4,7 @@
 // - al salón: las citas de la app que siguen sin confirmar (no vencen solas), cada 4 h de 9 a 21 h hasta confirmarlas,
 //   por WhatsApp y al celular (Web Push); y cada minuto, al celular, cada aviso nuevo de la campana.
 // Cada cita y aviso guarda la marca de lo que ya se mandó, así nunca se repite. Sin los secretos de cada canal no lo usa.
-import { guardar, leer } from '../api/dexie';
+import { guardar, leer, uno } from '../api/dexie';
 import { espejo } from '../api/google';
 import { avisarCelulares, pushListo, type EnvPush } from '../api/push';
 import { avisarSalon, plantilla, whatsappListo } from '../api/whatsapp';
@@ -17,9 +17,10 @@ const pesos = (n: number) => `$${Number(n || 0).toLocaleString('es-MX')}`;
 
 export async function revisar(env: Env) {
   const hoy = hoyHermosillo(), manana = masDias(hoy, 1);
+  const pedidos = await vencerPedidos(env).catch(e => ({ error: (e as Error).message }));
   const clientes = await leer<any>(env, 'clientes');
   const porConfirmar = await recordarAlSalon(env, clientes, hoy);
-  if (!whatsappListo(env)) return { enviados: 0, motivo: 'WhatsApp sin conectar', porConfirmar };
+  if (!whatsappListo(env)) return { enviados: 0, motivo: 'WhatsApp sin conectar', porConfirmar, pedidos };
   const [citas, servicios] = await Promise.all([leer<any>(env, 'citas', { estado: 'confirmada' }), leer<any>(env, 'servicios')]);
   let enviados = 0;
   for (const c of citas.filter(x => x.fecha >= hoy)) {
@@ -38,7 +39,53 @@ export async function revisar(env: Env) {
     }
     if (Object.keys(cambios).length) { await guardar(env, 'citas', [{ ...c, ...cambios }]); enviados++; }
   }
-  return { enviados, porConfirmar };
+  return { enviados, porConfirmar, pedidos };
+}
+
+/** «Mi carrito» (cada 10 min): lo que no se pagó a tiempo vence solo y libera los productos y, si la cita seguía
+ *  esperando ese pago, también su horario; lo pagado que no se recogió en 10 días vuelve a la venta y queda como saldo a
+ *  favor. Un pago que llegue después no revive nada (con Mercado Pago se devuelve solo). Cada aviso llega a la campana. */
+export async function vencerPedidos(env: Env, ahora = Date.now()) {
+  const pedidos = await leer<any>(env, 'pedidos');
+  const vencidos = pedidos.filter(p => p.estado === 'por_pagar' && p.venceEn && Date.parse(p.venceEn) <= ahora);
+  const noRecogidos = pedidos.filter(p => p.estado === 'pagado' && p.items?.length && p.recogerHasta && !p.entregadoEn && Date.parse(p.recogerHasta) <= ahora);
+  if (!vencidos.length && !noRecogidos.length) return { vencidos: 0, noRecogidos: 0 };
+  const marca = new Date(ahora).toISOString();
+  const quien = async (p: any) => String((await uno<any>(env, 'clientes', p.clienteId))?.nombre || 'Clienta');
+  const productos = (p: any) => p.items.map((i: any) => `${i.cantidad} × ${i.nombre}`).join(', ');
+  const avisar = (p: any, tipo: string, titulo: string, detalle: string) => guardar(env, 'avisos', [{
+    id: `avi_${tipo}_${p.id}`, fecha: marca, tipo: 'pedido', titulo, detalle, refId: p.id, clienteId: p.clienteId, leido: false, realmId: p.realmId
+  }]);
+  // Dexie Cloud reemplaza el objeto entero: se relee justo antes de escribir para no borrar un pago o una entrega que el
+  // salón registró mientras tanto (ponytail: queda una ventana de milisegundos; sin escrituras parciales no se cierra del todo)
+  const sigue = async (p: any) => {
+    const actual = await uno<any>(env, 'pedidos', p.id);
+    return actual?.estado === p.estado && !actual.entregadoEn ? actual : null;
+  };
+  let nVencidos = 0, nNoRecogidos = 0;
+  for (const visto of vencidos) {
+    const p = await sigue(visto);
+    if (!p) continue;
+    await guardar(env, 'pedidos', [{ ...p, estado: 'vencido', motivo: 'No se pagó a tiempo' }]);
+    nVencidos++;
+    // La cita solo se cancela si seguía esperando este pago: si el salón ya la confirmó o recibió su anticipo, se respeta
+    const cita = p.citaId ? await uno<any>(env, 'citas', p.citaId) : null;
+    const cancelada = !!cita && cita.estado === 'pendiente' && !cita.anticipoConfirmado;
+    if (cancelada) await guardar(env, 'citas', [{ ...cita, estado: 'cancelada', canceladaPor: 'sistema', canceladaEn: marca }]);
+    await avisar(p, 'vencido', `Venció sin pago: ${await quien(p)}`, `${pesos(p.total)}${p.items.length ? ` (${productos(p)})` : ''}. `
+      + `${cancelada ? `Su cita del ${fechaLegible(cita.fecha)} a las ${cita.hora} se canceló y el horario quedó libre. ` : ''}${p.items.length ? 'Los productos volvieron a la venta.' : ''}`);
+  }
+  for (const visto of noRecogidos) {
+    const p = await sigue(visto);
+    if (!p) continue;
+    nNoRecogidos++;
+    // Política de pedidos: pasados 10 días, lo pagado queda como saldo a favor (abono con id fijo: nunca se duplica)
+    await guardar(env, 'movimientosSaldo', [{ id: `sal_pedido_${p.id}`, clienteId: p.clienteId, fecha: marca, monto: p.totalProductos,
+      concepto: `Productos pagados que no se recogieron en 10 días (${productos(p)})`, realmId: p.realmId }]);
+    await guardar(env, 'pedidos', [{ ...p, estado: 'no_recogido', motivo: 'No lo recogió en 10 días' }]);
+    await avisar(p, 'no_recogido', `No recogió su pedido: ${await quien(p)}`, `${productos(p)}: volvió a la venta y ${pesos(p.totalProductos)} quedaron como su saldo a favor.`);
+  }
+  return { vencidos: nVencidos, noRecogidos: nNoRecogidos };
 }
 
 const HORA = 3600 * 1000;

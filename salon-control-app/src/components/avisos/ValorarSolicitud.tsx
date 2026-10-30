@@ -27,6 +27,7 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
   const [anticipo, setAnticipo] = useState(0);
   const [forma, setForma] = useState<Forma>('transferencia');
   const [recibido, setRecibido] = useState(false);
+  const [resumen, setResumen] = useState('');   // «Lo que haremos»: lo ve y lo acepta la clienta en «Mi cita»
   const [mensaje, setMensaje] = useState('');
   const [editado, setEditado] = useState(false);
   const faltas = useFaltas(cita?.clienteId);
@@ -39,13 +40,14 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
     setAnticipo(cita.montoAnticipo ?? servicio.anticipoSugerido ?? 0);
     setForma(cita.formaAnticipo ?? ((cita.montoAnticipo ?? servicio.anticipoSugerido) ? 'transferencia' : 'sin'));
     setRecibido(!!cita.anticipoConfirmado);
+    setResumen(cita.resumenClienta ?? '');
   }, [cita?.id, servicio?.id]);
 
   const sugerido = useMemo(() => {
     if (!cita || !servicio) return '';
     const nombre = (cliente?.nombre || '').split(' ')[0];
     const base = `¡Hola, ${nombre}! Ya revisamos tu solicitud de ${servicio.nombre} para el ${fechaLarga(cita.fecha)} a las ${cita.hora}. El precio de tu servicio es ${formatCurrency(precio)}.`;
-    const miCita = cita.enlace ? `\n\nTu cita, siempre al día (y para cambiarla o cancelarla tú misma): ${urlMiCita(cita.id, cita.enlace)}` : '';
+    const miCita = cita.enlace ? `\n\nRevisa el resumen y acéptalo aquí (ahí también la cambias o cancelas tú misma): ${urlMiCita(cita.id, cita.enlace)}` : '';
     if (forma === 'transferencia' || forma === 'deposito')
       return `${base}\n\nPara confirmar tu cita, el anticipo es de ${formatCurrency(anticipo)} por ${forma === 'deposito' ? 'depósito' : 'transferencia'}:\n${datosPago || '(faltan los datos para el anticipo en Configuración → General)'}\n\nMándanos tu comprobante por aquí y tu cita queda confirmada. Cambios o cancelaciones con al menos 48 horas.${miCita}`;
     if (forma === 'salon') return `${base}\n\nTu cita queda confirmada. El anticipo de ${formatCurrency(anticipo)} lo pagas en el salón el día de tu cita. Cambios o cancelaciones con al menos 48 horas.${miCita}`;
@@ -55,9 +57,12 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
 
   if (!cita) return null;
   const pideAnticipo = forma === 'transferencia' || forma === 'deposito';
+  const montoFinal = forma === 'incluido' || forma === 'sin' ? 0 : anticipo;
+  // Si cambia lo que la clienta ya aceptó (precio, anticipo o resumen), tiene que volver a aceptarlo
+  const cambioLoAceptado = !!cita.aceptacion && (cita.aceptacion.precio !== precio || cita.aceptacion.anticipo !== montoFinal || cita.aceptacion.resumen !== resumen.trim());
   const guardar = (extra: Partial<Cita> = {}) => db.citas.update(citaId, {
-    precioAcordado: precio, montoAnticipo: forma === 'incluido' || forma === 'sin' ? 0 : anticipo, formaAnticipo: forma,
-    anticipoConfirmado: pideAnticipo ? recibido : cita.anticipoConfirmado, ...extra
+    precioAcordado: precio, montoAnticipo: montoFinal, formaAnticipo: forma, resumenClienta: resumen.trim() || undefined,
+    anticipoConfirmado: pideAnticipo ? recibido : cita.anticipoConfirmado, ...(cambioLoAceptado ? { aceptadaEn: undefined } : {}), ...extra
   });
   const whatsapp = enlaceWhatsApp(cliente?.telefono, mensaje);
   const v = cita.valoracion;
@@ -107,6 +112,12 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
             <label className="col-span-2 flex items-center gap-2"><input type="checkbox" checked={recibido} onChange={e => setRecibido(e.target.checked)} /> Ya recibimos el anticipo</label>
           )}
         </div>
+
+        <label className="block text-sm">Lo que haremos <span className="text-xs text-gray-500">(lo ve y lo acepta la clienta en su enlace)</span>
+          <textarea value={resumen} onChange={e => setResumen(e.target.value)} rows={2} placeholder="Ej.: retoque de raíz con matiz frío y corte de puntas" className="mt-1 w-full rounded border p-2 text-sm" />
+          {cita.aceptadaEn && !cambioLoAceptado && <span className="text-xs text-green-700">La clienta ya aceptó este resumen.</span>}
+          {cambioLoAceptado && <span className="text-xs text-amber-700">Cambió lo que aceptó: tendrá que volver a aceptarlo.</span>}
+        </label>
 
         <label className="block text-sm">Mensaje para la clienta
           <textarea value={mensaje} onChange={e => { setMensaje(e.target.value); setEditado(true); }} rows={8} className="mt-1 w-full rounded border p-2 text-sm" />

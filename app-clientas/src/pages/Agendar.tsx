@@ -5,8 +5,10 @@ import Encabezado from '@/components/Encabezado'
 import { NOMBRE_CLUB, POLITICAS_RESERVA, enlaceWhatsApp, nombreCategoria, pesos, type Servicio } from '@/salon'
 import { reducirFoto } from '@/fotos'
 import { fechaCumple } from '@/components/UnirmeClub'
-import { crearCita, disponibilidad, guardarCita, misDatos, olvidarDatos, pedirCodigo, recordarDatos, serviciosEnLinea, sesion, verificarCodigo, type DiaLibre } from '@/api'
+import { citasGuardadas, crearCita, disponibilidad, guardarCita, misDatos, olvidarDatos, pedirCodigo, recordarDatos, serviciosEnLinea, sesion, verificarCodigo, type DiaLibre } from '@/api'
 import ElegirHorario from '@/components/ElegirHorario'
+import { leerCarrito, paraApartar, totalCarrito, vaciarCarrito } from '@/carrito'
+import Ventana from '@/components/Ventana'
 import NoSoyRobot, { conTurnstile } from '@/components/NoSoyRobot'
 import { useEnVivo } from '@/vivo'
 
@@ -18,6 +20,53 @@ const ORDEN = ['color', 'corte', 'tratamiento', 'maquillaje', 'peinado']   // el
 const categoriasDe = (lista: Servicio[]) => [...new Set(lista.map(s => s.categoria))].sort((a, b) => (ORDEN.indexOf(a) + 1 || 99) - (ORDEN.indexOf(b) + 1 || 99))
 
 const horas = (min: number) => min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ''}` : `${min} min`
+
+/** Vista previa antes de pedir: la clienta revisa y acepta lo que pide (servicio, día y hora, precio «desde», anticipo
+ *  y políticas). La API guarda la constancia (`politicasAceptadas`). */
+function VistaPrevia({ servicio, fecha, hora, nombre, telefono, valoracion, onAceptar, onCerrar }: {
+  servicio: Servicio; fecha: string; hora: string; nombre: string; telefono: string; valoracion: boolean; onAceptar: () => void; onCerrar: () => void
+}) {
+  const dia = new Date(`${fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
+  // Si en este teléfono ya pidió ese servicio, mejor cambiar esa cita que pedir otra
+  const ya = citasGuardadas().find(c => c.servicio === servicio.nombre && c.fecha >= new Date().toLocaleDateString('en-CA'))
+  const renglon = 'flex gap-4 border-b border-marca-linea/70 py-3 last:border-0'
+  const carrito = leerCarrito()
+  return (
+    <Ventana onCerrar={onCerrar}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="rotulo">Revisa tu solicitud</p>
+            <h2 className="titulo mt-1 text-3xl">{servicio.nombre}</h2>
+          </div>
+          <button onClick={onCerrar} aria-label="Cerrar" className="p-2 text-marca-gris"><X size={18} strokeWidth={1.5} /></button>
+        </div>
+        <div className="mt-4 text-sm">
+          <div className={renglon}><span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Cuándo</span><span className="text-marca-negro">{dia.charAt(0).toUpperCase() + dia.slice(1)} a las {hora}</span></div>
+          <div className={renglon}><span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Precio</span>
+            <span className="text-marca-negro">Desde {pesos(servicio.precio)}<span className="block text-marca-gris">{valoracion ? 'Con tus fotos y respuestas Cristina te confirma el precio final antes de tu cita.' : 'Cristina te confirma el precio final antes de tu cita.'}</span></span></div>
+          <div className={renglon}><span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Anticipo</span>
+            <span className="text-marca-negro">{servicio.anticipo > 0 ? <>{pesos(servicio.anticipo)} para apartar<span className="block text-marca-gris">Te pasamos cómo pagarlo al confirmar. En la app no se cobra nada.</span></> : 'Sin anticipo'}</span></div>
+          {carrito.length > 0 && (
+            <div className={renglon}><span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Productos</span>
+              <span className="text-marca-negro">{carrito.map(i => `${i.cantidad} × ${i.nombre}`).join(', ')} · {pesos(totalCarrito(carrito))}
+                <span className="block text-marca-gris">Se apartan con tu cita y los pagas junto con tu anticipo: cuando Cristina la confirme tendrás 48 horas para pagar (y nunca después de 48 horas antes de tu cita). Si no, tu cita y tus productos se liberan solos.</span></span></div>
+          )}
+          <div className={renglon}><span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">A nombre de</span><span className="min-w-0 break-words text-marca-negro">{nombre || '—'} · {telefono || '—'}</span></div>
+        </div>
+        <ul className="mt-3 list-disc space-y-1 border-l border-marca-dorado pl-7 text-xs leading-relaxed text-marca-gris">
+          {POLITICAS_RESERVA.map(p => <li key={p}>{p}</li>)}
+        </ul>
+        {ya && (
+          <p className="mt-4 rounded-sm bg-marca-marfil p-3 text-xs leading-relaxed text-marca-grafito">
+            Ya pediste {servicio.nombre} para el {new Date(`${ya.fecha}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })} desde este teléfono.
+            Si quieres otro día u hora, <Link to={`/cita/${ya.ref}`} className="underline">cámbiala en «Mi cita»</Link> en vez de pedir otra.
+          </p>
+        )}
+        <button onClick={onAceptar} className="boton mt-5 w-full">Acepto y pido mi cita</button>
+        <button onClick={onCerrar} className="mt-2 w-full py-3 text-[11px] uppercase tracking-[0.2em] text-marca-gris">Cambiar algo</button>
+    </Ventana>
+  )
+}
 
 export default function Agendar() {
   // Catálogo vivo de CB Control (nombres y precios de hoy). Si la API falla no se muestra uno viejo: se ofrece WhatsApp
@@ -33,6 +82,7 @@ export default function Agendar() {
   // Clienta que ya agendó en este celular: sus datos van en un renglón (sin volver a escribirlos) y su último servicio a un toque
   const [editandoDatos, setEditandoDatos] = useState(() => !(misDatos().nombre && misDatos().telefono))
   const [recordar, setRecordar] = useState(true)
+  const [revisando, setRevisando] = useState(false)   // vista previa: la clienta acepta el resumen antes de pedir
   const ultimo = catalogo?.find(s => s.id === datos.ultimoServicio)
   // «Agendar otra vez» desde Inicio llega con ?servicio=<id>: se elige solo en cuanto carga el catálogo
   const [params] = useSearchParams()
@@ -91,12 +141,13 @@ export default function Agendar() {
 
   const enviar = async () => {
     if (!elegido || !hora) return
-    setEnviando(true); setError('')
+    setRevisando(false); setEnviando(true); setError('')
     try {
-      const r = await crearCita({ servicioId: elegido.id, fecha, hora, ...datos, notas, club, sitio: trampa, turnstile: robot,
+      const carrito = leerCarrito()
+      const r = await crearCita({ servicioId: elegido.id, fecha, hora, ...datos, notas, club, sitio: trampa, turnstile: robot, acepta: true, productos: paraApartar(carrito),
         ...(pideValoracion ? { valoracion: cabello, fotos } : {}) })
       if (recordar) recordarDatos({ ...datos, ultimoServicio: elegido.id }); else olvidarDatos()
-      if (r.cita.enlace) guardarCita({ ref: r.cita.enlace, fecha: r.cita.fecha, hora: r.cita.hora, servicio: r.cita.servicio })
+      if (r.cita.enlace) { guardarCita({ ref: r.cita.enlace, fecha: r.cita.fecha, hora: r.cita.hora, servicio: r.cita.servicio }); vaciarCarrito() }
       setLista(r.cita)
       setReto('')
       otroRobot()
@@ -293,13 +344,6 @@ export default function Agendar() {
               </label>
             )}
             <input className="hidden" tabIndex={-1} autoComplete="off" value={trampa} onChange={e => setTrampa(e.target.value)} aria-hidden="true" />
-            <div className="border-l border-marca-dorado pl-3 text-xs leading-relaxed text-marca-gris">
-              <p className="rotulo mb-1">Políticas de reserva</p>
-              <ul className="list-disc space-y-1 pl-4">
-                {POLITICAS_RESERVA.map(p => <li key={p}>{p}</li>)}
-                {elegido.anticipo > 0 && <li>Anticipo de este servicio: {pesos(elegido.anticipo)}.</li>}
-              </ul>
-            </div>
             {reto && (
               <div className="space-y-3 rounded-sm bg-marca-marfil p-4">
                 <p className="text-sm leading-relaxed text-marca-grafito">Te mandamos un código por WhatsApp al {datos.telefono}. Escríbelo para apartar tu horario.</p>
@@ -313,13 +357,18 @@ export default function Agendar() {
               ? <button onClick={confirmarTelefono} disabled={enviando || codigo.length !== 6} className="boton w-full disabled:opacity-40">
                   {enviando ? 'Confirmando…' : `Confirmar y apartar ${hora}`}
                 </button>
-              : <button onClick={enviar} disabled={enviando || !hora || (conTurnstile && !robot && !sesion())} className="boton w-full disabled:opacity-40">
+              : <button onClick={() => setRevisando(true)} disabled={enviando || !hora || (conTurnstile && !robot && !sesion())} className="boton w-full disabled:opacity-40">
                   {enviando ? 'Enviando…' : !hora ? 'Elige día y hora' : conTurnstile && !robot && !sesion() ? 'Verificando…' : `Pedir ${hora}`}
                 </button>}
             {(error || (dias === null && !cargando)) && (
               <a href={enlaceWhatsApp(mensajeWhatsApp)} className="boton-claro w-full"><MessageCircle size={16} strokeWidth={1.5} /> Mejor por WhatsApp</a>
             )}
           </section>
+        )}
+
+        {revisando && elegido && (
+          <VistaPrevia servicio={elegido} fecha={fecha} hora={hora} nombre={datos.nombre} telefono={datos.telefono} valoracion={pideValoracion}
+            onAceptar={enviar} onCerrar={() => setRevisando(false)} />
         )}
 
         {lista && (

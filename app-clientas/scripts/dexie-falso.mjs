@@ -1,6 +1,7 @@
 // Dexie Cloud falso para probar la API en local (npm run dexie:falso, puerto 8799) junto con npm run api:local.
 // Datos en memoria: una clienta, una cita y un consentimiento por firmar en /#/firmar/firma_00000000000000000000000000000001
 // La cita se ve, cambia y cancela en /#/cita/c1.00000000000000000000000000000001 («Mi cita»)
+// Productos «en la app» para «Mi carrito» en /#/productos
 import { createServer } from 'node:http';
 
 const pronto = new Date(Date.now() + 7 * 86400000).toISOString();
@@ -18,7 +19,12 @@ const tablas = {
   citas: [{ id: 'c1', clienteId: 'k1', servicioId: 's1', fecha: new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10), hora: '10:00', estado: 'confirmada',
     montoAnticipo: 300, anticipoConfirmado: true, precioAcordado: 2700, formaAnticipo: 'transferencia', enlace: '00000000000000000000000000000001', realmId: 'rlm-local' }],
   consentimientos: [{ id: 'firma_00000000000000000000000000000001', clienteId: 'k1', citaId: 'c1', estado: 'pendiente', vence: pronto, fotos: false, redes: 'no', fecha: new Date().toISOString(), realmId: 'rlm-local' }],
-  empleados: [], empleadoEvents: [], avisos: [], ventas: [], movimientosSaldo: []
+  inventario: [
+    { id: 'p1', nombre: 'Shampoo morado', precio: 450, cantidad: 5, enApp: true, descripcionApp: 'Matiza el amarillo en rubios y canas.' },
+    { id: 'p2', nombre: 'Aceite de argán', precio: 380, cantidad: 2, enApp: true },
+    { id: 'p3', nombre: 'Café americano', precio: 40, cantidad: 30, categoria: 'Break' }
+  ],
+  empleados: [], empleadoEvents: [], avisos: [], ventas: [], movimientosSaldo: [], pedidos: []
 };
 
 for (const filas of Object.values(tablas)) for (const f of filas) f.realmId ??= 'rlm-local';   // la API solo lee el realm del salón

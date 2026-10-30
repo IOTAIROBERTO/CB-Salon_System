@@ -7,6 +7,7 @@ import VentasSearch from '../components/ventas/VentasSearch';
 import VentasList from '../components/ventas/VentasList';
 import VentaModal from '../components/ventas/VentaModal';
 import TarjetasRegalo from '../components/ventas/TarjetasRegalo';
+import PedidosApp from '../components/ventas/PedidosApp';
 
 export default function VentasPage() {
   // Custom hooks
@@ -35,6 +36,8 @@ export default function VentasPage() {
         </div>
         <AddVentaButton onAdd={openModal} />
       </div>
+
+      <PedidosApp />
 
       <TarjetasRegalo />
 

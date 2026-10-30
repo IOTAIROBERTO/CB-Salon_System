@@ -3,6 +3,7 @@
 // «no llegó» libera la agenda y el anticipo que se queda el salón cuenta como ingreso. Dexie Cloud simulado con fetch.
 import assert from 'node:assert/strict';
 import { atender } from '../api/salon';
+import { firmar } from '../api/sesion';
 import { ingresoCita } from '../../salon-control-app/src/utils/reportUtils';
 
 const HORA = 3600 * 1000;
@@ -14,9 +15,10 @@ const lejos = diaHabil(5), otroLejos = diaHabil(Math.round((Date.parse(`${lejos}
 
 const tablas: Record<string, any[]> = {
   configuracion: [{ id: 'settings', datosPago: 'BBVA 0123 4567' }],
-  servicios: [{ id: 's1', nombre: 'Corte de cabello', categoria: 'corte', precioSugerido: 500, anticipoSugerido: 150, duracion: 60 }],
+  servicios: [{ id: 's1', nombre: 'Corte de cabello', categoria: 'corte', precioSugerido: 500, anticipoSugerido: 150, duracion: 60 },
+    { id: 's2', nombre: 'Peinado', categoria: 'peinado', precioSugerido: 800, anticipoSugerido: 200, duracion: 60 }],
   clientes: [{ id: 'k1', nombre: 'Laura Pérez Soto', telefono: '6621234567' }],
-  empleados: [], empleadoEvents: [], citas: [], avisos: [], fotos: [], movimientosSaldo: []
+  empleados: [], empleadoEvents: [], citas: [], avisos: [], fotos: [], movimientosSaldo: [], pedidos: [], inventario: []
 };
 for (const filas of Object.values(tablas)) for (const f of filas) f.realmId ??= 'r';
 globalThis.fetch = (async (entrada: any, init: any = {}) => {
@@ -104,5 +106,63 @@ assert.deepEqual([v.estado, v.anticipoPerdido, v.anticipoASaldo], ['cancelada', 
 assert.equal(tablas.movimientosSaldo.length, 1);
 assert.equal(ingresoCita(cita('tarde')), 200);
 assert.equal(ingresoCita({ ...cita('tarde'), estado: 'no_llego', anticipoPerdido: undefined }), 0);   // sin anticipo pagado, nada
+
+// 7. No se aparta dos veces (el mismo servicio, u otro que se cruza con su horario) con su teléfono verificado: se le dice
+// por qué. Sin verificar no se revisa: cualquier respuesta distinta revelaría citas de un número ajeno (quedan los topes).
+const espera = () => new Promise(r => setTimeout(r, 5100));   // candado de 5 s por cita entre escrituras
+const eva = { nombre: 'Eva Díaz', telefono: '6625551234', servicioId: 's1', fecha: lejos, hora: '16:00' };
+const e1 = await (await pedir('citas', { ...eva, acepta: true })).json();
+assert.ok(e1.cita.enlace && cita(e1.cita.id).politicasAceptadas);   // constancia de que aceptó resumen y políticas
+const sesion = await firmar({ tipo: 'sesion', tel: '6625551234', vence: Date.now() + 3600000 }, 'secreto');
+const verificada = (cuerpo: object) => atender(new Request('https://app/api/citas', { method: 'POST', body: JSON.stringify({ ...eva, ...cuerpo }),
+  headers: { Authorization: `Bearer ${sesion}`, 'CF-Connecting-IP': `10.3.0.${++ip}` } }), { ...env, SESION_SECRETO: 'secreto' }, ctx);
+const mismo = await verificada({ hora: '18:00' });
+assert.equal(mismo.status, 409);
+assert.match((await mismo.json()).error, /Ya tienes una cita de Corte de cabello/);
+tablas.empleados.push({ id: 'e1', nombre: 'Ana', activo: true, tomaCitas: true, realmId: 'r' });   // otra persona libre a esa hora
+const cruza = await verificada({ servicioId: 's2', hora: '16:30' });
+assert.equal(cruza.status, 409);
+assert.match((await cruza.json()).error, /Ya tienes una cita de Corte de cabello/);
+tablas.empleados = [];
+assert.equal(tablas.citas.filter(c => c.clienteId === cita(e1.cita.id).clienteId).length, 1);
+// Sin verificar: misma respuesta que cualquier cita (aquí sí se aparta; la limitan los topes por teléfono)
+const sinVerificar = await (await pedir('citas', { ...eva, hora: '17:30' })).json();
+assert.ok(sinVerificar.cita.enlace);
+tablas.citas = tablas.citas.filter(c => c.id !== sinVerificar.cita.id);
+// Un servicio distinto en otro horario sí se aparta
+assert.ok((await (await pedir('citas', { ...eva, servicioId: 's2', fecha: otroLejos, hora: '10:00' })).json()).cita.enlace);
+
+// 8. Antes de que Cristina la valore puede cambiar de servicio (en vez de pedir otra cita); después, ya no
+const refEva = e1.cita.enlace, idEva = e1.cita.id;
+v = await (await pedir(`cita/${refEva}`)).json();
+assert.deepEqual([v.puedeCambiarServicio, v.porAceptar], [true, false]);
+assert.equal((await pedir(`cita/${refEva}/reagendar`, { fecha: otroLejos, hora: '10:00', servicioId: 's2' })).status, 409);   // ya tiene Peinado
+tablas.citas = tablas.citas.filter(c => !(c.clienteId === cita(idEva).clienteId && c.servicioId === 's2'));
+v = await (await pedir(`cita/${refEva}/reagendar`, { fecha: lejos, hora: '16:00', servicioId: 's2' })).json();
+assert.deepEqual([v.servicioId, v.anticipo, cita(idEva).montoAnticipo], ['s2', 200, 200]);
+assert.ok(tablas.avisos.some(a => /Ahora pide Peinado \(antes Corte de cabello\)/.test(a.detalle)));
+
+// 9. Cristina valora: la clienta acepta el resumen (lo que se hará, precio final y anticipo). Con anticipo por
+// transferencia pendiente sigue por confirmar; si no falta anticipo, queda confirmada al aceptar. Una sola vez.
+Object.assign(cita(idEva), { precioAcordado: 950, montoAnticipo: 300, formaAnticipo: 'transferencia', resumenClienta: 'Peinado de graduación con ondas' });
+v = await (await pedir(`cita/${refEva}`)).json();
+assert.deepEqual([v.porAceptar, v.resumen, v.precio, v.anticipo, v.puedeCambiarServicio], [true, 'Peinado de graduación con ondas', 950, 300, false]);
+assert.equal((await pedir(`cita/${refEva}/reagendar`, { fecha: lejos, hora: '16:00', servicioId: 's1' })).status, 409);   // ya valorada
+await espera();
+// Si Cristina lo cambió mientras la clienta lo veía, no se acepta: lo revisa de nuevo
+const visto = { precio: 900, anticipo: 300, resumen: 'Peinado de graduación con ondas' };
+assert.equal((await pedir(`cita/${refEva}/aceptar`, visto)).status, 409);
+assert.equal(cita(idEva).aceptadaEn, undefined);
+v = await (await pedir(`cita/${refEva}/aceptar`, { ...visto, precio: 950 })).json();
+assert.deepEqual([v.estado, v.porAceptar, !!v.aceptadaEn], ['pendiente', false, true]);
+assert.deepEqual(cita(idEva).aceptacion.precio + cita(idEva).aceptacion.anticipo, 1250);
+assert.ok(tablas.avisos.some(a => /Aceptó su cita/.test(a.titulo) && /para pagar \$300/.test(a.detalle)));
+assert.equal(tablas.pedidos.find(p => p.citaId === idEva)?.anticipo, 300);   // el anticipo por transferencia, con su plazo
+assert.equal((await pedir(`cita/${refEva}/aceptar`, { ...visto, precio: 950 })).status, 409);   // ya aceptada
+const enSalon = { id: 'salon1', clienteId: 'k1', servicioId: 's1', fecha: lejos, hora: '18:00', estado: 'pendiente', precioAcordado: 500,
+  montoAnticipo: 150, formaAnticipo: 'salon', enlace: 'b'.repeat(32), realmId: 'r' };
+tablas.citas.push(enSalon);
+v = await (await pedir(`cita/salon1.${'b'.repeat(32)}/aceptar`, { precio: 500, anticipo: 150, resumen: '' })).json();
+assert.equal(v.estado, 'confirmada');
 
 console.log('micita ok');

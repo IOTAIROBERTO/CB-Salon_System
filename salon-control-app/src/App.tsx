@@ -3,8 +3,10 @@ import { useState, useEffect } from "react";
 import { loadEmailJS } from "./utils/emailJSLoader";
 import {
   BarChart3, BookOpen, CalendarCheck, CalendarDays, Crown, FileText, Image, LogOut, Megaphone, Menu, Package,
-  Receipt, Scissors, Settings, Users, Wallet, X, type LucideIcon
+  Receipt, Scissors, Settings, Sun, Users, Wallet, X, type LucideIcon
 } from "lucide-react";
+import HoyPage from "./pages/HoyPage";
+import BuscarGlobal from "./components/BuscarGlobal";
 import CitasPage from "./pages/CitasPage";
 import VentasPage from "./pages/VentasPage";
 import InventarioPage from "./pages/InventarioPage";
@@ -40,6 +42,7 @@ type Enlace = { to: string; label: string; Icono: LucideIcon };
 // Menú agrupado como se trabaja en el salón
 const SECCIONES: { titulo: string; enlaces: Enlace[] }[] = [
   { titulo: "Agenda", enlaces: [
+    { to: "/hoy", label: "Hoy", Icono: Sun },
     { to: "/citas", label: "Citas", Icono: CalendarCheck },
     { to: "/calendario", label: "Calendario", Icono: CalendarDays },
   ] },
@@ -116,12 +119,14 @@ function Marco() {
   const menu = (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between pb-8 pl-6 pr-3 pt-7">
-        <Link to="/citas" className="flex items-center gap-3" title="Cristina Borquez Beauty Salon">
+        <Link to="/hoy" className="flex items-center gap-3" title="Cristina Borquez Beauty Salon">
           <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-10 w-auto" />
           <span className="font-display text-2xl leading-none text-white">CB <em className="text-marca-dorado">Control</em></span>
         </Link>
         <span className="hidden items-center gap-1 lg:flex"><EstadoSync /><Bandeja /></span>
       </div>
+      {/* Buscador solo en la barra lateral de computadora: en el celular va la lupa de la barra de arriba */}
+      <div className="hidden px-3 pb-6 lg:block"><BuscarGlobal variante="barra" /></div>
       <nav className="flex-1 space-y-7 overflow-y-auto px-3 pb-6">
         {secciones.map(s => (
           <div key={s.titulo}>
@@ -163,12 +168,13 @@ function Marco() {
       {/* Barra superior y cajón en celular y tableta. Sin backdrop-blur: haría que la campana y «Valorar» (fixed, dentro
           de la barra) midieran lo que la barra y se vieran transparentes encima de la página */}
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-marca-dorado/20 bg-marca-negro px-4 text-white lg:hidden">
-        <Link to="/citas" className="flex items-center gap-2.5">
+        <Link to="/hoy" className="flex items-center gap-2.5">
           <img src="./marca/CB_monograma_dorado.svg" alt="" className="h-8 w-auto" />
           <span className="text-[11px] uppercase tracking-[0.26em] text-marca-champan">{actual?.label ?? "CB Control"}</span>
         </Link>
         <div className="flex items-center gap-1">
           <EstadoSync />
+          <BuscarGlobal />
           <Bandeja />
           <button onClick={() => setMenuAbierto(true)} className="rounded-md p-2 hover:bg-white/10" aria-label="Abrir menú">
             <Menu size={22} strokeWidth={1.5} />
@@ -191,7 +197,8 @@ function Marco() {
           <div className="mx-auto max-w-7xl">
             <AvisoInstalar />
             <Routes>
-              <Route path="/" element={<Navigate to="/citas" replace />} />
+              <Route path="/" element={<Navigate to="/hoy" replace />} />
+              <Route path="/hoy" element={<HoyPage />} />
               <Route path="/citas" element={<CitasPage />} />
               <Route path="/calendario" element={<CalendarioPage />} />
               <Route path="/ventas" element={<VentasPage />} />

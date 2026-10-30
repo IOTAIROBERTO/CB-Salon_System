@@ -34,8 +34,13 @@ export interface Cita {
   ubicacion?: string; // sin valor o 'salon' = en el salón; si no, id de zona (utils/zonas)
   atiendeId?: string; // quién la atiende ('cristina' o id de empleado)
   anticipoPerdido?: number; // anticipo que se queda el salón (canceló tarde o no llegó)
+  precioAcordado?: number; // precio que Cristina confirmó al valorar (el de catálogo es «desde»)
+  formaAnticipo?: 'transferencia' | 'deposito' | 'salon' | 'incluido' | 'sin';
+  origen?: 'app' | 'bot';
+  recordatorio?: string; // ISO: ya se le recordó la cita (WhatsApp oficial o a mano desde «Hoy»)
+  aceptadaEn?: string; // ISO: la clienta aceptó en «Mi cita» el resumen, precio final y anticipo
   anticipoASaldo?: number; // anticipo que pasó a su saldo a favor (canceló con 48 h o más)
-  canceladaPor?: 'clienta' | 'salon';
+  canceladaPor?: 'clienta' | 'salon' | 'sistema';
   reagendadaEn?: string; // ISO: la clienta la cambió desde «Mi cita»
   enlace?: string; // secreto del enlace «Mi cita» (db.ts)
 }

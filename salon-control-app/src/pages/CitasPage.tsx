@@ -1,5 +1,6 @@
 // src/pages/CitasPage.tsx - Sin funcionalidad de Email
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import useCitas from "../hooks/useCitas";
 import CitasStats from "../components/citas/CitasStats";
@@ -25,7 +26,13 @@ export default function CitasPage() {
     modalState,
   } = useCitas();
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const [params, setParams] = useSearchParams();
+  const [searchTerm, setSearchTerm] = useState(() => params.get("q") || "");
+  // Desde la búsqueda global llega ?q=…; desde la cita exprés, ?nueva=1 (abre «Nueva cita» completa)
+  useEffect(() => {
+    if (params.get("q")) setSearchTerm(params.get("q") || "");
+    if (params.get("nueva")) { openModal("create"); setParams({}, { replace: true }); }
+  }, [params]);
   const [vista, setVista] = useState<"lista" | "google">("lista");
   const [desdeGoogle, setDesdeGoogle] = useState<EventoGoogle | null>(null);   // evento de Google que se registra como cita
 

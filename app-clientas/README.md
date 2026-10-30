@@ -41,18 +41,20 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
 
 - **WhatsApp oficial** (falta `WA_TOKEN` y el número definitivo): activa la entrada con código, los avisos al salón y
   la confirmación y el recordatorio a las clientas (ya programados).
-- Anticipos con Mercado Pago, catálogo de productos y dominio `cristinaborquez.com`.
+- Pago en línea con Mercado Pago (anticipos y pedidos; el lugar ya está: `Pedido.mercadoPago` y forma de pago
+  `mercadopago`) y dominio `cristinaborquez.com`.
 
 ## API y automatización (Cloudflare)
 
 - **`/api`** (Pages Functions, misma dirección de la app): `servicios`, `disponibilidad`, `citas`, `club`, `acceso/codigo`,
   `acceso/verificar`, `mi-club`, `cita/<id>.<secreto>` (+ `/cancelar`, `/reagendar`: «Mi cita», pantalla `#/cita/<enlace>`, ver
-  abajo), `firma/<id>` (consentimiento con enlace personal que crea CB Control; pantalla `#/firmar/<id>`,
+  abajo), `productos` y `pedidos` («Mi carrito»), `pedido/<id>.<secreto>` (+ `/cancelar`: «Mi pedido», pantalla `#/pedido/<enlace>`), `firma/<id>` (consentimiento con enlace personal que crea CB Control; pantalla `#/firmar/<id>`,
   sin entrar al Club). Código en `api/` y `functions/api/`. Lee y escribe la base de CB Control (Dexie Cloud).
 - **`avisos/`**: Worker `cb-avisos` que corre cada 10 minutos y manda por WhatsApp la confirmación de la cita (cuando el
   salón la confirma en CB Control) y el recordatorio del día anterior; cada minuto manda al celular del salón cada aviso
   nuevo de la campana con Web Push (`api/push.ts`: los dispositivos que activaron los avisos en CB Control, tabla
-  `suscripciones`) y copia las citas a Google Calendar. Publicar: `npx wrangler deploy --config avisos/wrangler.toml`.
+  `suscripciones`) y copia las citas a Google Calendar. Cada 10 minutos también vence los pedidos sin pago (y su cita, si no tenía
+  anticipo confirmado) y pasa a saldo a favor los pagados que no se recogieron en 10 días. Publicar: `npx wrangler deploy --config avisos/wrangler.toml`.
 - **Secretos** (Cloudflare, nunca en el repo), en el proyecto de Pages `cristinaborquez-app` y en el Worker `cb-avisos`:
   `DEXIE_CLIENT_ID`, `DEXIE_CLIENT_SECRET`, `SESION_SECRETO` (solo Pages), `WA_TOKEN`, `WA_PHONE_ID`, `WA_AVISOS`
   (números del salón que reciben avisos, separados por coma, con 52 adelante), `GOOGLE_CUENTA_SERVICIO`, `GOOGLE_CALENDARIO`,
@@ -69,13 +71,31 @@ Falta el dominio propio: cuando se compre `cristinaborquez.com`, en el proyecto 
   Google simulado: `npx esbuild scripts/google.check.ts --bundle --platform=node --format=esm --log-level=warning | node --input-type=module`.
   Web Push (cifrado contra el vector del RFC 8291, VAPID y avisos de la campana): igual con `scripts/push.check.ts`.
   «Mi cita» (ver, cambiar, cancelar, saldo a favor, «no llegó»): `scripts/micita.check.ts`; en local, `/#/cita/c1.00000000000000000000000000000001`.
+  «Mi carrito» (apartar, plazos, vencer, no recogido): `scripts/pedidos.check.ts`; en local, `/#/productos` (dos productos de prueba).
 - **«Mi cita»**: cada cita tiene un enlace personal (`<id>.<secreto>`; el secreto vive en `cita.enlace`). Lo da la app al
   agendar («Ver mi cita», y queda en Inicio como «Tu próxima cita») y CB Control lo pone en la nota de reserva y en el
   WhatsApp de Valorar. La clienta ve estado, precio, anticipo (con datos de pago si falta) y dirección, la agrega a su
   calendario, y la cambia (con 48 h o más, horarios reales) o la cancela sola: con 48 h o más su anticipo pagado pasa a
   saldo a favor; con menos se queda como anticipo perdido. Nunca muestra su teléfono ni su apellido.
+- **Vista previa y aceptación**: antes de pedir, la clienta revisa y acepta servicio, día y hora, precio «desde», anticipo
+  y políticas (la cita guarda `politicasAceptadas`). Cuando Cristina valora (precio final, anticipo y «Lo que haremos»),
+  «Mi cita» le abre el resumen para aceptarlo (`/aceptar`, queda `aceptacion` como constancia); si no falta anticipo por
+  transferencia, la cita queda confirmada al aceptar. Si Cristina cambia lo aceptado, la clienta lo vuelve a aceptar.
+- **Una cita por servicio**: con su teléfono verificado no se aparta el mismo servicio dos veces ni un horario que se
+  cruza con otra cita suya (se le dice por qué). Sin verificar no se revisa: cualquier respuesta distinta revelaría citas
+  de un número ajeno; ahí quedan los topes por teléfono, y con el WhatsApp oficial todas se verifican. Antes de la
+  valoración puede cambiar de servicio en «Mi cita» en vez de pedir otra cita. Al aceptar, la app manda lo que vio
+  (precio, anticipo y resumen): si Cristina lo cambió mientras tanto, se rechaza y lo vuelve a revisar.
 - **Reservar rápido**: con su permiso, el celular recuerda nombre, teléfono y último servicio («Lo de siempre»: servicio,
   hora y «Pedir»). «Recordar mis datos» se puede quitar al agendar.
+- **«Mi carrito»**: en Productos salen los del Inventario marcados «en la app» en CB Control, con lo disponible en vivo
+  (existencia menos lo apartado). La clienta los aparta con su cita (se pagan junto con el anticipo; el plazo empieza
+  cuando acepta la valoración) o solos para recoger en el salón (plazo desde que acepta). Reglas en
+  `salon-control-app/src/utils/pedidos.ts`: 48 h para pagar y nunca después de 48 h antes de la cita (mínimo 2 h y
+  nunca después de 2 h antes); sin pago, el Worker lo vence y lo apartado vuelve a la venta (pagar después ya no aparta);
+  pagado se guarda 10 días y después vuelve a la venta y el pago queda como saldo a favor. Lo apartado no se puede vender
+  en el salón (CB Control lo descuenta en Ventas). El precio siempre lo pone el Inventario, nunca la app. Pago manual por
+  ahora: el salón marca «Llegó el pago» en Ventas → Pedidos de la app.
 
 ## Google Calendar (`api/google.ts`)
 

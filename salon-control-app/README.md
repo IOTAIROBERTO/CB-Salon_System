@@ -22,7 +22,18 @@ La galería pública vive en `/galeria/` y la página de reseñas en `/resenas/`
 
 - Es una PWA (`public/manifest.webmanifest`, `public/sw.js`): se instala desde Chrome (Android o computadora: aviso
   «Instalar» arriba de cada pantalla) o desde Safari en iPhone (Compartir → Agregar a pantalla de inicio). Abre en
-  pantalla completa en Citas. El service worker es «red primero» y nunca toca Dexie Cloud ni `/api`.
+  pantalla completa en «Hoy». El service worker es «red primero» y nunca toca Dexie Cloud ni `/api`.
+- **Hoy** (`src/pages/HoyPage.tsx`, la pantalla de inicio): solicitudes por valorar, anticipos por recibir («Recibido» la
+  confirma), citas del día con su siguiente paso (Iniciar → Cobrar, «No llegó»), recordatorio de mañana por WhatsApp con
+  el enlace «Mi cita» y cumpleañeras; la dueña ve lo cobrado hoy.
+- **Cobro exprés** (`components/hoy/CobroExpres.tsx`, `utils/cobro.ts`): precio acordado (o de catálogo) menos el
+  anticipo recibido; tocar el método cobra y guarda lo mismo que el cobro completo sin cambios (prueba:
+  `scripts/cobro.check.ts`). El cobro completo también parte del precio acordado al valorar.
+- **Nueva cita exprés** (`components/hoy/CitaExpres.tsx`): clienta por nombre o teléfono (un teléfono ya registrado usa
+  su ficha), sus últimos servicios, Hoy/Mañana y primer horario libre; al guardar, nota por WhatsApp con «Mi cita».
+- **Búsqueda global** (`components/BuscarGlobal.tsx`): lupa en el celular, barra lateral en computadora, Ctrl+K o «/».
+  Clientas (ficha, nueva cita, WhatsApp), citas y folios de tarjetas de regalo. `/clientes?ficha=<id>` abre una ficha y
+  `/citas?q=…` filtra las citas.
 - Avisos con la app cerrada: campana → «Activar avisos» (en iPhone, iOS 16.4+ y con la app instalada). La suscripción
   queda en la tabla `suscripciones` y el Worker `cb-avisos` (`../app-clientas/avisos`) manda cada aviso nuevo de la campana
   y el recordatorio de citas sin confirmar. «Probar» crea un aviso de prueba que llega en menos de un minuto.
@@ -32,6 +43,11 @@ La galería pública vive en `/galeria/` y la página de reseñas en `/resenas/`
   cambia o cancela su cita (política de 48 h: anticipo a saldo a favor o perdido). «No llegó» en la cita del día libera
   la agenda y deja el anticipo como perdido; la tarjeta y Valorar avisan cuántas veces faltó. En Reportes, el anticipo
   que se queda el salón cuenta como ingreso.
+- Pedidos de la app («Mi carrito» de las clientas, `src/db/pedidos.ts`, reglas en `src/utils/pedidos.ts`): en Inventario,
+  el botón del celular pone un producto «en la app» (con descripción y foto). Lo que una clienta aparta (por pagar o
+  pagado) no se puede vender en el salón: Ventas e Inventario muestran solo lo disponible y `registrarVenta` lo vuelve a
+  revisar. Ventas → Pedidos de la app: «Llegó el pago» (pago manual; Mercado Pago tiene ya su lugar en `Pedido`),
+  «Entregado» (crea la venta) y cancelar. Los plazos (48 h para pagar, 10 días para recoger) los vence el Worker.
 - Tabla nueva en `src/db/db.ts` = registrarla en Dexie Cloud antes de publicar (`npx dexie-cloud export --schema`,
   agregarla, `npx dexie-cloud import`); si no, la sincronización se traba en silencio.
 
@@ -58,7 +74,7 @@ Pruebas de la lógica pura (agenda, Club, pagos, proveedores, saldo):
 npx esbuild scripts/agenda.check.ts --bundle --platform=node --log-level=warning | node
 ```
 
-(Cambia `agenda` por `lealtad`, `pagos`, `proveedores` o `saldo`.)
+(Cambia `agenda` por `cobro`, `lealtad`, `pagos`, `pedidos`, `proveedores` o `saldo`.)
 
 Tipos: `npx tsc -p tsconfig.app.json --noEmit` debe dar 0 errores (el despliegue corre `npx vite build`, que no
 los revisa). ESLint está pendiente: `eslint.config.js` es para ESLint 9 y el proyecto tiene instalado ESLint 8.

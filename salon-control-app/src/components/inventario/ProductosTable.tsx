@@ -1,4 +1,9 @@
-import { Edit, Trash2, Package } from 'lucide-react';
+import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Edit, Trash2, Package, Smartphone } from 'lucide-react';
+import { db } from '../../db/db';
+import { apartados } from '../../utils/pedidos';
+import ProductoEnApp from './ProductoEnApp';
 import { type Producto } from '../../types/inventario';
 import { getStockColor, estadoPrecio, margenPorcentaje } from '../../utils/inventarioUtils';
 import { formatCurrency } from '../../utils/financialUtils';
@@ -11,6 +16,9 @@ interface ProductosTableProps {
 }
 
 export default function ProductosTable({ productos, onEdit, onEditStock, onDelete }: ProductosTableProps) {
+  // Apartado en pedidos de la app: no se vende en la tienda hasta que se entregue o venza
+  const aparts = apartados(useLiveQuery(() => db.pedidos.toArray()) || []);
+  const [enApp, setEnApp] = useState<Producto | null>(null);
   const handleDelete = async (producto: Producto) => {
     const confirmed = await onDelete(producto.id);
     if (confirmed) {
@@ -49,7 +57,7 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
               <tr key={producto.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
-                    <div className="font-medium text-gray-900">{producto.nombre}</div>
+                    <div className="font-medium text-gray-900">{producto.nombre}{producto.enApp && <span className="ml-2 inline-block whitespace-nowrap rounded-full bg-marca-negro px-2 py-0.5 align-middle text-[10px] uppercase tracking-[0.14em] text-marca-dorado">En la app</span>}</div>
                     {producto.proveedor && (
                       <div className="text-sm text-gray-500">Proveedor: {producto.proveedor}</div>
                     )}
@@ -68,6 +76,11 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
                     <div className="text-xs text-gray-500 mt-1">
                       Mínimo: {producto.stockMinimo}
                     </div>
+                    {aparts[producto.id] > 0 && (
+                      <div className="text-xs text-amber-700 mt-1" title="Apartado en pedidos de la app: no se vende en la tienda">
+                        {aparts[producto.id]} apartado{aparts[producto.id] === 1 ? '' : 's'} · {Math.max(0, producto.cantidad - aparts[producto.id])} para venta
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap" data-label="Precio">
@@ -105,6 +118,13 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
                       <Package size={16} />
                     </button>
                     <button
+                      onClick={() => setEnApp(producto)}
+                      className="text-gray-700 hover:text-gray-900 p-1 hover:bg-gray-50 rounded"
+                      title="Venta en la app de clientas"
+                    >
+                      <Smartphone size={16} />
+                    </button>
+                    <button
                       onClick={() => onEdit(producto)}
                       className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
                       title="Editar producto"
@@ -125,6 +145,7 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
           </tbody>
         </table>
       </div>
+      {enApp && <ProductoEnApp producto={enApp} onClose={() => setEnApp(null)} />}
     </div>
   );
 }

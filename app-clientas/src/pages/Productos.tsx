@@ -1,15 +1,62 @@
-import { MessageCircle } from 'lucide-react'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { MessageCircle, Minus, Plus } from 'lucide-react'
 import Encabezado from '@/components/Encabezado'
 import { BENEFICIOS_NIVEL, CORTESIAS_SIEMPRE, NOMBRE_CLUB, NOMBRE_NIVEL, POLITICAS, enlaceWhatsApp, pesos } from '@/salon'
-import { useSalon } from '@/vivo'
+import { useEnVivo, useSalon } from '@/vivo'
 import { esComida } from '@salon/data/menuAntojos'
+import { miPedido, pedidosGuardados, productosApp, type PedidoVista, type ProductoApp } from '@/api'
+import { cambiarCantidad, useCarrito } from '@/carrito'
 
 // El menú del break sale de CB Control (data/menuAntojos.ts) con los precios en vivo del Inventario (categoría Break).
-// El catálogo de productos vendrá del inventario por la API; mientras, se pregunta por WhatsApp.
+// Los productos son los del Inventario marcados «en la app», con lo disponible en vivo (existencia menos lo apartado).
 const B = BENEFICIOS_NIVEL
+
+/** Pedidos de solo productos hechos en este celular que siguen abiertos (por pagar o por recoger) */
+function MisPedidos() {
+  const [abiertos, setAbiertos] = useState<{ ref: string; p: PedidoVista }[]>([])
+  useEnVivo(async () => {
+    const lista = await Promise.all(pedidosGuardados().slice(0, 3).map(ref => miPedido(ref).then(p => ({ ref, p })).catch(() => null)))
+    setAbiertos(lista.filter((x): x is { ref: string; p: PedidoVista } => !!x && (x.p.estado === 'por_pagar' || x.p.estado === 'pagado')))
+  })
+  return <>{abiertos.map(({ ref, p }) => (
+    <Link key={ref} to={`/pedido/${ref}`} className="tarjeta mt-4 flex items-center justify-between gap-3 text-sm">
+      <span><span className="rotulo block">Tu pedido · {p.estado === 'por_pagar' ? 'por pagar' : 'pagado, por recoger'}</span>{p.items.map(i => `${i.cantidad} × ${i.nombre}`).join(', ')}</span>
+      <span className="font-display text-xl text-marca-negro">{pesos(p.total)}</span>
+    </Link>
+  ))}</>
+}
+
+function Producto({ p, enCarrito }: { p: ProductoApp; enCarrito: number }) {
+  const item = { productoId: p.id, nombre: p.nombre, precio: p.precio, disponible: p.disponible }
+  return (
+    <div className="tarjeta flex gap-4 !p-4">
+      {p.foto ? <img src={p.foto} alt="" loading="lazy" className="h-24 w-24 shrink-0 rounded-sm object-cover" />
+        : <span className="flex h-24 w-24 shrink-0 items-center justify-center rounded-sm bg-marca-champan/50 font-display text-3xl text-marca-dorado-prof">{p.nombre[0]}</span>}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-marca-negro">{p.nombre}</p>
+        <p className="text-sm tabular-nums text-marca-negro">{pesos(p.precio)}</p>
+        {p.descripcion && <p className="mt-1 text-xs leading-relaxed text-marca-gris">{p.descripcion}</p>}
+        <p className="mt-1 text-xs text-marca-gris">{p.disponible === 0 ? 'Agotado por ahora' : p.disponible <= 3 ? `Quedan ${p.disponible}` : ''}</p>
+        {enCarrito ? (
+          <div className="mt-2 flex items-center gap-3">
+            <button onClick={() => cambiarCantidad(item, -1)} aria-label={`Quitar un ${p.nombre}`} className="flex h-10 w-10 items-center justify-center rounded-full border border-marca-linea"><Minus size={14} /></button>
+            <span className="tabular-nums">{enCarrito}</span>
+            <button onClick={() => cambiarCantidad(item, 1)} disabled={enCarrito >= p.disponible} aria-label={`Agregar un ${p.nombre}`} className="flex h-10 w-10 items-center justify-center rounded-full border border-marca-linea disabled:opacity-30"><Plus size={14} /></button>
+          </div>
+        ) : (
+          <button onClick={() => cambiarCantidad(item, 1)} disabled={!p.disponible} className="mt-2 min-h-[40px] text-[11px] uppercase tracking-[0.2em] text-marca-dorado-prof disabled:text-marca-gris/50">Agregar al carrito</button>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function Productos() {
   const MENU_ANTOJOS = useSalon().antojos
+  const [productos, setProductos] = useState<ProductoApp[] | null>(null)
+  useEnVivo(() => productosApp().then(setProductos).catch(() => setProductos(p => p ?? [])))   // lo disponible, en vivo
+  const carrito = useCarrito()
   const grupos = [...new Set(MENU_ANTOJOS.map(a => a.grupo))]
   return (
     <>
@@ -62,13 +109,23 @@ export default function Productos() {
         <section>
           <p className="rotulo">Cuidado en casa</p>
           <h2 className="titulo mt-1 text-3xl">Productos</h2>
-          <div className="tarjeta mt-4 p-6">
-            <p className="rotulo">Próximamente</p>
-            <p className="titulo mt-2 text-2xl">El catálogo, aquí</p>
-            <p className="mt-2 text-sm leading-relaxed text-marca-gris">
-              Podrás ver precios y apartar para recoger en el salón. Con el {NOMBRE_CLUB} tus compras suman el doble de puntos y tienes descuento desde {NOMBRE_NIVEL.miel}.
-            </p>
-          </div>
+          <MisPedidos />
+          {productos === null && <p className="mt-4 text-sm text-marca-gris">Cargando productos…</p>}
+          {productos?.length === 0 && (
+            <div className="tarjeta mt-4 p-6">
+              <p className="rotulo">Próximamente</p>
+              <p className="titulo mt-2 text-2xl">El catálogo, aquí</p>
+              <p className="mt-2 text-sm leading-relaxed text-marca-gris">
+                Podrás ver precios y apartar para recoger en el salón. Con el {NOMBRE_CLUB} tus compras suman el doble de puntos y tienes descuento desde {NOMBRE_NIVEL.miel}.
+              </p>
+            </div>
+          )}
+          {!!productos?.length && (
+            <div className="mt-4 space-y-3">
+              {productos.map(p => <Producto key={p.id} p={p} enCarrito={carrito.find(i => i.productoId === p.id)?.cantidad || 0} />)}
+              <p className="text-xs leading-relaxed text-marca-gris">Apártalos con tu cita (pagas todo junto) o cómpralos solos para recoger en el salón. Tienes 48 horas para pagar y, mientras, nadie más se los lleva.</p>
+            </div>
+          )}
           <p className="mt-4 border-l border-marca-dorado pl-3 text-xs leading-relaxed text-marca-gris">{POLITICAS.pedidos}</p>
           <a href={enlaceWhatsApp('Hola, quiero preguntar por un producto:')} className="boton-claro mt-6 w-full lg:w-auto"><MessageCircle size={16} strokeWidth={1.5} /> Pregunta por un producto</a>
         </section>
