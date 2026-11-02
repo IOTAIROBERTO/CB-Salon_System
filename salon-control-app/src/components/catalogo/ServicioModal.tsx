@@ -2,6 +2,7 @@ import { X, Save } from 'lucide-react';
 import { CATEGORIAS } from '../../utils/precios';
 import { type Servicio, type ServicioFormData } from '../../types/catalogo';
 import { validateServicioForm, generateServicioId } from '../../utils/catalogoUtils';
+import { avisar, confirmar } from '../Confirmar';
 
 interface ServicioModalProps {
   isOpen: boolean;
@@ -24,15 +25,16 @@ export default function ServicioModal({
 }: ServicioModalProps) {
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const validationError = validateServicioForm(formData);
     if (validationError) {
-      alert(validationError);
+      avisar(validationError);
       return;
     }
 
+    if (editingServicio && !(await confirmar(`¿Guardar los cambios de «${editingServicio.nombre}»?`))) return;
     if (editingServicio) {
       onUpdate(editingServicio.id, formData);
     } else {

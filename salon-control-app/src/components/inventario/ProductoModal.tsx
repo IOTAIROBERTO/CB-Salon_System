@@ -5,6 +5,7 @@ import { formatCurrency } from '../../utils/financialUtils';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
 import { proveedorPorNombre } from '../../utils/proveedores';
+import { avisar, confirmar } from '../Confirmar';
 
 interface ProductoModalProps {
   isOpen: boolean;
@@ -30,12 +31,12 @@ export default function ProductoModal({
   const proveedores = useLiveQuery(() => db.proveedores.toArray()) || [];
   if (!isOpen || (modalType !== 'create' && modalType !== 'edit')) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const validationError = validateProductoForm(formData);
     if (validationError) {
-      alert(validationError);
+      avisar(validationError);
       return;
     }
 
@@ -51,6 +52,7 @@ export default function ProductoModal({
       proveedorId: proveedorPorNombre(proveedores, formData.proveedor)?.id
     };
 
+    if (editingProducto && modalType === 'edit' && !(await confirmar(`¿Guardar los cambios de «${editingProducto.nombre}»?`))) return;
     if (editingProducto && modalType === 'edit') {
       // Actualizar producto existente (sin modificar stock desde aquí)
       const updatedData = {
@@ -68,7 +70,7 @@ export default function ProductoModal({
       onSave(productoData);
     }
     
-    alert((modalType === 'edit' ? 'Producto actualizado' : 'Producto agregado') + ' exitosamente!');
+    if (modalType !== 'edit') avisar('Producto agregado.');
     onClose();
   };
 

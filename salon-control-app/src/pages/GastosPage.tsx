@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Expense } from '../db/db';
-import { Plus, Trash2, Calendar } from 'lucide-react';
+import { Plus, Trash2, Calendar, Pencil } from 'lucide-react';
 import { formatCurrency } from '../utils/financialUtils';
 import { fechaLocalISO, parseFechaLocal } from '../utils/dateValidation';
+import { confirmar } from '../components/Confirmar';
 
 export default function GastosPage() {
     const expenses = useLiveQuery(() => db.gastos.orderBy('fecha').reverse().toArray());
     const [showModal, setShowModal] = useState(false);
+    const [editId, setEditId] = useState<string | null>(null);   // gasto que se está editando (null = nuevo)
     const [formData, setFormData] = useState<Partial<Expense>>({
         concepto: '',
         monto: 0,
@@ -20,15 +22,20 @@ export default function GastosPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (formData.concepto && formData.monto) {
-            await db.gastos.add({
+            const datos = {
                 concepto: formData.concepto,
                 monto: Number(formData.monto),
                 fecha: formData.fecha || new Date().toISOString(),
                 categoria: formData.categoria as 'fijo' | 'variable',
                 pagado: formData.pagado || false,
                 notas: formData.notas
-            });
+            };
+            if (editId) {
+                if (!(await confirmar(`¿Guardar los cambios de «${datos.concepto}»?`))) return;
+                await db.gastos.update(editId, datos);
+            } else await db.gastos.add(datos);
             setShowModal(false);
+            setEditId(null);
             setFormData({
                 concepto: '',
                 monto: 0,
@@ -40,8 +47,14 @@ export default function GastosPage() {
         }
     };
 
+    const editar = (g: Expense) => {
+        setFormData({ concepto: g.concepto, monto: g.monto, fecha: g.fecha, categoria: g.categoria, pagado: g.pagado, notas: g.notas || '' });
+        setEditId(g.id!);
+        setShowModal(true);
+    };
+
     const handleDelete = async (id: string) => {
-        if (confirm('¿Eliminar este gasto?')) {
+        if (await confirmar('¿Eliminar este gasto?')) {
             await db.gastos.delete(id);
         }
     };
@@ -73,7 +86,7 @@ export default function GastosPage() {
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-left">
+                <table className="tabla-tarjetas w-full text-left">
                     <thead className="bg-gray-50 text-gray-600 font-medium text-sm">
                         <tr>
                             <th className="p-4">Fecha</th>
@@ -112,9 +125,13 @@ export default function GastosPage() {
                                     </span>
                                 </td>
                                 <td className="p-4 text-center">
+                                    <button onClick={() => editar(expense)} aria-label="Editar gasto" className="p-2 text-gray-400 hover:text-gray-700 transition-colors">
+                                        <Pencil size={18} />
+                                    </button>
                                     <button
                                         onClick={() => handleDelete(expense.id!)}
-                                        className="text-gray-400 hover:text-red-500 transition-colors"
+                                        aria-label="Eliminar gasto"
+                                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                                     >
                                         <Trash2 size={18} />
                                     </button>
@@ -135,7 +152,7 @@ export default function GastosPage() {
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-xl p-6 w-full max-w-md">
-                        <h2 className="text-xl font-bold mb-4">Nuevo Gasto</h2>
+                        <h2 className="text-xl font-bold mb-4">{editId ? 'Editar gasto' : 'Nuevo Gasto'}</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Concepto</label>
@@ -213,7 +230,7 @@ export default function GastosPage() {
                             <div className="flex gap-3 mt-6">
                                 <button
                                     type="button"
-                                    onClick={() => setShowModal(false)}
+                                    onClick={() => { setShowModal(false); if (editId) { setEditId(null); setFormData({ concepto: '', monto: 0, fecha: fechaLocalISO(), categoria: 'variable', pagado: true, notas: '' }); } }}
                                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                                 >
                                     Cancelar

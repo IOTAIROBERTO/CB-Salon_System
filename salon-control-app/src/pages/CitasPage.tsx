@@ -145,7 +145,6 @@ export default function CitasPage() {
       {/* Modales */}
       {desdeGoogle && (
         <CitaModal
-          clientes={clientes}
           servicios={servicios}
           onClose={() => setDesdeGoogle(null)}
           onSave={async (datos) => { const ev = desdeGoogle; const id = await saveCita(datos); await registrarAdopcion(id, ev.id); }}
@@ -155,7 +154,6 @@ export default function CitasPage() {
 
       {modalState.type === "create" && (
         <CitaModal
-          clientes={clientes}
           servicios={servicios}
           onClose={closeModal}
           onSave={saveCita}
@@ -164,7 +162,6 @@ export default function CitasPage() {
 
       {modalState.type === "edit" && modalState.data && (
         <CitaModal
-          clientes={clientes}
           servicios={servicios}
           onClose={closeModal}
           onSave={saveCita}

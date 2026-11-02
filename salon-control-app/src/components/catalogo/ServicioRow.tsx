@@ -1,6 +1,7 @@
 import { Edit2, Trash2 } from 'lucide-react';
 import { type Servicio } from '../../types/catalogo';
 import { formatPrice } from '../../utils/catalogoUtils';
+import { confirmar } from '../Confirmar';
 
 interface ServicioRowProps {
   servicio: Servicio;
@@ -9,8 +10,8 @@ interface ServicioRowProps {
 }
 
 export default function ServicioRow({ servicio, onEdit, onDelete }: ServicioRowProps) {
-  const handleDelete = () => {
-    if (confirm('¿Eliminar servicio? Esta accion no se puede deshacer.')) {
+  const handleDelete = async () => {
+    if (await confirmar('¿Eliminar servicio? Esta accion no se puede deshacer.')) {
       onDelete(servicio.id);
     }
   };

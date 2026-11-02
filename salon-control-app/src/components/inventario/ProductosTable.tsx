@@ -19,12 +19,7 @@ export default function ProductosTable({ productos, onEdit, onEditStock, onDelet
   // Apartado en pedidos de la app: no se vende en la tienda hasta que se entregue o venza
   const aparts = apartados(useLiveQuery(() => db.pedidos.toArray()) || []);
   const [enApp, setEnApp] = useState<Producto | null>(null);
-  const handleDelete = async (producto: Producto) => {
-    const confirmed = await onDelete(producto.id);
-    if (confirmed) {
-      alert('Producto eliminado exitosamente');
-    }
-  };
+  const handleDelete = (producto: Producto) => onDelete(producto.id);   // pide confirmación
 
   return (
     <div className="bg-white rounded-lg shadow border overflow-hidden">

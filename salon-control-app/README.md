@@ -48,6 +48,13 @@ La galería pública vive en `/galeria/` y la página de reseñas en `/resenas/`
   pagado) no se puede vender en el salón: Ventas e Inventario muestran solo lo disponible y `registrarVenta` lo vuelve a
   revisar. Ventas → Pedidos de la app: «Llegó el pago» (pago manual; Mercado Pago tiene ya su lugar en `Pedido`),
   «Entregado» (crea la venta) y cancelar. Los plazos (48 h para pagar, 10 días para recoger) los vence el Worker.
+- Control total con confirmación: todo lo que borra, da de baja o guarda cambios pregunta antes con el popup propio
+  (`src/components/Confirmar.tsx`: `await confirmar('…')` y `avisar('…')`; nunca `confirm()` ni `alert()` del navegador).
+  Club: «Nueva socia», y en su ficha «Editar datos», «Dar de baja» (deja de estar activa; conserva puntos e historial) y
+  «Eliminar». Toda clienta activa es socia. Nueva cita y Nueva venta buscan clienta por nombre o teléfono y la dan de alta
+  ahí mismo (`ElegirClienta.tsx`). También se editan gastos y ventas (clienta y forma de pago), se eliminan compras
+  (regresa el stock y borra su gasto) y se marcan pagadas, se anulan tarjetas sin activar (con su venta) y la Dueña quita
+  movimientos de saldo capturados a mano.
 - Tabla nueva en `src/db/db.ts` = registrarla en Dexie Cloud antes de publicar (`npx dexie-cloud export --schema`,
   agregarla, `npx dexie-cloud import`); si no, la sincronización se traba en silencio.
 

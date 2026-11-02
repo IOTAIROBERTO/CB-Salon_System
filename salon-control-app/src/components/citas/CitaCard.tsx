@@ -33,6 +33,7 @@ import { imprimirConsentimiento } from "../../utils/consentimiento";
 import { notaReserva } from "../../utils/reserva";
 import { enlaceWhatsApp } from "../../utils/lealtad";
 import { MessageCircle } from "lucide-react";
+import { avisar, confirmar } from "../Confirmar";
 
 /** Nombre de la zona (componente aparte: CitaCard tiene un return antes de sus hooks) */
 const NombreUbicacion = ({ ubicacion }: { ubicacion: string }) => {
@@ -522,7 +523,7 @@ export default function CitaCard({
 
             {(cita.estado === "confirmada" || cita.estado === "pendiente") && cita.fecha <= fechaLocalISO() && (
               <button
-                onClick={() => confirm(`¿${cliente} no llegó? La cita deja de ocupar la agenda${cita.anticipoConfirmado && cita.montoAnticipo ? ` y el anticipo de ${formatCurrency(cita.montoAnticipo)} se queda como anticipo perdido` : ""}.`) && marcarNoLlego(cita)}
+                onClick={async () => (await confirmar(`¿${cliente} no llegó? La cita deja de ocupar la agenda${cita.anticipoConfirmado && cita.montoAnticipo ? ` y el anticipo de ${formatCurrency(cita.montoAnticipo)} se queda como anticipo perdido` : ""}.`)) && marcarNoLlego(cita)}
                 className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
               >
                 <UserX size={14} className="inline mr-1" /> No llegó
@@ -555,7 +556,7 @@ export default function CitaCard({
                     lugar,
                     miCita: await enlaceMiCita(cita)
                   }));
-                  if (enlace) window.open(enlace, '_blank', 'noopener'); else alert('La clienta no tiene un teléfono de 10 dígitos.');
+                  if (enlace) window.open(enlace, '_blank', 'noopener'); else avisar('La clienta no tiene un teléfono de 10 dígitos.');
                 }}
                 className="text-green-700 hover:text-green-900 p-1 hover:bg-green-50 rounded"
                 title="Mandar nota de reserva por WhatsApp"

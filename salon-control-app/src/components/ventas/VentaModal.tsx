@@ -1,17 +1,18 @@
 import { X } from 'lucide-react';
+import ElegirClienta from '../clientes/ElegirClienta';
 import { formatCurrency } from "../../utils/financialUtils";
-import { type VentaFormData, type Cliente, type Item, type Venta } from '../../types/ventas';
+import { type VentaFormData, type Item, type Venta } from '../../types/ventas';
 import { validateVentaForm, calculateVentaTotal, generateVentaId } from '../../utils/ventasUtils';
 import ProductSelector from './ProductSelector';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
 import { estadoCirculo, parametrosDe, descuentoProducto, NOMBRE_CIRCULO, NOMBRE_NIVEL, type Nivel } from '../../utils/lealtad';
 import { descuentoAntojo, esCategoriaBreak } from '../../data/menuAntojos';
+import { avisar } from '../Confirmar';
 
 interface VentaModalProps {
   isOpen: boolean;
   ventaData: VentaFormData;
-  clientes: Cliente[];
   inventario: Item[];
   updateFormData: (field: keyof VentaFormData, value: any) => void;
   updateItemQuantity: (itemId: string, cantidad: number) => void;
@@ -22,7 +23,6 @@ interface VentaModalProps {
 export default function VentaModal({
   isOpen,
   ventaData,
-  clientes,
   inventario,
   updateFormData,
   updateItemQuantity,
@@ -59,7 +59,7 @@ export default function VentaModal({
 
     const validationError = validateVentaForm(ventaData);
     if (validationError) {
-      alert(validationError);
+      avisar(validationError);
       return;
     }
 
@@ -80,7 +80,7 @@ export default function VentaModal({
       await onSave(nuevaVenta);
       onClose();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'No se pudo guardar la venta');
+      avisar(err instanceof Error ? err.message : 'No se pudo guardar la venta');
     }
   };
 
@@ -107,21 +107,9 @@ export default function VentaModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cliente *
+                    Clienta *
                   </label>
-                  <select
-                    value={ventaData.clienteId}
-                    onChange={(e) => updateFormData('clienteId', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Seleccionar cliente</option>
-                    {clientes.map((cliente) => (
-                      <option key={cliente.id} value={cliente.id}>
-                        {cliente.nombre}
-                      </option>
-                    ))}
-                  </select>
+                  <ElegirClienta value={ventaData.clienteId} onChange={(id) => updateFormData('clienteId', id)} />
                 </div>
 
                 <div>

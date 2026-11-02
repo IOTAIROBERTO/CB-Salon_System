@@ -4,6 +4,7 @@ import { Plus, Trash2, Save } from 'lucide-react';
 import { db } from '../../db/db';
 import { useAgenda, guardarAgenda } from '../../hooks/useAgenda';
 import { DUENA, AGENDA_INICIAL, type ConfigAgenda, type DiaSemana, type HorarioDia, type LimiteLargo } from '../../utils/agenda';
+import { avisar } from '../Confirmar';
 
 const DIAS: [DiaSemana, string][] = [['1', 'Lunes'], ['2', 'Martes'], ['3', 'Miércoles'], ['4', 'Jueves'], ['5', 'Viernes'], ['6', 'Sábado'], ['0', 'Domingo']];
 const campo = 'border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500';
@@ -32,7 +33,7 @@ export default function AgendaTab() {
     setTimeout(() => setAviso(''), 2500);
   };
   const agregarBloqueo = () => {
-    if (!nuevo.desde || !nuevo.hasta || nuevo.hasta < nuevo.desde) return alert('Indica desde y hasta (hasta debe ser después de desde)');
+    if (!nuevo.desde || !nuevo.hasta || nuevo.hasta < nuevo.desde) return avisar('Indica desde y hasta (hasta debe ser después de desde)');
     setCfg({ ...cfg, bloqueos: [...cfg.bloqueos, { id: `blq_${Date.now()}`, ...nuevo, motivo: nuevo.motivo || undefined }] });
     setNuevo({ personaId: 'todas', desde: '', hasta: '', motivo: '' });
   };

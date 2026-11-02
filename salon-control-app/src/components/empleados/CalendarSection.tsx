@@ -4,6 +4,7 @@ import { db, type EmpleadoEvent } from '../../db/db';
 import { Calendar, Plus, Trash2, Tag, CalendarDays, Clock, Briefcase, HelpCircle } from 'lucide-react';
 import { formatDate } from '../../utils/clientesUtils';
 import { fechaLocalISO } from '../../utils/dateValidation';
+import { confirmar } from '../Confirmar';
 
 interface CalendarSectionProps {
     empleadoId: string;
@@ -39,7 +40,7 @@ export default function CalendarSection({ empleadoId, onClose }: CalendarSection
     };
 
     const handleDelete = async (id: string) => {
-        if (confirm('¿Eliminar este evento del calendario?')) {
+        if (await confirmar('¿Eliminar este evento del calendario?')) {
             await db.empleadoEvents.delete(id);
         }
     };

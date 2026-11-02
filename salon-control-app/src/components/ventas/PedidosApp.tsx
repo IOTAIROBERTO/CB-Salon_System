@@ -6,6 +6,7 @@ import { cancelarPedido, entregarPedido, marcarPagado } from '../../db/pedidos';
 import { NOMBRE_ESTADO_PEDIDO } from '../../utils/pedidos';
 import { formatCurrency } from '../../utils/financialUtils';
 import { enlaceWhatsApp } from '../../utils/lealtad';
+import { avisar, confirmar } from '../Confirmar';
 
 // Pedidos de la app de clientas («Mi carrito»): por pagar con su plazo, pagados por entregar y lo último que cerró.
 // Lo apartado aquí no se puede vender en la tienda (Ventas e Inventario ya lo descuentan).
@@ -32,7 +33,7 @@ export default function PedidosApp() {
   const nombre = (p: Pedido) => clientes.find(c => c.id === p.clienteId)?.nombre || 'Clienta';
   const whatsapp = (p: Pedido, texto: string) => enlaceWhatsApp(clientes.find(c => c.id === p.clienteId)?.telefono, texto);
   const resumen = (p: Pedido) => [...p.items.map(i => `${i.cantidad} × ${i.nombre}`), p.anticipo ? `anticipo de su cita ${formatCurrency(p.anticipo)}` : ''].filter(Boolean).join(' · ');
-  const intentar = (f: () => Promise<unknown>) => () => f().catch(e => alert(e instanceof Error ? e.message : 'No se pudo guardar'));
+  const intentar = (f: () => Promise<unknown>) => () => f().catch(e => avisar(e instanceof Error ? e.message : 'No se pudo guardar'));
   const tarjeta = 'rounded-lg border bg-white p-4';
 
   return (
@@ -62,7 +63,7 @@ export default function PedidosApp() {
               {whatsapp(p, `¡Hola, ${nombre(p).split(' ')[0]}! Te recordamos tu pedido en Cristina Borquez: ${resumen(p)}. Total ${formatCurrency(p.total)}.`) &&
                 <a href={whatsapp(p, `¡Hola, ${nombre(p).split(' ')[0]}! Te recordamos tu pedido en Cristina Borquez: ${resumen(p)}. Total ${formatCurrency(p.total)}.`)!} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1 rounded-md border px-3 text-sm text-gray-700 hover:bg-gray-50" aria-label="WhatsApp"><MessageCircle size={14} /> WhatsApp</a>}
-              <button onClick={intentar(async () => { if (confirm(`¿Cancelar el pedido de ${nombre(p)}? Lo apartado se libera.`)) await cancelarPedido(p); })}
+              <button onClick={intentar(async () => { if (await confirmar(`¿Cancelar el pedido de ${nombre(p)}? Lo apartado se libera.`)) await cancelarPedido(p); })}
                 className="px-3 text-sm text-gray-500 hover:underline">Cancelar</button>
             </div>
           )}
@@ -77,7 +78,7 @@ export default function PedidosApp() {
           </div>
           <p className="text-sm text-gray-600">{p.items.map(i => `${i.cantidad} × ${i.nombre}`).join(' · ')}</p>
           <p className="mt-1 text-xs text-gray-500">Apartado para ella: recoge {p.citaId ? 'en su cita o ' : ''}a más tardar el {p.recogerHasta ? new Date(p.recogerHasta).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }) : '—'}.</p>
-          <button onClick={intentar(async () => { if (confirm(`¿Entregaste el pedido a ${nombre(p)}? Se registra la venta y baja el stock.`)) await entregarPedido(p); })}
+          <button onClick={intentar(async () => { if (await confirmar(`¿Entregaste el pedido a ${nombre(p)}? Se registra la venta y baja el stock.`)) await entregarPedido(p); })}
             className="mt-3 rounded-md bg-green-600 px-3 text-sm text-white hover:bg-green-700">Entregado</button>
         </div>
       ))}

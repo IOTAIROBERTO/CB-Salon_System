@@ -7,6 +7,7 @@ import { masComprados, totalComprado, proveedoresSinAlta, haceUnAnio } from '../
 import { normalizar } from '../../utils/texto';
 import { enlaceWhatsApp } from '../../utils/lealtad';
 import { formatCurrency } from '../../utils/financialUtils';
+import { avisar, confirmar } from '../Confirmar';
 
 const campo = 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500';
 
@@ -112,10 +113,10 @@ function DetalleProveedor({ proveedor: p, onClose, onEditar, onRegistrarCompra }
 
   const eliminar = async () => {
     if (suyos.length || compras.length) {
-      alert('Tiene productos o compras registradas: mejor desactívalo para conservar el historial.');
+      avisar('Tiene productos o compras registradas: mejor desactívalo para conservar el historial.');
       return;
     }
-    if (confirm(`¿Eliminar a ${p.nombre}?`)) { await db.proveedores.delete(p.id); onClose(); }
+    if (await confirmar(`¿Eliminar a ${p.nombre}?`)) { await db.proveedores.delete(p.id); onClose(); }
   };
 
   return (
@@ -201,7 +202,8 @@ function FormProveedor({ inicial, onClose }: { inicial: Proveedor; onClose: () =
   const set = (k: keyof Proveedor, v: any) => setF({ ...f, [k]: v });
   const guardar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!f.nombre.trim()) return alert('El nombre es obligatorio');
+    if (!f.nombre.trim()) return avisar('El nombre es obligatorio');
+    if (inicial.nombre && !(await confirmar(`¿Guardar los cambios de ${inicial.nombre}?`))) return;
     await guardarProveedor(f);
     onClose();
   };

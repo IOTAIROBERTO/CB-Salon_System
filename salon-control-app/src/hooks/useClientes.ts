@@ -4,6 +4,7 @@ import { db } from '../db/db';
 import { type Cliente } from '../types/clientes';
 import { generateClienteId } from '../utils/clientesUtils';
 import { fechaLocalISO } from '../utils/dateValidation';
+import { confirmar } from '../components/Confirmar';
 
 export const useClientes = () => {
   const [showInactivos, setShowInactivos] = useState(true);
@@ -32,13 +33,13 @@ export const useClientes = () => {
     // Si tiene citas o ventas conviene marcarla inactiva en vez de borrarla
     const tieneRegistros = (await db.citas.where('clienteId').equals(clienteId).count()) + (await db.ventas.where('clienteId').equals(clienteId).count()) > 0;
     if (tieneRegistros) {
-      const confirmarEliminacion = confirm(
+      const confirmarEliminacion = (await confirmar(
         'Este cliente tiene citas o servicios registrados. ¿Estás seguro de eliminarlo? ' +
         'Se recomienda marcarlo como inactivo en su lugar.'
-      );
+      ));
       if (!confirmarEliminacion) return false;
     } else {
-      if (!confirm('¿Estás seguro de que quieres eliminar este cliente?')) return false;
+      if (!(await confirmar('¿Estás seguro de que quieres eliminar este cliente?'))) return false;
     }
 
     await db.clientes.delete(clienteId);

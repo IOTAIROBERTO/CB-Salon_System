@@ -51,10 +51,7 @@ export default function ClientesPage() {
 
   // Handlers
   const handleDeleteCliente = async (id: string) => {
-    const success = await deleteCliente(id);
-    if (success) {
-      alert('Cliente eliminado exitosamente');
-    }
+    await deleteCliente(id);   // ya pidió confirmación
   };
 
   return (

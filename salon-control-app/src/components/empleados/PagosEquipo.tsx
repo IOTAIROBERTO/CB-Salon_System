@@ -6,6 +6,7 @@ import { formatCurrency } from '../../utils/financialUtils';
 import { DATOS_SALON } from '../../data/datosSalon';
 import { nombreCategoria } from '../../utils/precios';
 import { parseFechaLocal } from '../../utils/dateValidation';
+import { avisar } from '../Confirmar';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const fecha = (iso: string) => parseFechaLocal(iso).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -13,7 +14,7 @@ const fecha = (iso: string) => parseFechaLocal(iso).toLocaleDateString('es-MX', 
 /** Recibo de pago imprimible: la colaboradora firma de recibido */
 const imprimirRecibo = (emp: Empleado, p: PagoPeriodo, desde: string, hasta: string) => {
   const w = window.open('', '_blank');
-  if (!w) { alert('El navegador bloqueó la ventana. Permite ventanas emergentes para imprimir el recibo.'); return; }
+  if (!w) { avisar('El navegador bloqueó la ventana. Permite ventanas emergentes para imprimir el recibo.'); return; }
   const filas = p.dias.map(d => `<tr><td>${esc(fecha(d.fecha))}</td><td>${d.horas} h</td><td>${esc(d.nota || '')}</td><td class="n">${formatCurrency(d.importe)}</td></tr>`).join('');
   const bonos = p.bonos.map(b => `<tr><td colspan="3">Bono ${esc(nombreCategoria(b.categoria))} · ${b.citas} citas</td><td class="n">${formatCurrency(b.monto)}</td></tr>`).join('');
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Recibo · ${esc(emp.nombre)}</title>

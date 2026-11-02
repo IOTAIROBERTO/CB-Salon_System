@@ -1,7 +1,13 @@
 // src/components/ventas/VentaCard.tsx
-import { Trash2, ShoppingBag, Calendar, User, Package } from 'lucide-react';
+import { useState } from 'react';
+import { Trash2, ShoppingBag, Calendar, User, Package, Pencil } from 'lucide-react';
 import { type Venta, type Cliente, type Item } from '../../types/ventas';
 import { getClienteName, formatPrice, formatDate } from '../../utils/ventasUtils';
+import { confirmar } from '../Confirmar';
+import { db } from '../../db/db';
+import ElegirClienta from '../clientes/ElegirClienta';
+
+const FORMAS_PAGO = [['efectivo', 'Efectivo'], ['tarjeta', 'Tarjeta'], ['transferencia', 'Transferencia'], ['deposito', 'Depósito / OXXO']];
 
 interface VentaCardProps {
   venta: Venta;
@@ -11,11 +17,13 @@ interface VentaCardProps {
 }
 
 export default function VentaCard({ venta, clientes, inventario, onDelete }: VentaCardProps) {
-  const handleDelete = async () => {
-    const confirmed = await onDelete(venta.id);
-    if (confirmed) {
-      alert('Venta eliminada exitosamente');
-    }
+  const handleDelete = () => onDelete(venta.id);   // pide confirmación y regresa el stock
+  // Editar: clienta y forma de pago (los productos cambian eliminándola y registrándola de nuevo: el stock regresa solo)
+  const [edita, setEdita] = useState<{ clienteId: string; metodoPago: string } | null>(null);
+  const guardar = async () => {
+    if (!edita || !(await confirmar('¿Guardar los cambios de esta venta?'))) return;
+    await db.ventas.update(venta.id, edita);
+    setEdita(null);
   };
 
   // Obtener detalles de productos
@@ -60,14 +68,38 @@ export default function VentaCard({ venta, clientes, inventario, onDelete }: Ven
           </div>
         </div>
 
-        <button
-          onClick={handleDelete}
-          className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded transition-colors"
-          title="Eliminar venta"
-        >
-          <Trash2 size={18} />
-        </button>
+        <div className="flex">
+          {!venta.concepto && (
+            <button onClick={() => setEdita(edita ? null : { clienteId: venta.clienteId, metodoPago: venta.metodoPago || 'efectivo' })}
+              className="text-gray-600 hover:text-gray-900 p-2 hover:bg-gray-50 rounded transition-colors" title="Editar venta" aria-label="Editar venta">
+              <Pencil size={18} />
+            </button>
+          )}
+          <button
+            onClick={handleDelete}
+            className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded transition-colors"
+            title="Eliminar venta"
+            aria-label="Eliminar venta"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
       </div>
+
+      {edita && (
+        <div className="mb-4 space-y-2 rounded-lg border p-3 text-sm">
+          <ElegirClienta value={edita.clienteId} onChange={clienteId => setEdita({ ...edita, clienteId })} />
+          <select value={edita.metodoPago} onChange={e => setEdita({ ...edita, metodoPago: e.target.value })} className="w-full rounded-lg border px-3 py-2">
+            {FORMAS_PAGO.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+            {!FORMAS_PAGO.some(([v]) => v === edita.metodoPago) && <option value={edita.metodoPago}>{edita.metodoPago}</option>}
+          </select>
+          <p className="text-xs text-gray-500">Para cambiar productos, elimínala y regístrala de nuevo: el stock regresa solo.</p>
+          <div className="flex gap-2">
+            <button onClick={() => setEdita(null)} className="min-h-[40px] flex-1 rounded-lg border hover:bg-gray-50">Cancelar</button>
+            <button onClick={guardar} disabled={!edita.clienteId} className="min-h-[40px] flex-1 rounded-lg bg-marca-negro text-white hover:bg-gray-800 disabled:opacity-40">Guardar</button>
+          </div>
+        </div>
+      )}
 
       {/* Descripción completa de la compra */}
       <div className="mb-4">
