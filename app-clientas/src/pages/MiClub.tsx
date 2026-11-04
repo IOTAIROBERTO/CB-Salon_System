@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Encabezado from '@/components/Encabezado'
 import UnirmeClub from '@/components/UnirmeClub'
 import TarjetaClub from '@/components/TarjetaClub'
@@ -6,6 +7,7 @@ import {
   montoCanje, montoTarjeta, multiplicador, pesos, umbral
 } from '@/salon'
 import { useSalon } from '@/vivo'
+import { sesion } from '@/api'
 
 // Las reglas salen de utils/lealtad.ts de CB Control. Arriba, la tarjeta de cada clienta (TarjetaClub): entra con su
 // teléfono y un código por WhatsApp (se activa cuando el WhatsApp oficial del salón esté conectado) y ve puntos,
@@ -20,14 +22,15 @@ const ESTILO: Record<string, string> = {
 const DIAS = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados']
 
 export default function MiClub() {
+  const [dentro, setDentro] = useState(!!sesion())   // con sesión ya es del Club: no se le invita a unirse
   const R = useSalon().club   // las reglas que se guardan en CB Control → Club, en vivo
   return (
     <>
       <Encabezado rotulo="Membresía" titulo={NOMBRE_CLUB} bajada="Cinco niveles con los colores de la casa. Mientras más tiempo eres clienta, más rinde cada visita." />
       <main className="contenido space-y-10 px-6 pb-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-16 lg:gap-y-14 lg:space-y-0">
-        <TarjetaClub />
+        <TarjetaClub onSesion={setDentro} />
 
-        <UnirmeClub />
+        {!dentro && <UnirmeClub />}
 
         <section>
           <p className="rotulo">Cómo funciona</p>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useEnVivo } from '@/vivo'
 import { Link } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
@@ -10,9 +10,10 @@ import NoSoyRobot, { conTurnstile } from '@/components/NoSoyRobot'
 // nivel, saldo en pesos, regalos disponibles y próximas citas, calculados con las mismas reglas de CB Control.
 const fecha = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })
 
-export default function TarjetaClub() {
+export default function TarjetaClub({ onSesion }: { onSesion?: (dentro: boolean) => void }) {
   const [datos, setDatos] = useState<MiClub | null>(null)
   const [conSesion, setConSesion] = useState(!!sesion())
+  useEffect(() => { onSesion?.(conSesion) }, [conSesion, onSesion])
   const [telefono, setTelefono] = useState(misDatos().telefono)
   const [reto, setReto] = useState('')
   const [codigo, setCodigo] = useState('')
