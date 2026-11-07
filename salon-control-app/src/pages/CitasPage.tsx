@@ -14,7 +14,7 @@ import EventosGoogle, { registrarAdopcion, type EventoGoogle } from "../componen
 export default function CitasPage() {
   const {
     citas,
-    clientes,
+    clientesTodas: clientes,
     servicios,
     saveCita,
     completarCita,

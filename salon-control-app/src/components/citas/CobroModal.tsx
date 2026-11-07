@@ -1,6 +1,6 @@
 // src/components/citas/CobroModal.tsx
 import { X, Plus, AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { type Cita, type Servicio } from "../../types/citas";
 import ResumenCobro from "./ResumenCobro";
 import {
@@ -80,6 +80,8 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   );
   // «saldo» solo cuando el saldo aplicado de verdad cubre todo lo que falta; nunca se elige a mano (quedaría pagada sin descontar nada)
   const pagaTodoConSaldo = saldoAplicado > 0 && calculoFinal.totalFinal === 0;
+  // Recibió más de anticipo que lo que costó: lo de más pasa a su saldo a favor (solo la Dueña escribe saldo)
+  const excedente = Math.max(0, anticipoRecibido - calculoFinal.subtotalConDescuento);
   const metodoPago = pagaTodoConSaldo ? "saldo" : metodoElegido;
 
   // Obtener empleados para el desglose de comisiones
@@ -116,6 +118,11 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
         .filter(k => esDuena || !costoPuntos(k))
     : [];
 
+  // La referida es 20% con tope en pesos: si cambia el subtotal, se recalcula para no pasarse del tope
+  useEffect(() => {
+    if (descuentoClub === 'referida') setPorcentajeSeleccionado(porcentajeReferida(subtotalServicios, pClub));
+  }, [subtotalServicios, descuentoClub]);
+
   const aplicarBeneficio = (clave: ClaveBeneficio) => {
     if (clave === 'referida') {   // 20% con tope en pesos, expresado como porcentaje del cobro
       setPorcentajeSeleccionado(porcentajeReferida(subtotalServicios, pClub));
@@ -132,13 +139,14 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
     }]);
   };
 
-  // Calcular desglose de comisiones
-  const comisionInfo = calculateCommission(
+  // Calcular desglose de comisiones: cada quien con su porcentaje, igual que en Equipo
+  const comisiones = empleadosAsignados.map(emp => ({ emp, ...calculateCommission(
     calculoFinal.subtotalConDescuento, // La comisión se calcula sobre el precio con descuento
     empleadosAsignados.length,
     servicioActual?.comision,
-    empleadosAsignados[0]?.porcentajeComision
-  );
+    emp.porcentajeComision
+  ) }));
+  const totalComisiones = comisiones.reduce((t, c) => t + c.perEmployeeCommission, 0);
 
   const agregarServicio = (servicio: Servicio) => {
     const nuevoServicio: ServicioAdicional = {
@@ -192,6 +200,10 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
         await onCompletar(cita.id, precioFinalCompleto, metodoPago, notas, [datosCompletos]);
         await registrarCanjes(cita.clienteId, aplicados, cita.id);
         await usarSaldo(cita.clienteId, saldoAplicado, cita.id);
+        if (excedente > 0) {
+          await db.citas.update(cita.id, { anticipoASaldo: excedente });
+          await db.movimientosSaldo.add({ id: `sal_excedente_${cita.id}_${Date.now()}`, clienteId: cita.clienteId, fecha: new Date().toISOString(), monto: excedente, concepto: 'Anticipo mayor que el servicio: pasa a su saldo a favor', citaId: cita.id });
+        }
       });
       onClose();
     } catch (e) {
@@ -241,6 +253,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
               {calculoFinal.propina > 0 && (
                 <p><strong>Propina:</strong> +{formatCurrency(calculoFinal.propina)}</p>
               )}
+              {excedente > 0 && <p><strong>Pasa a su saldo a favor:</strong> {formatCurrency(excedente)}</p>}
               <p><strong>Saldo pendiente:</strong> {formatCurrency(calculoFinal.totalFinal)}</p>
               <p><strong>Método de pago:</strong> {metodoPago}</p>
             </div>
@@ -411,6 +424,9 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
               {!cita.anticipoConfirmado && (cita.montoAnticipo || 0) > 0 && (
                 <p className="mt-1 text-xs text-gray-500">Su anticipo de {formatCurrency(cita.montoAnticipo || 0)} no se ha recibido: se cobra aquí. Si ya lo recibiste, escríbelo arriba.</p>
               )}
+              {excedente > 0 && (
+                <p className="mt-1 text-sm text-amber-700">{esDuena ? `El anticipo supera el total: ${formatCurrency(excedente)} pasan a su saldo a favor.` : `El anticipo supera el total por ${formatCurrency(excedente)}: esos pasan a su saldo a favor y solo la Dueña puede hacerlo. Pídele que cobre esta cita.`}</p>
+              )}
             </div>
 
             {/* Saldo a favor de la clienta */}
@@ -490,7 +506,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
               propina={propina}
               anticipo={anticipoRecibido}
               calculoFinal={calculoFinal}
-              onPorcentajeChange={setPorcentajeSeleccionado}
+              onPorcentajeChange={(p) => { setPorcentajeSeleccionado(p); setDescuentoClub(null); }}
               onPropinaChange={setPropina}
             />
 
@@ -498,14 +514,14 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
             <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-100">
               <h3 className="text-sm font-bold text-purple-900 mb-3 flex items-center justify-between">
                 <span>Ganancias Empleados</span>
-                <span className="text-xs font-normal text-purple-600">Comisión: {comisionInfo.percentageUsed}%</span>
+                <span className="text-xs font-normal text-purple-600">{[...new Set(comisiones.map(c => c.percentageUsed))].map(p => `${p}%`).join(' / ') || 'Sin comisión'}</span>
               </h3>
               <div className="space-y-2">
                 {empleadosAsignados.length > 0 ? (
-                  empleadosAsignados.map(emp => (
+                  comisiones.map(({ emp, perEmployeeCommission }) => (
                     <div key={emp.id} className="flex justify-between items-center text-sm">
                       <span className="text-gray-700">{emp.nombre}</span>
-                      <span className="font-bold text-purple-700">{formatCurrency(comisionInfo.perEmployeeCommission)}</span>
+                      <span className="font-bold text-purple-700">{formatCurrency(perEmployeeCommission)}</span>
                     </div>
                   ))
                 ) : (
@@ -513,7 +529,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                 )}
                 <div className="pt-2 border-t border-purple-200 flex justify-between items-center font-bold text-purple-900">
                   <span>Total Comisiones</span>
-                  <span>{formatCurrency(comisionInfo.totalCommission)}</span>
+                  <span>{formatCurrency(totalComisiones)}</span>
                 </div>
               </div>
             </div>
@@ -529,8 +545,8 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
           </button>
           <button
             onClick={handleCompletar}
-            disabled={!metodoPago}
-            className={`px-4 py-2 rounded ${metodoPago
+            disabled={!metodoPago || (excedente > 0 && !esDuena)}
+            className={`px-4 py-2 rounded ${metodoPago && !(excedente > 0 && !esDuena)
               ? "bg-green-600 text-white hover:bg-green-700"
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}

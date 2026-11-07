@@ -56,7 +56,7 @@ export default function HoyPage() {
     && c.precioAcordado != null && ['transferencia', 'deposito'].includes(c.formaAnticipo || '')).sort(porHora);
   const deManana = citas.filter(c => c.fecha === manana && ['pendiente', 'confirmada'].includes(c.estado)).sort(porHora);
   const cumpleaneras = clientes.filter(c => c.activo !== false && esCumpleanosHoy(c.cumple));
-  const cobrado = citas.filter(c => c.estado === 'completada' && diaDe(c.fechaCompletada) === hoy).reduce((t, c) => t + ingresoCita(c as any), 0)
+  const cobrado = citas.filter(c => c.estado === 'completada' && diaDe(c.fechaCompletada) === hoy).reduce((t, c) => t + Math.max(0, ingresoCita(c as any) - (c.montoAnticipo || 0)), 0)   // lo que entró hoy: el anticipo se recibió antes
     + ventas.filter(v => diaDe(v.fecha) === hoy).reduce((t, v) => t + (v.total || 0), 0);
 
   // El enlace «Mi cita» de las de mañana se prepara antes, así el WhatsApp abre con un solo toque (sin esperar)

@@ -5,27 +5,41 @@ import { parseFechaLocal } from './dateValidation';
 /** Ingreso de una cita cobrada: lo pagado menos la propina (la propina no es venta) y menos lo
  * pagado con saldo a favor (ese dinero ya contó al venderse la tarjeta o al pagarse el pedido).
  * De una cita que no se hizo, el anticipo que se queda el salón: perdido (canceló tarde o no llegó) o pasado a saldo a
- * favor (ingreso al recibirlo, como una tarjeta de regalo; al usarse en otro cobro ya no vuelve a contar). */
+ * favor (ingreso al recibirlo, como una tarjeta de regalo; al usarse en otro cobro ya no vuelve a contar). Lo mismo con el
+ * anticipo de más en una cita cobrada. */
 export const ingresoCita = (c: Cita) => c.estado === 'completada'
-  ? (c.precioFinal || 0) - (c.propina || 0) - (c.pagadoConSaldo || 0)
+  ? (c.precioFinal || 0) - (c.propina || 0) - (c.pagadoConSaldo || 0) + (c.anticipoASaldo || 0)
   : (c.anticipoPerdido || 0) + (c.anticipoASaldo || 0);
+
+interface CitaPorCobrar { estado: string; hora?: string; servicioId: string; precioAcordado?: number; montoAnticipo?: number; anticipoConfirmado?: boolean }
+/** Citas con hora que siguen vivas: las que van a generar un cobro */
+const vivas = <C extends CitaPorCobrar>(citas: C[]) => citas.filter(c => ['pendiente', 'confirmada', 'iniciada'].includes(c.estado));
+const anticipoRecibido = (c: CitaPorCobrar) => c.anticipoConfirmado ? c.montoAnticipo || 0 : 0;
+
+/** Lo que falta por cobrar en esas citas: el precio acordado (o el de catálogo) menos el anticipo ya recibido */
+export const porCobrar = (citas: CitaPorCobrar[], servicios: { id: string; precioSugerido?: number }[]) => vivas(citas).reduce((t, c) =>
+  t + Math.max(0, (c.precioAcordado ?? servicios.find(s => s.id === c.servicioId)?.precioSugerido ?? 0) - anticipoRecibido(c)), 0);
+
+/** Anticipos que se pidieron y no han llegado (sin valorar todavía no hay anticipo que esperar) */
+export const anticiposPorRecibir = (citas: CitaPorCobrar[]) => vivas(citas).reduce((t, c) =>
+  t + (c.precioAcordado != null && !c.anticipoConfirmado ? c.montoAnticipo || 0 : 0), 0);
 
 export const calculateReportStats = (
   citas: Cita[],
   ventas: Venta[],
-  gastos: Expense[] = []
+  gastos: Expense[] = [],
+  servicios: { id: string; precioSugerido?: number }[] = []
 ): ReportStats => {
   const citasCompletadas = citas.filter(c => c.estado === 'completada');
   const totalIngresosCitas = citas.reduce((sum, c) => sum + ingresoCita(c), 0);
   const totalIngresosVentas = ventas.reduce((sum, v) => sum + v.total, 0);
   const totalIngresos = totalIngresosCitas + totalIngresosVentas;
 
-  const totalGastos = gastos.reduce((sum, g) => sum + g.monto, 0);
+  // Solo lo pagado: lo que aún se debe no ha salido de la caja
+  const totalGastos = gastos.filter(g => g.pagado !== false).reduce((sum, g) => sum + g.monto, 0);
   const gananciaNeta = totalIngresos - totalGastos;
 
-  const saldosPendientes = citas
-    .filter(c => c.estado !== 'cancelada' && c.estado !== 'no_llego' && c.estado !== 'solicitud')
-    .reduce((sum, c) => sum + (c.saldoPendiente || 0), 0);
+  const saldosPendientes = porCobrar(citas as CitaPorCobrar[], servicios);
 
   return {
     totalIngresos,
@@ -87,8 +101,8 @@ export const generateReportData = (
     case 'month':
       // Últimos 6 meses
       for (let i = 5; i >= 0; i--) {
-        const monthDate = new Date(now);
-        monthDate.setMonth(now.getMonth() - i);
+        // Día 1: el 31 de octubre menos 2 meses no existe y saltaba a julio
+        const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
 
         const monthCitas = citas.filter(cita => {
           const citaDate = parseFechaLocal(cita.fecha);

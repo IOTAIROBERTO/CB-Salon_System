@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import ElegirClienta from '../clientes/ElegirClienta';
 import { formatCurrency } from "../../utils/financialUtils";
@@ -31,6 +32,7 @@ export default function VentaModal({
 }: VentaModalProps) {
   // Hooks antes del return condicional (regla de hooks de React)
   const empleados = useLiveQuery(() => db.empleados.toArray())?.filter(e => e.activo) || [];
+  const [metodoPago, setMetodoPago] = useState('efectivo');
   // Nivel del Club de la clienta: decide el descuento de cada producto (cabello y break tienen su propia escala)
   const nivelClub = useLiveQuery(async (): Promise<Nivel | null> => {
     if (!ventaData.clienteId) return null;
@@ -72,6 +74,7 @@ export default function VentaModal({
       empleadoId: ventaData.empleadoId,
       items: ventaData.items,
       total,
+      metodoPago,
       fecha: new Date().toISOString(),
       notas: [ventaData.notas, ahorro > 0 && nivelClub ? `Descuento ${NOMBRE_CIRCULO} (${NOMBRE_NIVEL[nivelClub]}): $${ahorro}` : ''].filter(Boolean).join(' · ')
     };
@@ -158,6 +161,19 @@ export default function VentaModal({
                   </div>
                 </div>
               )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Método de pago *
+                </label>
+                <select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                  <option value="efectivo">Efectivo</option>
+                  <option value="tarjeta">Tarjeta</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="deposito">Depósito / OXXO</option>
+                </select>
+              </div>
 
               {/* Notas */}
               <div>

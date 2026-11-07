@@ -211,7 +211,7 @@ export async function espejo(env: EnvGoogle & EnvDexie) {
     const inicio = new Date(`${c.fecha}T${c.hora}:00${DESFASE}`);
     const fin = new Date(inicio.getTime() + (tramosCita(aMin(c.hora), c.servicioId, adicionales, servicios, 0).fin - aMin(c.hora)) * 60000);
     const servicio = [s?.nombre || 'Cita', ...adicionales.map((id: string) => servicios.find(x => x.id === id)?.nombre).filter(Boolean)].join(' + ');
-    const datos = [c.fecha, c.hora, c.estado, servicio, c.clienteId, c.precioFinal || s?.precioSugerido, c.montoAnticipo, c.anticipoConfirmado,
+    const datos = [c.fecha, c.hora, c.estado, servicio, c.clienteId, c.precioFinal || c.precioAcordado || s?.precioSugerido, c.montoAnticipo, c.anticipoConfirmado,
       c.ubicacion, c.descripcionTrabajo, c.notas, c.origen, fin.getTime()];
     deseados.push({
       cbId: `cita:${c.id}`, calendario: calendarioDe(c.atiendeId || c.empleadoIds?.[0]), firma: await huella(datos),
@@ -223,7 +223,7 @@ export async function espejo(env: EnvGoogle & EnvDexie) {
           summary: `${c.estado === 'pendiente' ? '(Por confirmar) ' : ''}${servicio} - ${cl?.nombre || 'Clienta'}`,
           description: [
             `Clienta: ${cl?.nombre || '—'}`, cl?.telefono && `Tel: ${cl.telefono}`, `Servicio: ${servicio}`,
-            `Precio: $${Number(c.precioFinal || s?.precioSugerido || 0).toLocaleString('es-MX')}`,
+            `Precio: $${Number(c.precioFinal || c.precioAcordado || s?.precioSugerido || 0).toLocaleString('es-MX')}`,
             c.montoAnticipo && `Anticipo: $${Number(c.montoAnticipo).toLocaleString('es-MX')} ${c.anticipoConfirmado ? '(pagado)' : '(pendiente)'}`,
             `Estado: ${c.estado}`, c.origen === 'app' && 'Agendada desde la app',
             c.ubicacion && c.ubicacion !== 'salon' && `Lugar: ${nombreUbicacion(c.ubicacion, ZONAS_INICIALES)}`,

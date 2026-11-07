@@ -19,6 +19,10 @@ export default function CatalogoPreciosPage() {
   const [pestana, setPestana] = useState<string | null>(null); // null = lista activa
   const historica = listas.historicas.find(h => h.anio === pestana);
   const activos = servicios.filter(s => !(s as any).archivado);
+  const archivados = servicios.filter(s => (s as any).archivado);
+  const reactivar = async (s: { id: string; nombre: string }) => {
+    if (await confirmar(`¿Reactivar ${s.nombre}? Vuelve a ofrecerse en el catálogo.`)) await updateServicio(s.id, { archivado: false } as any);
+  };
   const siguiente = String(Number(listas.activa) + 1);
 
   const {
@@ -107,6 +111,19 @@ export default function CatalogoPreciosPage() {
           <CotizadorTraslado servicios={activos} />
 
           <ServiciosTable servicios={activos} onEdit={openEditModal} onDelete={deleteServicio} />
+          {archivados.length > 0 && (
+            <details className="rounded-lg border bg-white p-4 text-sm">
+              <summary className="cursor-pointer text-gray-700">Servicios archivados ({archivados.length})</summary>
+              <ul className="mt-2 divide-y">
+                {archivados.map(s => (
+                  <li key={s.id} className="flex items-center justify-between gap-3 py-2">
+                    <span className="text-gray-700">{s.nombre}</span>
+                    <button onClick={() => reactivar(s)} className="min-h-[40px] rounded-lg border px-3 hover:bg-gray-50">Reactivar</button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </>
       )}
 

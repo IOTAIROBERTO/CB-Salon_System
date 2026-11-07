@@ -16,7 +16,8 @@ export default function useCitas() {
 
   // --- Lógica de Real-time con Dexie ---
   const citas = useLiveQuery(() => db.citas.toArray()) || [];
-  const clientes = useLiveQuery(() => db.clientes.toArray().then(arr => arr.filter(c => c.activo !== false) as unknown as Cliente[])) || [];
+  const clientesTodas = (useLiveQuery(() => db.clientes.toArray()) || []) as unknown as Cliente[];   // sus citas conservan el nombre aunque esté de baja
+  const clientes = clientesTodas.filter(c => (c as { activo?: boolean }).activo !== false);
   const servicios = useLiveQuery(() => db.servicios.toArray()) || [];
 
   // --- CRUD ---
@@ -104,6 +105,7 @@ export default function useCitas() {
   return {
     citas,
     clientes,
+    clientesTodas,
     servicios,
     saveCita,
     completarCita,

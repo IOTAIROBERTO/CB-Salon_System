@@ -1,6 +1,7 @@
 // src/components/citas/CitasStats.tsx
 import { Clock, Play, CreditCard, AlertTriangle } from "lucide-react";
 import { type Cita, type Servicio } from "../../types/citas";
+import { anticiposPorRecibir, porCobrar } from "../../utils/reportUtils";
 
 interface CitasStatsProps {
   citas: Cita[];
@@ -16,35 +17,8 @@ export default function CitasStats({ citas, servicios }: CitasStatsProps) {
   // Citas en proceso: solo las iniciadas
   const citasEnProceso = citas.filter((c) => c.estado === "iniciada").length;
 
-  // Saldos pendientes: solo citas NO completadas y NO canceladas
-  const saldosPendientes = citas
-    .filter(c => !["completada", "cancelada"].includes(c.estado))
-    .reduce((sum, c) => {
-      const servicio = servicios.find(s => s.id === c.servicioId);
-      const precioServicio = servicio?.precioSugerido || 0;
-      const anticipoPagado = (c.anticipoConfirmado && c.montoAnticipo) ? c.montoAnticipo : 0;
-      return sum + Math.max(0, precioServicio - anticipoPagado);
-    }, 0);
-
-  // Anticipos pendientes: solo citas NO completadas y NO canceladas
-  // que tienen anticipo sugerido pero no han pagado el anticipo completo
-  const anticiposPendientes = citas
-    .filter(c => !["completada", "cancelada"].includes(c.estado))
-    .reduce((sum, c) => {
-      const servicio = servicios.find(s => s.id === c.servicioId);
-      const anticipoSugerido = servicio?.anticipoSugerido || 0;
-      
-      // Si no hay anticipo sugerido, no hay nada pendiente
-      if (anticipoSugerido === 0) return sum;
-      
-      // Anticipo ya pagado/confirmado
-      const anticipoPagado = (c.anticipoConfirmado && c.montoAnticipo) ? c.montoAnticipo : 0;
-      
-      // Solo considerar pendiente si el anticipo pagado es menor al sugerido
-      const anticipoPendiente = Math.max(0, anticipoSugerido - anticipoPagado);
-      
-      return sum + anticipoPendiente;
-    }, 0);
+  const saldosPendientes = porCobrar(citas, servicios);
+  const anticiposPendientes = anticiposPorRecibir(citas);
 
   return (
     <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">

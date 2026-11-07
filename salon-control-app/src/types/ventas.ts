@@ -12,6 +12,7 @@ export interface Item {
 }
 
 export interface VentaItem {
+  precio?: number; // el de esa venta; el del inventario pudo cambiar después
   itemId: string;
   cantidad: number;
 }

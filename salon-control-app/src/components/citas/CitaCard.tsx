@@ -192,6 +192,7 @@ export default function CitaCard({
     }
   };
 
+  const precioCita = cita.precioAcordado ?? servicio?.precioSugerido ?? 0;
   const cancelar = () => pedirCancelacion(cita, esDuena, cliente);
   const cerrada = citaCerrada(cita);
   const sePuedeBorrar = !motivoNoBorrar(cita);
@@ -340,7 +341,7 @@ export default function CitaCard({
               {/* Subtotal después del descuento */}
               <div className="flex justify-between items-center">
                 <span className="text-gray-700">Subtotal:</span>
-                <span className="font-semibold">{formatCurrency(cita.subtotalConDescuento || cita.subtotalOriginal || cita.precioFinal || 0)}</span>
+                <span className="font-semibold">{formatCurrency(cita.subtotalConDescuento ?? cita.subtotalOriginal ?? cita.precioFinal ?? 0)}</span>
               </div>
 
               {/* Mostrar redondeo si existe */}
@@ -388,8 +389,8 @@ export default function CitaCard({
             <div className="bg-gray-50 p-3 rounded-lg text-sm space-y-2">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <p>
-                  <span className="text-gray-600">Precio sugerido: </span>
-                  <strong className="text-green-600">{formatCurrency(servicio?.precioSugerido || 0)}</strong>
+                  <span className="text-gray-600">{cita.precioAcordado != null ? "Precio acordado: " : "Precio sugerido: "}</span>
+                  <strong className="text-green-600">{formatCurrency(precioCita)}</strong>
                 </p>
                 <p>
                   <span className="text-gray-600">Anticipo sugerido: </span>
@@ -453,7 +454,7 @@ export default function CitaCard({
                 <div className="flex items-center gap-2">
                   <span className="text-gray-600">Saldo pendiente: </span>
                   <strong className="text-red-600">
-                    {formatCurrency(Math.max(0, (servicio?.precioSugerido || 0) - (cita.montoAnticipo || 0)))}
+                    {formatCurrency(Math.max(0, precioCita - (cita.anticipoConfirmado ? cita.montoAnticipo || 0 : 0)))}
                   </strong>
                 </div>
               </div>
@@ -561,7 +562,7 @@ export default function CitaCard({
                     servicio: [servicio?.nombre, ...(cita.serviciosAdicionales || []).map(s => s.nombre)].filter(Boolean).join(' + '),
                     fecha: cita.fecha,
                     hora: cita.hora,
-                    precio: servicio?.precioSugerido,
+                    precio: precioCita,
                     anticipo: cita.montoAnticipo,
                     anticipoPagado: cita.anticipoConfirmado,
                     lugar,
@@ -580,7 +581,7 @@ export default function CitaCard({
                   telefono: clienteData?.telefono,
                   cumple: clienteData?.cumple,
                   servicio: [servicio?.nombre, ...(cita.serviciosAdicionales || []).map(s => s.nombre)].filter(Boolean).join(' + '),
-                  precio: cita.precioFinal ?? servicio?.precioSugerido,
+                  precio: cita.precioFinal ?? precioCita,
                   anticipo: cita.anticipoConfirmado ? cita.montoAnticipo : undefined,
                   fecha: cita.fecha
                 })}

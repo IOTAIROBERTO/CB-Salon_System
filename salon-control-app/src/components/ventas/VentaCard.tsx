@@ -27,20 +27,10 @@ export default function VentaCard({ venta, clientes, inventario, onDelete }: Ven
   };
 
   // Obtener detalles de productos
-  const getProductoDetails = (itemId: string, cantidad: number) => {
+  const getProductoDetails = (itemId: string, cantidad: number, precioVenta?: number) => {
     const producto = inventario.find(item => item.id === itemId);
-    if (!producto) {
-      return {
-        nombre: 'Producto no encontrado',
-        precio: 0,
-        subtotal: 0
-      };
-    }
-    return {
-      nombre: producto.nombre,
-      precio: producto.precio,
-      subtotal: producto.precio * cantidad
-    };
+    const precio = precioVenta ?? producto?.precio ?? 0;
+    return { nombre: producto?.nombre ?? 'Producto ya no está en inventario', precio, subtotal: precio * cantidad };
   };
 
   const totalProductos = (venta.items || []).reduce((sum, item) => sum + item.cantidad, 0);
@@ -109,7 +99,7 @@ export default function VentaCard({ venta, clientes, inventario, onDelete }: Ven
         </h4>
         <div className="bg-gray-50 rounded-lg p-3 space-y-2">
           {(venta.items || []).map((item, index) => {
-            const detalles = getProductoDetails(item.itemId, item.cantidad);
+            const detalles = getProductoDetails(item.itemId, item.cantidad, item.precio);
             return (
               <div key={index} className="flex justify-between items-center text-sm">
                 <div className="flex-1">

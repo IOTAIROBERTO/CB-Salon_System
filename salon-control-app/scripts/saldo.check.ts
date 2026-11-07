@@ -19,4 +19,8 @@ assert.equal(saldoUsable(349.5, 1200), 349.5);
 assert.equal(saldoUsable(1000, 450), 450);
 assert.equal(saldoUsable(0, 450), 0);
 assert.equal(normalizarFolio(' cb 0001 '), 'CB0001');
+// 31 de agosto + 6 meses es fin de febrero, no 3 de marzo
+assert.equal(venceActivacion('2026-08-31'), '2027-02-28');
+assert.equal(venceActivacion('2026-03-15'), '2026-09-15');
+
 console.log('saldo: ok');

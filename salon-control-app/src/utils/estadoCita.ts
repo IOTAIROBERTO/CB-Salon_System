@@ -41,7 +41,7 @@ export function reversaCobro<C extends CanjeCobro>(citaId: string, movimientos: 
   const fechas = new Set(canjes.filter(c => c.citaId === citaId && c.puntos).map(c => c.fecha));
   const neto = movimientos.filter(m => m.citaId === citaId).reduce((t, m) => t + m.monto, 0);
   return {
-    devolver: neto < 0 ? -neto : 0,
+    devolver: neto ? -neto : 0,   // negativo: el cobro le abonó saldo (anticipo de más) y se retira
     canjes: canjes.filter(c => c.citaId !== citaId),
     movimientosABorrar: movimientos.filter(m => m.origen === 'club' && m.puntos && fechas.has(m.fecha)).map(m => m.id)
   };

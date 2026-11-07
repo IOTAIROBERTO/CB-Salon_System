@@ -38,7 +38,8 @@ export const useVentas = () => {
     ...v,
     items: v.productos?.map(p => ({
       itemId: p.productoId,
-      cantidad: p.cantidad
+      cantidad: p.cantidad,
+      precio: p.precio
     })) || []
   }));
 

@@ -22,8 +22,8 @@ export const useReportData = () => {
 
   // Calcular estadísticas
   const stats: ReportStats = useMemo(() =>
-    calculateReportStats(citas as any, ventas as any, gastos),
-    [citas, ventas, gastos]
+    calculateReportStats(citas as any, ventas as any, gastos, catalogoServicios as any),
+    [citas, ventas, gastos, catalogoServicios]
   );
 
   // Generar datos del reporte para gráficas

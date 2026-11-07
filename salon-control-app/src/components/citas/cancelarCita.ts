@@ -27,8 +27,8 @@ async function guardarCancelacion(cita: CitaACancelar, destino: 'saldo' | 'perdi
 export async function pedirAnularCobro(cita: { id: string; clienteId: string; precioFinal?: number; metodoPago?: string; montoAnticipo?: number; notas?: string }, nombre: string) {
   const [movimientos, clienta] = await Promise.all([db.movimientosSaldo.where('clienteId').equals(cita.clienteId).toArray(), db.clientes.get(cita.clienteId)]);
   const r = reversaCobro(cita.id, movimientos, clienta?.canjes || []);
-  const devuelve = [r.devolver ? `${formatCurrency(r.devolver)} a su saldo a favor` : '', r.movimientosABorrar.length || (clienta?.canjes || []).length !== r.canjes.length ? 'sus regalos del Club' : ''].filter(Boolean).join(' y ');
-  if (!(await confirmar(`¿Anular el cobro de ${formatCurrency(cita.precioFinal || 0)} de ${nombre}? La cita vuelve a «en curso» para cobrarla de nuevo.${devuelve ? ` Regresan ${devuelve}.` : ''} Lo que haya pagado en efectivo, tarjeta o transferencia lo devuelves tú.`, { si: 'Anular cobro', peligro: true }))) return false;
+  const devuelve = [r.devolver > 0 ? `${formatCurrency(r.devolver)} a su saldo a favor` : '', r.movimientosABorrar.length || (clienta?.canjes || []).length !== r.canjes.length ? 'sus regalos del Club' : ''].filter(Boolean).join(' y ');
+  if (!(await confirmar(`¿Anular el cobro de ${formatCurrency(cita.precioFinal || 0)} de ${nombre}? La cita vuelve a «en curso» para cobrarla de nuevo.${devuelve ? ` Regresan ${devuelve}.` : ''}${r.devolver < 0 ? ` Se retiran ${formatCurrency(-r.devolver)} de su saldo a favor.` : ''} Lo que haya pagado en efectivo, tarjeta o transferencia lo devuelves tú.`, { si: 'Anular cobro', peligro: true }))) return false;
   const ahora = new Date();
   try {
     await db.transaction('rw', db.citas, db.clientes, db.movimientosSaldo, async () => {
@@ -38,9 +38,9 @@ export async function pedirAnularCobro(cita: { id: string; clienteId: string; pr
       await db.citas.update(cita.id, {
         estado: 'iniciada', notas: [actual.notas, constancia].filter(Boolean).join('\n'), anticipoConfirmado: !!actual.montoAnticipo,
         precioFinal: undefined, metodoPago: undefined, propina: undefined, descuentoAplicado: undefined, subtotalOriginal: undefined, montoDescuento: undefined,
-        subtotalConDescuento: undefined, montoRedondeo: undefined, pagadoConSaldo: undefined, saldoPendiente: undefined, fechaCompletada: undefined, serviciosAdicionales: undefined
+        subtotalConDescuento: undefined, montoRedondeo: undefined, pagadoConSaldo: undefined, anticipoASaldo: undefined, saldoPendiente: undefined, fechaCompletada: undefined, serviciosAdicionales: undefined
       });
-      if (r.devolver) await db.movimientosSaldo.add({ id: `sal_anulado_${cita.id}_${ahora.getTime()}`, clienteId: cita.clienteId, fecha: ahora.toISOString(), monto: r.devolver, concepto: 'Cobro anulado: regresa su saldo', citaId: cita.id });
+      if (r.devolver) await db.movimientosSaldo.add({ id: `sal_anulado_${cita.id}_${ahora.getTime()}`, clienteId: cita.clienteId, fecha: ahora.toISOString(), monto: r.devolver, concepto: r.devolver > 0 ? 'Cobro anulado: regresa su saldo' : 'Cobro anulado: se retira el anticipo de más', citaId: cita.id });
       if (r.movimientosABorrar.length) await db.movimientosSaldo.bulkDelete(r.movimientosABorrar);
       if (clienta && r.canjes.length !== (clienta.canjes || []).length) await db.clientes.update(cita.clienteId, { canjes: r.canjes });
     });

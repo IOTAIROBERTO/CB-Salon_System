@@ -23,7 +23,9 @@ export const normalizarFolio = (f: string) => f.trim().toUpperCase().replace(/\s
 export const venceActivacion = (fechaVenta: string) => {
   // Con hora (ISO) se toma el día local de la venta; solo fecha, se lee como día local
   const d = fechaVenta.length > 10 ? new Date(fechaVenta) : new Date(`${fechaVenta}T12:00:00`);
+  const dia = d.getDate();
   d.setMonth(d.getMonth() + MESES_PARA_ACTIVAR);
+  if (d.getDate() !== dia) d.setDate(0);   // 31 de agosto + 6 meses es fin de febrero, no 3 de marzo
   return isoLocal(d);
 };
 

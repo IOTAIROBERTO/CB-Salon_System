@@ -69,9 +69,10 @@ export default function AgendaDia({ fecha }: { fecha: string }) {
                   const ini = aMin(c.hora);
                   const { fin: termina } = tramosCita(ini, c.servicioId, (c.serviciosAdicionales || []).map(a => a.servicioId), servicios as any, 0);
                   const cliente = clientes.find(x => x.id === c.clienteId);
+                  const enCursoOCobrada = c.estado === 'completada' || c.estado === 'iniciada';   // moverla cambiaría su fecha en reportes
                   const color = c.estado === 'completada' ? 'bg-green-100 border-green-400' : c.estado === 'confirmada' || c.estado === 'iniciada' ? 'bg-blue-100 border-blue-400' : 'bg-purple-100 border-purple-400';
                   return (
-                    <button key={c.id} onClick={() => setMoviendo(c)} title="Mover o reagendar"
+                    <button key={c.id} onClick={() => { if (!enCursoOCobrada) setMoviendo(c); }} title={enCursoOCobrada ? 'Ya empezó o se cobró: no se mueve' : 'Mover o reagendar'}
                       className={`absolute left-1 right-1 rounded border-l-4 text-left overflow-hidden hover:ring-2 hover:ring-purple-400 flex flex-col justify-start ${color}`}
                       style={{ top: y(ini), height: (termina - ini) * PX }}>
                       {t.proceso > 0 && (

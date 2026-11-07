@@ -42,15 +42,19 @@ export default function CobroExpres({ cita, servicios, cliente, onCompletar, onM
             <span className="font-display text-3xl text-gray-900">{formatCurrency(c.aCobrar)}</span>
           </div>
         </div>
-        <div>
-          <p className="mb-2 text-xs text-gray-500">Toca cómo pagó y queda cobrada:</p>
-          <div className="grid grid-cols-3 gap-2">
-            {METODOS.map(([valor, texto]) => (
-              <button key={valor} disabled={guardando} onClick={() => cobrar(valor)}
-                className="min-h-[48px] rounded-lg bg-marca-negro px-2 text-sm text-white hover:bg-gray-800 disabled:opacity-40">{texto}</button>
-            ))}
+        {c.anticipo > c.subtotal ? (
+          <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">El anticipo supera el total: lo de más pasa a su saldo a favor. Cóbrala en «Más opciones».</p>
+        ) : (
+          <div>
+            <p className="mb-2 text-xs text-gray-500">Toca cómo pagó y queda cobrada:</p>
+            <div className="grid grid-cols-3 gap-2">
+              {METODOS.map(([valor, texto]) => (
+                <button key={valor} disabled={guardando} onClick={() => cobrar(valor)}
+                  className="min-h-[48px] rounded-lg bg-marca-negro px-2 text-sm text-white hover:bg-gray-800 disabled:opacity-40">{texto}</button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
         <button onClick={onMas} className="w-full py-2 text-xs text-marca-dorado-prof hover:underline">
           Más opciones: otro servicio, adicionales, descuentos, Club, saldo a favor o propina
         </button>

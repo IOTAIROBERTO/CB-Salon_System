@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { cobroExpres, precioBase } from '../src/utils/cobro';
 import { calculateChargeBreakdown } from '../src/utils/financialUtils';
+import { anticiposPorRecibir, calculateReportStats, generateReportData, ingresoCita, porCobrar } from '../src/utils/reportUtils';
 import { citaCerrada, consecuenciaCancelar, motivoNoBorrar, pedidoTrasAnticipo, reversaCobro, soloCambios } from '../src/utils/estadoCita';
 
 const servicios = [{ id: 's1', precioSugerido: 500 }, { id: 's2', precioSugerido: 1200 }];
@@ -66,5 +67,29 @@ assert.deepEqual([rev.devolver, rev.movimientosABorrar, rev.canjes.length], [0, 
 // Guardar solo lo cambiado: lo demás no se manda, así no pisa lo que pasó con el modal abierto
 assert.deepEqual(soloCambios({ fecha: 'a', notas: undefined, hora: 'h', aceptadaEn: 'ya' }, { fecha: 'b', notas: '', hora: 'h' }), { fecha: 'b' });
 assert.deepEqual(soloCambios({ empleadoIds: ['e'] }, { empleadoIds: ['e'] }), {});
+
+// Por cobrar y anticipos: solo citas vivas con el precio acordado; sin valorar no hay anticipo que esperar
+const svc = [{ id: 's1', precioSugerido: 500 }];
+const vivas = [
+  { estado: 'confirmada', servicioId: 's1', precioAcordado: 800, montoAnticipo: 200, anticipoConfirmado: true },   // 600
+  { estado: 'pendiente', servicioId: 's1', precioAcordado: 700, montoAnticipo: 100, anticipoConfirmado: false },   // 700 y 100 por recibir
+  { estado: 'iniciada', servicioId: 's1' },                                                                         // 500
+  { estado: 'no_llego', servicioId: 's1', precioAcordado: 900 }, { estado: 'solicitud', servicioId: 's1', montoAnticipo: 150 },
+  { estado: 'cancelada', servicioId: 's1', precioAcordado: 900 }, { estado: 'completada', servicioId: 's1', precioAcordado: 900 }
+];
+assert.equal(porCobrar(vivas, svc), 1800);
+assert.equal(anticiposPorRecibir(vivas), 100);
+// Anticipo de más en una cita cobrada: ingreso completo (300 del servicio + 200 que pasan a saldo)
+assert.equal(ingresoCita({ estado: 'completada', precioFinal: 300, anticipoASaldo: 200 } as any), 500);
+assert.equal(reversaCobro('c1', [mov('x', 'c1', 200)], []).devolver, -200);   // anular retira ese abono
+// Ganancia: solo gastos pagados. Saldos pendientes de reportes: lo mismo que Citas
+const stats = calculateReportStats(vivas as any, [], [{ monto: 100, pagado: true }, { monto: 900, pagado: false }] as any, svc);
+assert.deepEqual([stats.totalGastos, stats.saldosPendientes], [100, 1800]);
+// El reporte por mes no repite ni salta meses el día 31
+const real = Date; const fijo = new real('2026-10-31T12:00:00');
+(globalThis as any).Date = class extends real { constructor(...a: any[]) { if (a.length) super(...(a as [any])); else super(fijo.getTime()); } };
+const meses = generateReportData([], [], 'month').map(d => d.periodo);
+(globalThis as any).Date = real;
+assert.equal(new Set(meses).size, 6);
 
 console.log('cobro: ok');

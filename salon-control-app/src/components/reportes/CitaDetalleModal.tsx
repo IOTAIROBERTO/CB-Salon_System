@@ -117,7 +117,7 @@ export default function CitaDetalleModal({
                   {/* Subtotal después del descuento */}
                   <div className="flex justify-between">
                     <span className="text-gray-700">Subtotal:</span>
-                    <span className="font-medium">{formatCurrency(cita.subtotalConDescuento || cita.subtotalOriginal || cita.precioFinal || 0)}</span>
+                    <span className="font-medium">{formatCurrency(cita.subtotalConDescuento ?? cita.subtotalOriginal ?? cita.precioFinal ?? 0)}</span>
                   </div>
 
                   {/* Anticipo */}
@@ -129,7 +129,7 @@ export default function CitaDetalleModal({
                   {/* Saldo antes de redondeo */}
                   {(() => {
                     const saldoAntesRedondeo = Math.max(0, 
-                      (cita.subtotalConDescuento || cita.subtotalOriginal || cita.precioFinal || 0) - 
+                      (cita.subtotalConDescuento ?? cita.subtotalOriginal ?? cita.precioFinal ?? 0) - 
                       (cita.montoAnticipo || 0)
                     );
                     return (
