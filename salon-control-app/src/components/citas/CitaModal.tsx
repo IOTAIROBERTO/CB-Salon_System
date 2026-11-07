@@ -1,7 +1,8 @@
 // src/components/citas/CitaModal.tsx - Actualizado con selector de hora mejorado
+import ElegirClienta from "../clientes/ElegirClienta";
 import { X, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
-import { type Cliente, type Servicio, type Cita } from "../../types/citas";
+import { type Servicio, type Cita } from "../../types/citas";
 import {
   obtenerFechaMinima,
   validarFechaHora,
@@ -14,9 +15,9 @@ import { useAgenda } from "../../hooks/useAgenda";
 
 import { db } from "../../db/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import { avisar, confirmar } from "../Confirmar";
 
 interface CitaModalProps {
-  clientes: Cliente[];
   servicios: Servicio[];
   onClose: () => void;
   onSave: (formData: Omit<Cita, "id"> | { id: string;[key: string]: any }) => void;
@@ -25,7 +26,7 @@ interface CitaModalProps {
   inicial?: { fecha?: string; hora?: string; notas?: string; estado?: Cita['estado']; googleAdoptar?: string };
 }
 
-export default function CitaModal({ clientes, servicios, onClose, onSave, citaEdit, inicial }: CitaModalProps) {
+export default function CitaModal({ servicios, onClose, onSave, citaEdit, inicial }: CitaModalProps) {
   const empleados = useLiveQuery(() => db.empleados.toArray())?.filter(e => e.activo) || [];
   const { personas } = useAgenda();
   const settings = useLiveQuery(() => db.configuracion.get("settings"));
@@ -56,14 +57,15 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
     }
   }, [formData.fecha, formData.hora]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validar fecha y hora antes de guardar
     const validacion = validarFechaHora(formData.fecha, formData.hora);
     if (!validacion.valido) {
-      alert(validacion.mensaje || 'Fecha u hora inválida');
+      avisar(validacion.mensaje || 'Fecha u hora inválida');
       return;
     }
 
+    if (citaEdit && !(await confirmar('¿Guardar los cambios de esta cita?'))) return;
     if (citaEdit) {
       // Modo edición: crear objeto de cita completo manteniendo campos existentes
       const citaActualizada = {
@@ -124,20 +126,9 @@ export default function CitaModal({ clientes, servicios, onClose, onSave, citaEd
           {/* Selector de cliente */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cliente *
+              Clienta *
             </label>
-            <select
-              value={formData.clienteId}
-              onChange={(e) => setFormData({ ...formData, clienteId: e.target.value })}
-              className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              <option value="">Seleccionar cliente</option>
-              {clientes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre}
-                </option>
-              ))}
-            </select>
+            <ElegirClienta value={formData.clienteId} onChange={(clienteId) => setFormData({ ...formData, clienteId })} />
           </div>
 
           {/* Selector de servicio */}

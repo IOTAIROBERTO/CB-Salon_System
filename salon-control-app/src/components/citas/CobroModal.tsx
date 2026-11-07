@@ -19,6 +19,7 @@ import {
   NOMBRE_NIVEL, NOMBRE_CIRCULO, estadoCirculo, parametrosDe, beneficiosDisponibles, datosBeneficio, descuentoServicio, porcentajeReferida, textoSaldoPuntos, montoCanje, costoPuntos, AVISO_GASTO,
   type ClaveBeneficio
 } from "../../utils/lealtad";
+import { confirmar } from "../Confirmar";
 
 interface CobroModalProps {
   cita: Cita;
@@ -92,7 +93,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   const puntosClub = estadoClub?.activa ? estadoClub.puntos : 0;
   // Usar los puntos aquí mismo: se cambian por saldo a favor (solo la Dueña) y el saldo entra a este cobro
   const usarPuntos = async () => {
-    if (!clienta || !confirm(`¿Cambiar ${puntosClub.toLocaleString('es-MX')} puntos por $${montoCanje(puntosClub, pClub)} de saldo y usarlo en este cobro?`)) return;
+    if (!clienta || !(await confirmar(`¿Cambiar ${puntosClub.toLocaleString('es-MX')} puntos por $${montoCanje(puntosClub, pClub)} de saldo y usarlo en este cobro?`))) return;
     const monto = await canjearPuntos(clienta.id, puntosClub, pClub);
     setConSaldo(c => c + monto);
   };

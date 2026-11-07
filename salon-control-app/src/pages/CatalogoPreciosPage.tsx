@@ -10,6 +10,7 @@ import ServicioModal from '../components/catalogo/ServicioModal';
 import CotizadorTraslado from '../components/catalogo/CotizadorTraslado';
 import { abrirNuevaLista, listasDe } from '../db/catalogo';
 import { formatoPrecio } from '../utils/precios';
+import { avisar, confirmar } from '../components/Confirmar';
 
 export default function CatalogoPreciosPage() {
   const { servicios, addServicio, updateServicio, deleteServicio } = useCatalogo();
@@ -31,14 +32,14 @@ export default function CatalogoPreciosPage() {
   } = useServicioModal();
 
   const abrirSiguiente = async () => {
-    if (!confirm(
+    if (!(await confirmar(
       `La lista ${listas.activa} quedará guardada como histórica, de solo consulta, y se abrirá la lista ${siguiente} con los mismos precios para que los ajustes. ¿Continuar?`
-    )) return;
+    ))) return;
     try {
       await abrirNuevaLista(siguiente);
       setPestana(null);
     } catch (e: any) {
-      alert(e.message);
+      avisar(e.message);
     }
   };
 

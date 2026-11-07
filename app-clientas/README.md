@@ -135,4 +135,4 @@ Puesta en marcha (una sola vez, proyecto de Google Cloud «CristinaBorquezSalon�
 | `cita_recibida` | Utilidad | Hola, {{1}}. Recibimos tu solicitud de {{2}} para el {{3}} a las {{4}}. Te confirmamos en breve. Cristina Borquez Beauty Salon. |
 | `cita_confirmada` | Utilidad | ¡Listo, {{1}}! Tu cita de {{2}} quedó confirmada para el {{3}} a las {{4}}. {{5}} Te esperamos en Plaza Galilea, planta alta. |
 | `recordatorio_cita` | Utilidad | Hola, {{1}}. Te recordamos tu cita de {{2}} mañana, {{3}}, a las {{4}}. Si necesitas cambiarla, respóndenos aquí. |
-| `aviso_salon` | Utilidad | Aviso de CB Control: {{1}} |
+| `aviso_salon` | Utilidad | Aviso de CB Control: {{1}}. Revísalo en CB Control. |

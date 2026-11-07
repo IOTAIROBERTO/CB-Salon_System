@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type SalonDocument } from '../db/db';
 import { Plus, Trash2, FileText, Image as ImageIcon, File, Paperclip, Eye, Download } from 'lucide-react';
 import FormatosSalon from '../components/documentos/FormatosSalon';
+import { avisar, confirmar } from '../components/Confirmar';
 
 export default function DocumentosPage() {
     const documents = useLiveQuery(() => db.documentos.orderBy('fechaCreacion').reverse().toArray());
@@ -51,7 +52,7 @@ export default function DocumentosPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (confirm('¿Eliminar este documento?')) {
+        if (await confirmar('¿Eliminar este documento?')) {
             await db.documentos.delete(id);
         }
     };
@@ -128,7 +129,7 @@ export default function DocumentosPage() {
                             {doc.texto && (
                                 <button
                                     className="flex-1 flex items-center justify-center gap-2 text-sm font-medium text-purple-600 bg-purple-50 py-2 rounded-lg hover:bg-purple-100"
-                                    onClick={() => alert(doc.texto)}
+                                    onClick={() => avisar(doc.texto)}
                                 >
                                     <Eye size={16} /> Ver
                                 </button>

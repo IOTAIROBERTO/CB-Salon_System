@@ -1,5 +1,5 @@
 // Escrituras del saldo a favor y de las tarjetas de regalo (reglas en utils/saldo).
-import { db } from './db';
+import { db, type MovimientoSaldo, type TarjetaRegalo } from './db';
 import { errorActivacion, normalizarFolio } from '../utils/saldo';
 
 const id = (p: string) => `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -44,3 +44,17 @@ export const abonarSaldo = (clienteId: string, monto: number, concepto: string) 
 /** Cargo al usar el saldo en un cobro */
 export const usarSaldo = (clienteId: string, monto: number, citaId?: string, concepto = 'Pago con saldo a favor') =>
   monto > 0 ? db.movimientosSaldo.add({ id: id('sal'), clienteId, fecha: new Date().toISOString(), monto: -monto, concepto, citaId }) : Promise.resolve('');
+
+/** Anula una tarjeta que aún no se activa (error de captura o se devolvió el dinero): se borra con su venta */
+export const anularTarjeta = async (t: TarjetaRegalo) => {
+  if (t.activadaPor) throw new Error('Esa tarjeta ya se activó: su monto es saldo de la clienta. Corrígelo desde su ficha.');
+  await db.transaction('rw', db.ventas, db.tarjetasRegalo, async () => {
+    if (t.ventaId) await db.ventas.delete(t.ventaId);
+    await db.tarjetasRegalo.delete(t.id);
+  });
+};
+
+/** Solo se quitan a mano los movimientos capturados a mano (abonos, ajustes, saldo de cancelaciones o pedidos):
+ *  los de un cobro, una tarjeta o un canje del Club se corrigen desde ahí para no descuadrar */
+export const movimientoEditable = (m: MovimientoSaldo) => !m.citaId && !m.folio && m.origen !== 'club';
+export const quitarMovimiento = (m: MovimientoSaldo) => db.movimientosSaldo.delete(m.id);

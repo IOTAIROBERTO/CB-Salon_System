@@ -5,6 +5,7 @@ import { db } from '../../db/db';
 import { normalizar, telefono10 } from '../../utils/texto';
 import ConsentimientosCliente from './ConsentimientosCliente';
 import SaldoCliente from './SaldoCliente';
+import { avisar, confirmar } from '../Confirmar';
 
 interface ClienteModalProps {
   isOpen: boolean;
@@ -34,7 +35,7 @@ export default function ClienteModal({
     
     const validationError = validateClienteForm(formData);
     if (validationError) {
-      alert(validationError);
+      avisar(validationError);
       return;
     }
 
@@ -52,17 +53,18 @@ export default function ClienteModal({
     const tel = telefono10(clienteData.telefono);
     const repetidas = await db.clientes.filter(c => c.id !== editingCliente?.id && c.activo !== false &&
       (normalizar(c.nombre) === normalizar(clienteData.nombre) || (tel.length === 10 && telefono10(c.telefono) === tel))).toArray();
-    if (repetidas.length && !confirm(`Ya existe ${repetidas.map(c => c.nombre).join(', ')} con el mismo nombre o teléfono. ¿Guardar de todos modos?`)) {
+    if (repetidas.length && !(await confirmar(`Ya existe ${repetidas.map(c => c.nombre).join(', ')} con el mismo nombre o teléfono. ¿Guardar de todos modos?`))) {
       return;
     }
 
+    if (editingCliente && !(await confirmar(`¿Guardar los cambios de ${editingCliente.nombre}?`))) return;
     if (editingCliente) {
       onUpdate(editingCliente.id, clienteData);
     } else {
       onSave(clienteData);
     }
     
-    alert((editingCliente ? 'Cliente actualizado' : 'Cliente agregado') + ' exitosamente!');
+    if (!editingCliente) avisar('Clienta agregada. Ya está en el Club.');
     onClose();
   };
 

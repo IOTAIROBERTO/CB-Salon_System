@@ -7,6 +7,7 @@ import { db } from '../db/db';
 import { emailMarketingService } from '../services/emailMarketingService';
 import { type CampaignType, type CampaignConfig, type EmailTemplate } from '../types/email';
 import { Link } from 'react-router-dom';
+import { avisar, confirmar } from '../components/Confirmar';
 
 export default function EmailCampaignsPage() {
   // Live Data from Dexie
@@ -81,7 +82,7 @@ export default function EmailCampaignsPage() {
 
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.plantillaId) return alert('Selecciona una plantilla');
+    if (!formData.plantillaId) return avisar('Selecciona una plantilla');
 
     try {
       const allClients = await db.clientes.toArray();
@@ -97,7 +98,7 @@ export default function EmailCampaignsPage() {
       } else if (formData.filtroTipo === 'seleccion_manual') {
         targetClients = targetClients.filter(c => selectedClientIds.includes(c.id));
         if (targetClients.length === 0) {
-          return alert('Debes seleccionar al menos un cliente.');
+          return avisar('Debes seleccionar al menos un cliente.');
         }
       }
 
@@ -121,27 +122,27 @@ export default function EmailCampaignsPage() {
       resetForm();
     } catch (error) {
       console.error(error);
-      alert('Error al crear campaña');
+      avisar('Error al crear campaña');
     }
   };
 
   const handleSendCampaign = async (campaignId: string) => {
-    if (!confirm('¿Iniciar el envío de esta campaña?')) return;
+    if (!(await confirmar('¿Iniciar el envío de esta campaña?'))) return;
 
     setIsSending(true);
     try {
       await emailMarketingService.sendCampaign(campaignId);
-      alert('Campaña enviada / procesada correctamente.');
+      avisar('Campaña enviada / procesada correctamente.');
     } catch (error) {
       console.error(error);
-      alert('Error en el envío');
+      avisar('Error en el envío');
     } finally {
       setIsSending(false);
     }
   };
 
   const handleDeleteCampaign = async (id: string) => {
-    if (confirm('Eliminar campaña?')) {
+    if (await confirmar('Eliminar campaña?')) {
       await db.campanas.delete(id);
     }
   };
@@ -167,15 +168,15 @@ export default function EmailCampaignsPage() {
       await emailMarketingService.saveTemplate(newTemplate);
       setShowTemplateModal(false);
       setTemplateForm({ nombre: '', tipo: 'promocion_general', asunto: '', contenido: '' });
-      alert('Plantilla guardada');
+      avisar('Plantilla guardada');
     } catch (error) {
       console.error(error);
-      alert('Error al guardar plantilla');
+      avisar('Error al guardar plantilla');
     }
   };
 
   const handleDeleteTemplate = async (id: string) => {
-    if (confirm('¿Eliminar esta plantilla?')) {
+    if (await confirmar('¿Eliminar esta plantilla?')) {
       await db.plantillas.delete(id);
     }
   };
@@ -288,15 +289,15 @@ export default function EmailCampaignsPage() {
 
     setShowAutoModal(false);
     setAutoForm({ nombre: '', trigger: 'reactivacion', dias: 30, plantillaId: '' });
-    alert('Automatización guardada');
+    avisar('Automatización guardada');
   };
 
   const handleDeleteAutomation = async (id: string) => {
     if (['auto_cumple', 'auto_bienvenida', 'auto_cita'].includes(id)) {
-      alert('No puedes eliminar las reglas por defecto del sistema. Puedes desactivarlas.');
+      avisar('No puedes eliminar las reglas por defecto del sistema. Puedes desactivarlas.');
       return;
     }
-    if (confirm('¿Eliminar esta regla de automatización?')) {
+    if (await confirmar('¿Eliminar esta regla de automatización?')) {
       await db.automatizaciones.delete(id);
     }
   };
@@ -542,7 +543,7 @@ export default function EmailCampaignsPage() {
               <button
                 onClick={async () => {
                   const result = await emailMarketingService.checkAutomations();
-                  if (result) alert('Verificación completada. Se generarán las campañas correspondientes si existen coincidencias.');
+                  if (result) avisar('Verificación completada. Se generarán las campañas correspondientes si existen coincidencias.');
                 }}
                 className="mt-2 text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
               >
@@ -559,7 +560,7 @@ export default function EmailCampaignsPage() {
               </button>
               <button
                 onClick={async () => {
-                  if (confirm('¿Reiniciar reglas de automatización? Esto borrará las reglas actuales.')) {
+                  if (await confirmar('¿Reiniciar reglas de automatización? Esto borrará las reglas actuales.')) {
                     await db.automatizaciones.clear();
                     location.reload();
                   }

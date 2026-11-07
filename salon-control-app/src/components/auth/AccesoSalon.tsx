@@ -5,6 +5,7 @@ import { useObservable } from 'dexie-react-hooks';
 import type { DXCAlert } from 'dexie-cloud-addon';
 import { db } from '../../db/db';
 import { NOMBRE_REALM, aceptarInvitacion, crearRealmSalon } from '../../db/salon';
+import { avisar } from '../Confirmar';
 
 const MENSAJES: Record<string, string> = {
   INVALID_OTP: 'Código incorrecto. Revísalo e inténtalo de nuevo.',
@@ -115,7 +116,7 @@ export function PantallaSinSalon({ estado, reintentar }: { estado: 'sin-salon' |
       await db.cloud.sync({ wait: true, purpose: 'pull' });
       reintentar();
     } catch (e) {
-      alert('No se pudo completar: ' + (e as Error).message);
+      avisar('No se pudo completar: ' + (e as Error).message);
       setTrabajando(false);
     }
   };

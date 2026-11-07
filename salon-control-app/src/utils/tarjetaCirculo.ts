@@ -3,6 +3,7 @@
 // El mismo código se lee con un lector de QR o de barras en Clientes y en Círculo CB.
 import qrcode from 'qrcode-generator';
 import { NOMBRE_CIRCULO } from './lealtad';
+import { avisar } from '../components/Confirmar';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -19,7 +20,7 @@ export const qrSvg = (texto: string) => {
 
 export const imprimirTarjeta = (nombre: string, codigo: string) => {
   const w = window.open('', '_blank');
-  if (!w) { alert('El navegador bloqueó la ventana. Permite ventanas emergentes para imprimir la tarjeta.'); return; }
+  if (!w) { avisar('El navegador bloqueó la ventana. Permite ventanas emergentes para imprimir la tarjeta.'); return; }
   const base = new URL('./marca/', document.baseURI).href;
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Tarjeta ${NOMBRE_CIRCULO} · ${esc(nombre)}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Jost:wght@300;400&display=block">

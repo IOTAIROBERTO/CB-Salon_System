@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { CreditCard, MessageCircle, Search, SlidersHorizontal } from 'lucide-react';
+import { CreditCard, MessageCircle, Pencil, Search, SlidersHorizontal, Trash2, UserMinus, UserPlus } from 'lucide-react';
 import { db } from '../db/db';
 import { registrarCanjes, asignarRecomendacion, canjearPuntos, canjearPorTarjeta } from '../db/circulo';
 import { useRolSalon } from '../db/salon';
@@ -11,6 +11,10 @@ import {
 } from '../utils/lealtad';
 import { imprimirTarjeta } from '../utils/tarjetaCirculo';
 import { normalizar } from '../utils/texto';
+import { avisar, confirmar } from '../components/Confirmar';
+import ClienteModal from '../components/clientes/ClienteModal';
+import { useClientes } from '../hooks/useClientes';
+import { useClienteModal } from '../hooks/useClienteModal';
 
 const ESTILO_NIVEL: Record<Nivel, string> = {
   onix: 'bg-marca-negro text-marca-dorado',
@@ -53,6 +57,14 @@ export default function CirculoPage() {
   const [aCanjear, setACanjear] = useState('');
   const [folioTarjeta, setFolioTarjeta] = useState('');
   const esDuena = useRolSalon() === 'duena';
+  // Socias = clientas activas: alta, edición y baja con la misma ficha que Clientas
+  const { addCliente, updateCliente, deleteCliente } = useClientes();
+  const ficha = useClienteModal();
+  const darDeBaja = async (id: string, nombre: string) => {
+    if (!(await confirmar(`¿Dar de baja a ${nombre} del ${NOMBRE_CIRCULO}? Deja de aparecer aquí y en las búsquedas; sus puntos e historial se conservan y puedes reactivarla desde su ficha en Clientas.`))) return;
+    await db.clientes.update(id, { activo: false });
+    setSeleccionadaId(null);
+  };
   const arrancado = new Date().toISOString().slice(0, 10) >= p.inicio;
 
   const filas = useMemo(() => clientes
@@ -72,29 +84,29 @@ export default function CirculoPage() {
 
   const canjear = async (clienteId: string, clave: ClaveBeneficio, nivel: Nivel) => {
     const costo = costoPuntos(clave);
-    if (!confirm(`¿Registrar «${datosBeneficio(clave, nivel).titulo}»?${costo ? ` Se descuentan ${costo} puntos y puede bajar de nivel.` : ''}`)) return;
+    if (!(await confirmar(`¿Registrar «${datosBeneficio(clave, nivel).titulo}»?${costo ? ` Se descuentan ${costo} puntos y puede bajar de nivel.` : ''}`))) return;
     await registrarCanjes(clienteId, [clave]);
   };
 
   const canjearSaldo = async (clienteId: string, disponibles: number) => {
     const puntos = Math.floor(Number(aCanjear));
-    if (!(puntos >= p.canjeMinimo)) return alert(`El canje mínimo es de ${p.canjeMinimo} puntos.`);
-    if (puntos > disponibles) return alert(`Solo tiene ${disponibles} puntos.`);
-    if (!confirm(`¿Cambiar ${puntos} puntos por $${montoCanje(puntos, p)} de saldo a favor?`)) return;
+    if (!(puntos >= p.canjeMinimo)) return avisar(`El canje mínimo es de ${p.canjeMinimo} puntos.`);
+    if (puntos > disponibles) return avisar(`Solo tiene ${disponibles} puntos.`);
+    if (!(await confirmar(`¿Cambiar ${puntos} puntos por $${montoCanje(puntos, p)} de saldo a favor?`))) return;
     await canjearPuntos(clienteId, puntos, p);
     setACanjear('');
   };
 
   const canjearTarjeta = async (clienteId: string, disponibles: number, nivel: Nivel) => {
     const puntos = Math.floor(Number(aCanjear));
-    if (!(puntos >= p.canjeMinimo)) return alert(`El canje mínimo es de ${p.canjeMinimo} puntos.`);
-    if (puntos > disponibles) return alert(`Solo tiene ${disponibles} puntos.`);
-    if (!folioTarjeta.trim()) return alert('Escribe el folio impreso en la tarjeta de regalo que se va a entregar.');
-    if (!confirm(`¿Cambiar ${puntos} puntos por una tarjeta de regalo de $${montoTarjeta(puntos, nivel, p)} (folio ${folioTarjeta.trim().toUpperCase()})?`)) return;
+    if (!(puntos >= p.canjeMinimo)) return avisar(`El canje mínimo es de ${p.canjeMinimo} puntos.`);
+    if (puntos > disponibles) return avisar(`Solo tiene ${disponibles} puntos.`);
+    if (!folioTarjeta.trim()) return avisar('Escribe el folio impreso en la tarjeta de regalo que se va a entregar.');
+    if (!(await confirmar(`¿Cambiar ${puntos} puntos por una tarjeta de regalo de $${montoTarjeta(puntos, nivel, p)} (folio ${folioTarjeta.trim().toUpperCase()})?`))) return;
     try {
       await canjearPorTarjeta(clienteId, puntos, folioTarjeta, nivel, p);
       setACanjear(''); setFolioTarjeta('');
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { avisar((e as Error).message); }
   };
 
   const guardarReglas = async () => {
@@ -120,9 +132,14 @@ export default function CirculoPage() {
             <h1 className="font-bold text-gray-900">{NOMBRE_CIRCULO}</h1>
             <p className="text-gray-600 mt-1">Cinco niveles por puntos del año: Marfil, Miel, Ámbar, Dorado y Ónix. Puntos dobles en su cumpleaños y los martes y miércoles.</p>
           </div>
-          <button onClick={() => setReglas(reglas ? null : { ...p })} className="text-sm border rounded-lg px-3 py-2 flex items-center gap-2 hover:bg-gray-50">
-            <SlidersHorizontal size={16} /> Reglas
-          </button>
+          <div className="flex gap-2">
+            <button onClick={ficha.openCreateModal} className="text-sm bg-marca-negro text-white rounded-lg px-3 py-2 flex items-center gap-2 hover:bg-gray-800">
+              <UserPlus size={16} /> Nueva socia
+            </button>
+            <button onClick={() => setReglas(reglas ? null : { ...p })} className="text-sm border rounded-lg px-3 py-2 flex items-center gap-2 hover:bg-gray-50">
+              <SlidersHorizontal size={16} /> Reglas
+            </button>
+          </div>
         </div>
 
         {!arrancado && (
@@ -202,7 +219,9 @@ export default function CirculoPage() {
                   <td className="p-3 text-gray-700">{f.disponibles.length ? [...new Set(f.disponibles)].map(k => datosBeneficio(k, f.nivel).titulo.split(' (')[0]).join(', ') : '—'}</td>
                 </tr>
               ))}
-              {!visibles.length && <tr><td colSpan={5} className="p-6 text-center text-gray-400">Sin clientas con ese filtro.</td></tr>}
+              {!visibles.length && <tr><td colSpan={5} className="p-6 text-center text-gray-400">
+                {filas.length ? 'Sin clientas con ese filtro.' : <>Aún no hay socias. <button onClick={ficha.openCreateModal} className="underline text-gray-700">Da de alta a la primera</button></>}
+              </td></tr>}
             </tbody>
           </table>
         </div>
@@ -231,6 +250,11 @@ export default function CirculoPage() {
                   <div className="text-[11px] text-gray-300 mt-1">Faltan {seleccionada.sig.falta.toLocaleString('es-MX')} para {NOMBRE_NIVEL[seleccionada.sig.nivel]}</div>
                 </>
               )}
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <button onClick={() => ficha.openEditModal(seleccionada.cliente)} className="flex min-h-[40px] flex-col items-center justify-center gap-1 rounded-lg border hover:bg-gray-50"><Pencil size={15} /> Editar datos</button>
+              <button onClick={() => darDeBaja(seleccionada.cliente.id, seleccionada.cliente.nombre)} className="flex min-h-[40px] flex-col items-center justify-center gap-1 rounded-lg border hover:bg-gray-50"><UserMinus size={15} /> Dar de baja</button>
+              <button onClick={async () => { if (await deleteCliente(seleccionada.cliente.id)) setSeleccionadaId(null); }} className="flex min-h-[40px] flex-col items-center justify-center gap-1 rounded-lg border text-red-700 hover:bg-red-50"><Trash2 size={15} /> Eliminar</button>
             </div>
             <p className="rounded-lg bg-marca-marfil border border-marca-champan px-3 py-2 text-sm text-gray-800">{textoSaldoPuntos(seleccionada.puntos, p)}</p>
             <button onClick={() => imprimirTarjeta(seleccionada.cliente.nombre, seleccionada.codigo)}
@@ -326,6 +350,9 @@ export default function CirculoPage() {
           </div>
         )}
       </aside>
+
+      <ClienteModal isOpen={ficha.isModalOpen} editingCliente={ficha.editingCliente} formData={ficha.formData} updateFormData={ficha.updateFormData}
+        isFormValid={ficha.isFormValid} onSave={addCliente} onUpdate={updateCliente} onClose={ficha.closeModal} />
     </div>
   );
 }

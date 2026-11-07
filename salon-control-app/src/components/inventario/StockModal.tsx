@@ -1,6 +1,7 @@
 import { X, AlertTriangle } from 'lucide-react';
 import { type Producto, type StockMovimiento, type ModalType } from '../../types/inventario';
 import { validateStockForm, calculateNewStock, willBeStockBajo } from '../../utils/inventarioUtils';
+import { avisar } from '../Confirmar';
 
 interface StockModalProps {
   isOpen: boolean;
@@ -28,18 +29,18 @@ export default function StockModal({
     
     const validationError = validateStockForm(stockData);
     if (validationError) {
-      alert(validationError);
+      avisar(validationError);
       return;
     }
 
     if (stockData.operacion === 'resta' && stockData.cantidad > editingProducto.cantidad) {
-      alert('No puedes reducir más stock del disponible');
+      avisar('No puedes reducir más stock del disponible');
       return;
     }
 
     const success = await onUpdateStock(editingProducto.id, stockData);
     if (success) {
-      alert(`Stock ${stockData.operacion === 'suma' ? 'aumentado' : 'reducido'} exitosamente`);
+      avisar(`Stock ${stockData.operacion === 'suma' ? 'aumentado' : 'reducido'} exitosamente`);
       onClose();
     }
   };

@@ -1,4 +1,4 @@
-import { db, type Proveedor, type CompraItem } from './db';
+import { db, type Proveedor, type CompraItem, type Compra } from './db';
 import { totalCompra } from '../utils/proveedores';
 import { normalizar } from '../utils/texto';
 import { fechaLocalISO } from '../utils/dateValidation';
@@ -67,4 +67,16 @@ export const registrarCompra = async ({ proveedor, fecha, folio, notas, items, c
     }
   });
   return total;
+};
+
+/** Elimina una compra capturada por error: regresa el stock que había sumado (sin bajar de 0) y borra su gasto */
+export const eliminarCompra = async (c: Compra) => {
+  await db.transaction('rw', db.compras, db.inventario, db.gastos, async () => {
+    for (const it of c.items) {
+      const p = await db.inventario.get(it.productoId);
+      if (p) await db.inventario.update(p.id, { cantidad: Math.max(0, (p.cantidad || 0) - it.cantidad) });
+    }
+    if (c.gastoId) await db.gastos.delete(c.gastoId);
+    await db.compras.delete(c.id);
+  });
 };

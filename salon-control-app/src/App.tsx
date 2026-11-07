@@ -33,6 +33,7 @@ import { LoginSalon, PantallaSinSalon } from "./components/auth/AccesoSalon";
 import Bandeja from "./components/avisos/Bandeja";
 import EstadoSync from "./components/avisos/EstadoSync";
 import AvisoInstalar from "./components/AvisoInstalar";
+import ConfirmarHost from "./components/Confirmar";
 
 // Páginas solo para la dueña (la empleada no las ve en el menú ni por URL)
 const SOLO_DUENA = new Set(["/reportes", "/configuracion"]);
@@ -98,6 +99,7 @@ function AppSalon() {
     <SettingsProvider>
       <Router>
         <Marco />
+        <ConfirmarHost />
       </Router>
     </SettingsProvider>
   );

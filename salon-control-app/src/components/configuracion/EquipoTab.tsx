@@ -6,6 +6,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { UserPlus, Trash2 } from 'lucide-react';
 import { db } from '../../db/db';
 import { buscarRealmSalon, invitarAlSalon, cambiarRol, NOMBRE_ROL, type RolSalon } from '../../db/salon';
+import { confirmar } from '../Confirmar';
 
 export default function EquipoTab() {
   const realm = useLiveQuery(buscarRealmSalon);
@@ -78,7 +79,7 @@ export default function EquipoTab() {
               <td>{estadoDe(m)}</td>
               <td className="text-right">
                 <button title="Quitar del equipo" className="text-red-600 p-1 hover:bg-red-50 rounded"
-                  onClick={() => confirm(`¿Quitar a ${m.email} del salón?`) && db.members.delete(m.id)}>
+                  onClick={async () => (await confirmar(`¿Quitar a ${m.email} del salón?`)) && db.members.delete(m.id)}>
                   <Trash2 size={16} />
                 </button>
               </td>

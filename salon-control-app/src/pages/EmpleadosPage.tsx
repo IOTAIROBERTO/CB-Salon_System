@@ -8,6 +8,7 @@ import { sinVentasEspejo } from '../utils/ventasUtils';
 import CalendarSection from '../components/empleados/CalendarSection';
 import PagosEquipo from '../components/empleados/PagosEquipo';
 import { MINIMO_POR_HORA, PAGO_SUGERIDO } from '../utils/pagos';
+import { confirmar } from '../components/Confirmar';
 
 // Bono por cita apoyada: categorías del catálogo
 const CATEGORIAS_BONO: [string, string][] = [['color', 'Color'], ['maquillaje', 'Maquillaje y novias'], ['peinado', 'Peinado'], ['tratamiento', 'Tratamiento'], ['corte', 'Corte']];
@@ -45,6 +46,7 @@ export default function EmpleadosPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (selectedEmpleadoId && !(await confirmar(`¿Guardar los cambios de ${formData.nombre}?`))) return;
         const id = selectedEmpleadoId || `emp_${Date.now()}`;
         await db.empleados.put({ ...formData, id });
         setShowModal(false);
@@ -77,7 +79,7 @@ export default function EmpleadosPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (confirm('¿Eliminar empleado? Los datos de sus trabajos se mantendrán pero no se podrán asignar nuevos.')) {
+        if (await confirmar('¿Eliminar empleado? Los datos de sus trabajos se mantendrán pero no se podrán asignar nuevos.')) {
             await db.empleados.update(id, { activo: false });
         }
     };

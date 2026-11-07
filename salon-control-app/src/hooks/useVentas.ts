@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { sinVentasEspejo } from '../utils/ventasUtils';
 import { apartados, disponible } from '../utils/pedidos';
+import { confirmar } from '../components/Confirmar';
 
 /** Guarda la venta y descuenta el stock en una sola transacción (o todo o nada). Lo apartado en pedidos de la app no se
  *  puede vender: solo el pedido `pedidoId` (el que se entrega) usa lo suyo. */
@@ -56,7 +57,7 @@ export const useVentas = () => {
 
   // Elimina la venta y devuelve el stock al inventario
   const deleteVenta = async (ventaId: string) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta venta? El stock se devolverá al inventario.')) {
+    if (!(await confirmar('¿Estás seguro de que quieres eliminar esta venta? El stock se devolverá al inventario.'))) {
       return false;
     }
     await db.transaction('rw', db.ventas, db.inventario, async () => {

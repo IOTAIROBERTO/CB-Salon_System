@@ -6,6 +6,7 @@ import { db } from '../../db/db';
 import { formatCurrency } from '../../utils/financialUtils';
 import { PARAMETROS_TRASLADO, calcularTraslado } from '../../utils/trasladoUtils';
 import { zonasDe, idZona, type Zona } from '../../utils/zonas';
+import { avisar, confirmar } from '../Confirmar';
 
 interface CotizadorTrasladoProps {
   servicios: Servicio[];
@@ -64,9 +65,9 @@ export default function CotizadorTraslado({ servicios }: CotizadorTrasladoProps)
   const copiar = async () => {
     try {
       await navigator.clipboard.writeText(texto);
-      alert('Cotización copiada. Pégala en WhatsApp.');
+      avisar('Cotización copiada. Pégala en WhatsApp.');
     } catch {
-      alert(texto);
+      avisar(texto);
     }
   };
 
@@ -77,7 +78,7 @@ export default function CotizadorTraslado({ servicios }: CotizadorTrasladoProps)
     setEditando(z => z && z.map((x, j) => (j === i ? { ...x, ...cambios } : x)));
   const guardarZonas = async () => {
     if (!editando) return;
-    if (editando.some(z => !z.nombre.trim())) { alert('Cada zona necesita un nombre'); return; }
+    if (editando.some(z => !z.nombre.trim())) { avisar('Cada zona necesita un nombre'); return; }
     const actual = await db.configuracion.get('settings');
     await db.configuracion.put({ ...(actual as any), id: 'settings', zonas: editando });
     setEditando(null);
@@ -132,7 +133,7 @@ export default function CotizadorTraslado({ servicios }: CotizadorTrasladoProps)
                       <td className="p-1"><input className={chico} type="number" min="0" value={z.anticipacionDias ?? ''} onChange={e => cambiarZona(i, { anticipacionDias: Number(e.target.value) || undefined })} /></td>
                       <td className="p-1 text-center"><input type="checkbox" checked={z.activa} onChange={e => cambiarZona(i, { activa: e.target.checked })} /></td>
                       <td className="p-1">
-                        <button onClick={() => confirm(`¿Quitar ${z.nombre || 'esta zona'}? Las citas viejas conservan el nombre.`) && setEditando(editando.filter((_, j) => j !== i))}
+                        <button onClick={async () => (await confirmar(`¿Quitar ${z.nombre || 'esta zona'}? Las citas viejas conservan el nombre.`)) && setEditando(editando.filter((_, j) => j !== i))}
                           className="text-red-600 p-1 hover:bg-red-50 rounded" title="Quitar"><Trash2 size={14} /></button>
                       </td>
                     </tr>

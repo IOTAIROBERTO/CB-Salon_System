@@ -14,6 +14,7 @@ import { useAgenda, nombrePersona } from "../../hooks/useAgenda";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../../db/db";
 import { enlaceWhatsApp } from "../../utils/lealtad";
+import { avisar } from "../Confirmar";
 
 interface ReagendarModalProps {
   cita: Cita;
@@ -43,7 +44,7 @@ export default function ReagendarModal({ cita, onClose, onSave }: ReagendarModal
     // Validar antes de guardar
     const validacion = validarFechaHora(fecha, hora);
     if (!validacion.valido) {
-      alert(validacion.mensaje || 'Fecha u hora inválida');
+      avisar(validacion.mensaje || 'Fecha u hora inválida');
       return;
     }
 

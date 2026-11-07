@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Gift, Wallet } from 'lucide-react';
+import { Gift, Wallet, X } from 'lucide-react';
 import { db } from '../../db/db';
 import { useRolSalon } from '../../db/salon';
-import { activarTarjeta, abonarSaldo } from '../../db/saldo';
+import { activarTarjeta, abonarSaldo, movimientoEditable, quitarMovimiento } from '../../db/saldo';
 import { saldoDe } from '../../utils/saldo';
 import { formatCurrency } from '../../utils/financialUtils';
+import { avisar, confirmar } from '../Confirmar';
 
 /** Saldo a favor de la clienta: activar tarjeta de regalo, abonos y movimientos */
 export default function SaldoCliente({ clienteId }: { clienteId: string }) {
@@ -19,12 +20,12 @@ export default function SaldoCliente({ clienteId }: { clienteId: string }) {
     try {
       const monto = await activarTarjeta(folio, clienteId);
       setFolio('');
-      alert(`Tarjeta activada: ${formatCurrency(monto)} de saldo a favor.`);
-    } catch (e) { alert((e as Error).message); }
+      avisar(`Tarjeta activada: ${formatCurrency(monto)} de saldo a favor.`);
+    } catch (e) { avisar((e as Error).message); }
   };
   const abonar = async () => {
     const monto = Number(abono.monto);
-    if (!(monto > 0)) return alert('Escribe el monto');
+    if (!(monto > 0)) return avisar('Escribe el monto');
     await abonarSaldo(clienteId, monto, abono.concepto || 'Abono');
     setAbono({ monto: '', concepto: '' });
   };
@@ -45,11 +46,19 @@ export default function SaldoCliente({ clienteId }: { clienteId: string }) {
         </div>
       )}
       {movimientos.length > 0 && (
-        <ul className="text-xs text-gray-600 divide-y max-h-28 overflow-y-auto">
+        <ul className="text-xs text-gray-600 divide-y max-h-40 overflow-y-auto">
           {movimientos.map(m => (
             <li key={m.id} className="flex justify-between py-1">
               <span>{new Date(m.fecha).toLocaleDateString('es-MX')} · {m.concepto}</span>
-              <span className={m.monto < 0 ? 'text-red-600' : 'text-green-700'}>{m.monto < 0 ? '−' : '+'}{formatCurrency(Math.abs(m.monto))}</span>
+              <span className="flex items-center gap-1">
+                <span className={m.monto < 0 ? 'text-red-600' : 'text-green-700'}>{m.monto < 0 ? '−' : '+'}{formatCurrency(Math.abs(m.monto))}</span>
+                {esDuena && movimientoEditable(m) && (
+                  <button type="button" aria-label="Quitar movimiento" className="p-1 text-gray-400 hover:text-red-600"
+                    onClick={async () => (await confirmar(`¿Quitar «${m.concepto}» (${formatCurrency(m.monto)})? El saldo cambia a ${formatCurrency(saldo - m.monto)}.`)) && quitarMovimiento(m)}>
+                    <X size={12} />
+                  </button>
+                )}
+              </span>
             </li>
           ))}
         </ul>

@@ -6,6 +6,7 @@ import { useRolSalon } from '../../db/salon';
 import { verFirmado, vigente } from '../../db/firma';
 import { resizeImage, validateImageFile } from '../../utils/imageUtils';
 import PedirFirma from './PedirFirma';
+import { avisar, confirmar } from '../Confirmar';
 
 const REDES: Record<Consentimiento['redes'], string> = {
   con_rostro: 'Sí, con rostro', sin_rostro: 'Sí, sin rostro', no: 'No'
@@ -28,7 +29,7 @@ export default function ConsentimientosCliente({ clienteId }: { clienteId: strin
   const elegir = async (archivo?: File) => {
     if (!archivo) return;
     const v = validateImageFile(archivo);
-    if (!v.isValid) { alert(v.error); return; }
+    if (!v.isValid) { avisar(v.error); return; }
     // Legible para releer el formato, ligero para sincronizar (~200 KB)
     setImagen(await resizeImage(archivo, { maxWidth: 1400, maxHeight: 1400, quality: 0.6 }));
   };
@@ -66,7 +67,7 @@ export default function ConsentimientosCliente({ clienteId }: { clienteId: strin
           <span className="flex gap-1">
             {c.imagen && <button type="button" onClick={() => ver(c.imagen!)} className="text-purple-700 hover:underline">Ver formato</button>}
             {c.firma && <button type="button" onClick={() => verFirmado(c)} className="text-purple-700 hover:underline">Ver formato</button>}
-            {esDuena && <button type="button" onClick={() => confirm('¿Borrar este consentimiento?') && db.consentimientos.delete(c.id)} className="text-red-600 p-1" title="Borrar"><Trash2 size={12} /></button>}
+            {esDuena && <button type="button" onClick={async () => (await confirmar('¿Borrar este consentimiento?')) && db.consentimientos.delete(c.id)} className="text-red-600 p-1" title="Borrar"><Trash2 size={12} /></button>}
           </span>
         </div>
       ))}

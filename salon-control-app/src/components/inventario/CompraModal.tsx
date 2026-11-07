@@ -6,6 +6,7 @@ import { registrarCompra } from '../../db/proveedores';
 import { totalCompra } from '../../utils/proveedores';
 import { formatCurrency } from '../../utils/financialUtils';
 import { fechaLocalISO } from '../../utils/dateValidation';
+import { avisar } from '../Confirmar';
 
 const campo = 'w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500';
 const filaVacia = (): CompraItem => ({ productoId: '', nombre: '', cantidad: 1, costoUnitario: 0 });
@@ -38,14 +39,14 @@ export default function CompraModal({ proveedorId, onClose }: { proveedorId?: st
 
   const guardar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!proveedor) return alert('Elige el proveedor');
+    if (!proveedor) return avisar('Elige el proveedor');
     setGuardando(true);
     try {
       const t = await registrarCompra({ proveedor, fecha, folio, notas, items, comoGasto, pagado: pagadoEfectivo });
-      alert(`Compra registrada: ${formatCurrency(t)}. El stock ya se actualizó.`);
+      avisar(`Compra registrada: ${formatCurrency(t)}. El stock ya se actualizó.`);
       onClose();
     } catch (err: any) {
-      alert(err.message || 'No se pudo registrar la compra');
+      avisar(err.message || 'No se pudo registrar la compra');
     } finally {
       setGuardando(false);
     }

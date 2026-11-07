@@ -8,6 +8,7 @@ import {
   saveMovimientoHistorial
 } from '../utils/inventarioUtils';
 import { fechaLocalISO } from '../utils/dateValidation';
+import { confirmar } from '../components/Confirmar';
 
 export const useInventario = () => {
   // Cargar inventario desde Dexie en tiempo real
@@ -54,7 +55,7 @@ export const useInventario = () => {
   };
 
   const deleteProducto = async (productoId: string): Promise<boolean> => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.')) {
+    if (!(await confirmar('¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.'))) {
       return false;
     }
 

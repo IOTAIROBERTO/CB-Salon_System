@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db";
 import { type Cita, type Cliente } from "../types/citas";
+import { confirmar } from "../components/Confirmar";
 
 export default function useCitas() {
   const [modalState, setModalState] = useState<{ type: string; data?: Cita | null }>({
@@ -35,7 +36,7 @@ export default function useCitas() {
   };
 
   const deleteCita = async (id: string) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta cita?')) {
+    if (!(await confirmar('¿Estás seguro de que quieres eliminar esta cita?'))) {
       return false;
     }
     await db.citas.delete(id);

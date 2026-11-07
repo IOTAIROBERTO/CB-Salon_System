@@ -17,6 +17,7 @@ import { esCumpleanosHoy } from '../utils/clientesUtils';
 import { formatCurrency } from '../utils/financialUtils';
 import { fechaLocalISO } from '../utils/dateValidation';
 import { DATOS_SALON } from '../data/datosSalon';
+import { confirmar } from '../components/Confirmar';
 
 // «Hoy»: lo que toca hacer en el salón, cada cosa con su siguiente paso a un toque (pensada para el celular).
 // Solicitudes por valorar, anticipos por recibir, citas del día (iniciar → cobrar), recordatorios de mañana y
@@ -110,7 +111,7 @@ export default function HoyPage() {
                     </div>
                     <div className="ml-auto flex flex-wrap justify-end gap-2">
                       {abierta && yaPaso && (
-                        <button onClick={() => confirm(`¿${nombre(c.clienteId)} no llegó?${c.anticipoConfirmado && c.montoAnticipo ? ` El anticipo de ${formatCurrency(c.montoAnticipo)} se queda como anticipo perdido.` : ''}`) && marcarNoLlego(c)}
+                        <button onClick={async () => (await confirmar(`¿${nombre(c.clienteId)} no llegó?${c.anticipoConfirmado && c.montoAnticipo ? ` El anticipo de ${formatCurrency(c.montoAnticipo)} se queda como anticipo perdido.` : ''}`)) && marcarNoLlego(c)}
                           className={`${boton} border bg-white text-gray-600`}><UserX size={14} /> No llegó</button>
                       )}
                       {abierta && <button onClick={() => changeEstadoCita(c.id, 'iniciada')} className={`${boton} bg-marca-negro text-white`}><Play size={14} /> Iniciar</button>}

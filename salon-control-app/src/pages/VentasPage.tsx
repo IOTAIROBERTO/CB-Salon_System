@@ -81,7 +81,6 @@ export default function VentasPage() {
       <VentaModal
         isOpen={isModalOpen}
         ventaData={ventaData}
-        clientes={clientes}
         inventario={inventario}
         updateFormData={updateFormData}
         updateItemQuantity={updateItemQuantity}
