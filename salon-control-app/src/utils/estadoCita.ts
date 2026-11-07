@@ -23,6 +23,14 @@ export function motivoNoBorrar(c: CitaDinero) {
   return '';
 }
 
+/** Por qué no se puede borrar una venta, o '': la de una tarjeta dejaría la tarjeta viva y la de un pedido, su entrega sin registro */
+export function motivoNoBorrarVenta(v: { id: string }, pedidos: { ventaId?: string }[]) {
+  if (v.id.startsWith('vta_tarjeta_')) return 'Es la venta de una tarjeta de regalo: anúlala en Tarjetas de regalo.';
+  if (v.id.startsWith('vta_pedido_')) return 'Es lo pagado de un pedido que no se recogió: ya es saldo a favor de la clienta.';
+  if (pedidos.some(p => p.ventaId === v.id)) return 'Es la venta de un pedido de la app ya entregado: no se puede eliminar.';
+  return '';
+}
+
 interface MovCobro { id: string; citaId?: string; monto: number; origen?: string; puntos?: number; fecha: string }
 interface CanjeCobro { citaId?: string; puntos?: number; fecha: string }
 

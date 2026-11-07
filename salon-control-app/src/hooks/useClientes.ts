@@ -30,18 +30,15 @@ export const useClientes = () => {
   };
 
   const deleteCliente = async (clienteId: string) => {
-    // Si tiene citas o ventas conviene marcarla inactiva en vez de borrarla
-    const tieneRegistros = (await db.citas.where('clienteId').equals(clienteId).count()) + (await db.ventas.where('clienteId').equals(clienteId).count()) > 0;
-    if (tieneRegistros) {
-      const confirmarEliminacion = (await confirmar(
-        'Este cliente tiene citas o servicios registrados. ¿Estás seguro de eliminarlo? ' +
-        'Se recomienda marcarlo como inactivo en su lugar.'
-      ));
-      if (!confirmarEliminacion) return false;
-    } else {
-      if (!(await confirmar('¿Estás seguro de que quieres eliminar este cliente?'))) return false;
+    // Con historial no se borra: dejaría citas, saldo, consentimientos y pedidos sin dueña. Se da de baja y se puede reactivar
+    const conteos = await Promise.all([db.citas, db.ventas, db.movimientosSaldo, db.consentimientos, db.pedidos, db.fotos]
+      .map(t => (t as any).where('clienteId').equals(clienteId).count() as Promise<number>));
+    if (conteos.some(n => n > 0)) {
+      if (!(await confirmar('Esta clienta tiene historial (citas, ventas, saldo o consentimientos), así que no se puede eliminar. ¿Darla de baja? Deja de aparecer en las búsquedas, se conserva su historial y puedes reactivarla desde su ficha.', { si: 'Dar de baja' }))) return false;
+      await db.clientes.update(clienteId, { activo: false });
+      return true;
     }
-
+    if (!(await confirmar('¿Estás seguro de que quieres eliminar este cliente?'))) return false;
     await db.clientes.delete(clienteId);
     return true;
   };

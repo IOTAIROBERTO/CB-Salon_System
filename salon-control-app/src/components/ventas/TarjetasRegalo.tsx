@@ -18,7 +18,7 @@ export default function TarjetasRegalo() {
   const [abierto, setAbierto] = useState(false);
   const esDuena = useRolSalon() === 'duena';
   const anular = async (t: (typeof tarjetas)[number]) => {
-    if (!(await confirmar(`¿Anular la tarjeta ${t.folio} de ${formatCurrency(t.monto)}? Se borra junto con su venta (ya no cuenta como ingreso).`))) return;
+    if (!(await confirmar(`¿Anular la tarjeta ${t.folio} de ${formatCurrency(t.monto)}? ${t.metodoPago === 'puntos' ? 'Se compró con puntos: los puntos regresan a la clienta.' : 'Se borra junto con su venta (ya no cuenta como ingreso).'}`))) return;
     try { await anularTarjeta(t); } catch (e) { avisar((e as Error).message); }
   };
 

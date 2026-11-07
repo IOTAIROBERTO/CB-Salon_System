@@ -8,7 +8,8 @@ import {
   saveMovimientoHistorial
 } from '../utils/inventarioUtils';
 import { fechaLocalISO } from '../utils/dateValidation';
-import { confirmar } from '../components/Confirmar';
+import { avisar, confirmar } from '../components/Confirmar';
+import { apartados } from '../utils/pedidos';
 
 export const useInventario = () => {
   // Cargar inventario desde Dexie en tiempo real
@@ -37,6 +38,11 @@ export const useInventario = () => {
     if (!producto) return false;
 
     const nuevaCantidad = calculateNewStock(producto.cantidad, stockData);
+    const apartadas = apartados(await db.pedidos.toArray())[productoId] || 0;
+    if (stockData.operacion === 'resta' && nuevaCantidad < apartadas) {   // si no, la entrega de un pedido pagado fallaría
+      await avisar(`Solo puedes sacar ${Math.max(0, producto.cantidad - apartadas)}: hay ${apartadas} apartadas en pedidos de la app.`);
+      return false;
+    }
 
     // Crear historial del movimiento (sigue en localStorage por ahora o podrías migrarlo si hay tiempo)
     const movimiento = createMovimientoHistorial(producto, stockData, nuevaCantidad);
@@ -55,6 +61,11 @@ export const useInventario = () => {
   };
 
   const deleteProducto = async (productoId: string): Promise<boolean> => {
+    const apartadas = apartados(await db.pedidos.toArray())[productoId] || 0;
+    if (apartadas) {
+      await avisar(`Hay ${apartadas} apartadas en pedidos de la app: no se puede eliminar hasta entregarlas o cancelar esos pedidos.`);
+      return false;
+    }
     if (!(await confirmar('¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.'))) {
       return false;
     }

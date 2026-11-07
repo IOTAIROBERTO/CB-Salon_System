@@ -2,6 +2,7 @@
 // «Mi carrito»: plazo de pago (48 h y nunca después de 48 h antes de la cita) y lo apartado que no se vende en la tienda.
 import assert from 'node:assert/strict';
 import { apartados, disponible, plazoDePago, recogerHasta, totalItems } from '../src/utils/pedidos';
+import { motivoNoBorrarVenta } from '../src/utils/estadoCita';
 
 const H = 3600 * 1000, ahora = Date.parse('2026-11-02T17:00:00Z');   // lunes 10:00 en Hermosillo
 
@@ -32,5 +33,14 @@ assert.equal(disponible({ id: 'p1', cantidad: 4 }, apartados(pedidos)), 1);
 assert.equal(disponible({ id: 'p1', cantidad: 2 }, apartados(pedidos)), 0);   // nunca negativo
 assert.equal(totalItems([item('p1', 2), item('p2', 1)]), 300);
 assert.equal(recogerHasta('2026-11-02T17:00:00.000Z'), '2026-11-12T17:00:00.000Z');
+// Con cita después de los 10 días: hasta que termine ese día en Hermosillo. Antes, siguen los 10 días
+assert.equal(recogerHasta('2026-11-02T17:00:00.000Z', '2026-11-20'), '2026-11-21T06:59:59.000Z');
+assert.equal(recogerHasta('2026-11-02T17:00:00.000Z', '2026-11-05'), '2026-11-12T17:00:00.000Z');
+
+// Ventas que no se borran
+assert.ok(motivoNoBorrarVenta({ id: 'vta_tarjeta_A1' }, []));
+assert.ok(motivoNoBorrarVenta({ id: 'vta_pedido_p1' }, []));
+assert.ok(motivoNoBorrarVenta({ id: 'ven_1' }, [{ ventaId: 'ven_1' }]));
+assert.equal(motivoNoBorrarVenta({ id: 'ven_2' }, [{ ventaId: 'ven_1' }, {}]), '');
 
 console.log('pedidos: ok');

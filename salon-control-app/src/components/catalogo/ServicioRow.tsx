@@ -1,7 +1,6 @@
 import { Edit2, Trash2 } from 'lucide-react';
 import { type Servicio } from '../../types/catalogo';
 import { formatPrice } from '../../utils/catalogoUtils';
-import { confirmar } from '../Confirmar';
 
 interface ServicioRowProps {
   servicio: Servicio;
@@ -10,11 +9,7 @@ interface ServicioRowProps {
 }
 
 export default function ServicioRow({ servicio, onEdit, onDelete }: ServicioRowProps) {
-  const handleDelete = async () => {
-    if (await confirmar('¿Eliminar servicio? Esta accion no se puede deshacer.')) {
-      onDelete(servicio.id);
-    }
-  };
+  const handleDelete = () => onDelete(servicio.id);   // pregunta o archiva según tenga citas (useCatalogo)
 
   return (
     <tr className="border-t hover:bg-gray-50">

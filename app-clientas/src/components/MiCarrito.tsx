@@ -22,18 +22,18 @@ export default function MiCarrito() {
   const [mensaje, setMensaje] = useState('')
   const [reto, setReto] = useState('')       // código por WhatsApp para confirmar el teléfono (la API responde 428)
   const [codigo, setCodigo] = useState('')
+  const [recibido, setRecibido] = useState(false)   // llegó sin apartar (el salón lo revisa): el carrito se vacía al cerrar para que se vea el mensaje
   if (!c.length || pathname.startsWith('/firmar')) return null
   const piezas = c.reduce((t, i) => t + i.cantidad, 0), total = totalCarrito(c)
 
-  const cerrar = () => { setAbierto(false); setComprando(false); setMensaje(''); setReto(''); setCodigo('') }
+  const cerrar = () => { setAbierto(false); setComprando(false); setMensaje(''); setReto(''); setCodigo(''); if (recibido) { setRecibido(false); vaciarCarrito() } }
   const comprar = async () => {
     setEnviando(true); setMensaje('')
     try {
       const r = await crearPedido({ ...datos, productos: paraApartar(c), turnstile: robot, acepta: true })
       recordarDatos({ nombre: datos.nombre, telefono: datos.telefono })
-      vaciarCarrito()
-      if (r.pedido.enlace) { guardarPedido(r.pedido.enlace); cerrar(); navegar(`/pedido/${r.pedido.enlace}`) }
-      else setMensaje('Recibimos tu pedido. Te escribimos por WhatsApp para confirmarlo.')
+      if (r.pedido.enlace) { vaciarCarrito(); guardarPedido(r.pedido.enlace); cerrar(); navegar(`/pedido/${r.pedido.enlace}`) }
+      else { setRecibido(true); setMensaje('Recibimos tu pedido. Te escribimos por WhatsApp para confirmarlo.') }
     } catch (e) {
       const err = e as { message: string; status?: number }
       if (err.status === 428) {   // falta confirmar el teléfono: el mismo token (aún sin usar) sirve para pedir el código
@@ -106,7 +106,7 @@ export default function MiCarrito() {
               {mensaje && <p className="rounded-sm bg-marca-marfil px-3 py-2 text-sm text-marca-grafito">{mensaje}</p>}
               {reto
                 ? <button onClick={confirmarTelefono} disabled={enviando || codigo.length !== 6} className="boton w-full disabled:opacity-40">{enviando ? 'Confirmando…' : `Confirmar y apartar · ${pesos(total)}`}</button>
-                : <button onClick={comprar} disabled={enviando || (conTurnstile && !robot && !sesion())} className="boton w-full disabled:opacity-40">
+                : <button onClick={comprar} disabled={enviando || recibido || (conTurnstile && !robot && !sesion())} className="boton w-full disabled:opacity-40">
                     {enviando ? 'Apartando…' : `Acepto y aparto · ${pesos(total)}`}
                   </button>}
               <button onClick={() => setComprando(false)} className="w-full py-3 text-[11px] uppercase tracking-[0.2em] text-marca-gris">Volver</button>

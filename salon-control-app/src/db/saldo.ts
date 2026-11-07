@@ -48,9 +48,16 @@ export const usarSaldo = (clienteId: string, monto: number, citaId?: string, con
 /** Anula una tarjeta que aún no se activa (error de captura o se devolvió el dinero): se borra con su venta */
 export const anularTarjeta = async (t: TarjetaRegalo) => {
   if (t.activadaPor) throw new Error('Esa tarjeta ya se activó: su monto es saldo de la clienta. Corrígelo desde su ficha.');
-  await db.transaction('rw', db.ventas, db.tarjetasRegalo, async () => {
+  await db.transaction('rw', db.ventas, db.tarjetasRegalo, db.movimientosSaldo, db.clientes, async () => {
     if (t.ventaId) await db.ventas.delete(t.ventaId);
     await db.tarjetasRegalo.delete(t.id);
+    if (t.metodoPago !== 'puntos') return;
+    // Comprada con puntos: los puntos regresan (su movimiento de saldo es lo que los descontaba)
+    const m = await db.movimientosSaldo.filter(x => x.origen === 'club' && x.folio === t.folio).first();
+    if (!m) return;
+    await db.movimientosSaldo.delete(m.id);
+    const clienta = await db.clientes.get(m.clienteId);
+    if (clienta) await db.clientes.update(clienta.id, { canjes: (clienta.canjes || []).filter(c => !(c.clave === 'tarjeta' && c.fecha === m.fecha)) });
   });
 };
 

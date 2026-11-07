@@ -41,8 +41,11 @@ export const disponible = (producto: { id: string; cantidad: number }, apartadas
 
 export const totalItems = (items: ItemPedido[]) => items.reduce((t, i) => t + i.precio * i.cantidad, 0);
 
-/** Hasta cuándo puede recoger lo que pagó (ISO) */
-export const recogerHasta = (pagadoEn: string) => new Date(Date.parse(pagadoEn) + DIAS_PARA_RECOGER * 24 * HORA).toISOString();
+/** Hasta cuándo puede recoger lo que pagó (ISO): 10 días, y nunca antes de que termine el día de su cita */
+export const recogerHasta = (pagadoEn: string, fechaCita?: string) => new Date(Math.max(
+  Date.parse(pagadoEn) + DIAS_PARA_RECOGER * 24 * HORA,
+  fechaCita ? Date.parse(`${fechaCita}T23:59:59-07:00`) : 0
+)).toISOString();
 
 export const NOMBRE_ESTADO_PEDIDO: Record<EstadoPedido, string> = {
   por_pagar: 'Por pagar', pagado: 'Pagado, por entregar', entregado: 'Entregado', vencido: 'Venció sin pago',

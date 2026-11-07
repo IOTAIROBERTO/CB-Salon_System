@@ -10,8 +10,8 @@ import { pedidoTrasAnticipo } from '../utils/estadoCita';
 export async function marcarPagado(p: Pedido, formaPago: NonNullable<Pedido['formaPago']>) {
   const pagadoEn = new Date().toISOString();
   await db.transaction('rw', db.pedidos, db.citas, async () => {
-    await db.pedidos.update(p.id, { estado: 'pagado', pagadoEn, formaPago, ...(p.items.length ? { recogerHasta: recogerHasta(pagadoEn) } : {}) });
     const cita = p.citaId ? await db.citas.get(p.citaId) : undefined;
+    await db.pedidos.update(p.id, { estado: 'pagado', pagadoEn, formaPago, ...(p.items.length ? { recogerHasta: recogerHasta(pagadoEn, cita?.fecha) } : {}) });
     if (cita && (cita.estado === 'pendiente' || cita.estado === 'confirmada')) await db.citas.update(cita.id, {
       ...(p.anticipo > 0 ? { anticipoConfirmado: true } : {}),
       ...(cita.estado === 'pendiente' && cita.aceptadaEn ? { estado: 'confirmada' as const } : {})
@@ -43,5 +43,17 @@ export async function entregarPedido(p: Pedido) {
   await db.pedidos.update(p.id, { estado: 'entregado', entregadoEn: new Date().toISOString(), ventaId });
 }
 
+/** Si este pedido traía el anticipo de una cita que sigue esperándolo, cancelarlo también cancela la cita (igual que al vencer) */
+export const cancelaSuCita = async (p: Pedido) => {
+  const cita = p.anticipo > 0 && p.citaId ? await db.citas.get(p.citaId) : undefined;
+  return cita?.estado === 'pendiente' && !cita.anticipoConfirmado ? cita : undefined;
+};
+
 /** Cancelado por el salón: lo apartado se libera (si ya estaba pagado, la devolución o el saldo a favor se hacen aparte) */
-export const cancelarPedido = (p: Pedido, motivo = 'Cancelado por el salón') => db.pedidos.update(p.id, { estado: 'cancelado', motivo });
+export const cancelarPedido = async (p: Pedido, motivo = 'Cancelado por el salón') => {
+  await db.transaction('rw', db.pedidos, db.citas, async () => {
+    const cita = await cancelaSuCita(p);
+    await db.pedidos.update(p.id, { estado: 'cancelado', motivo });
+    if (cita) await db.citas.update(cita.id, { estado: 'cancelada', canceladaPor: 'salon', canceladaEn: new Date().toISOString(), canceladaMotivo: 'se canceló su pedido', propuestaVence: undefined });
+  });
+};

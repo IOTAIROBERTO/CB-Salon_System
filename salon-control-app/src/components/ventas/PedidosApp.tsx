@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { MessageCircle, ShoppingBag } from 'lucide-react';
 import { db, type Pedido } from '../../db/db';
-import { cancelarPedido, entregarPedido, marcarPagado } from '../../db/pedidos';
+import { cancelaSuCita, cancelarPedido, entregarPedido, marcarPagado } from '../../db/pedidos';
 import { NOMBRE_ESTADO_PEDIDO } from '../../utils/pedidos';
 import { formatCurrency } from '../../utils/financialUtils';
 import { enlaceWhatsApp } from '../../utils/lealtad';
@@ -63,7 +63,7 @@ export default function PedidosApp() {
               {whatsapp(p, `¡Hola, ${nombre(p).split(' ')[0]}! Te recordamos tu pedido en Cristina Borquez: ${resumen(p)}. Total ${formatCurrency(p.total)}.`) &&
                 <a href={whatsapp(p, `¡Hola, ${nombre(p).split(' ')[0]}! Te recordamos tu pedido en Cristina Borquez: ${resumen(p)}. Total ${formatCurrency(p.total)}.`)!} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1 rounded-md border px-3 text-sm text-gray-700 hover:bg-gray-50" aria-label="WhatsApp"><MessageCircle size={14} /> WhatsApp</a>}
-              <button onClick={intentar(async () => { if (await confirmar(`¿Cancelar el pedido de ${nombre(p)}? Lo apartado se libera.`)) await cancelarPedido(p); })}
+              <button onClick={intentar(async () => { if (await confirmar(`¿Cancelar el pedido de ${nombre(p)}? Lo apartado se libera.${await cancelaSuCita(p) ? ' Su cita esperaba este pago: también se cancela y su horario queda libre.' : ''}`)) await cancelarPedido(p); })}
                 className="px-3 text-sm text-gray-500 hover:underline">Cancelar</button>
             </div>
           )}

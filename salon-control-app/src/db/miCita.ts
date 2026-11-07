@@ -19,7 +19,12 @@ export async function enlaceMiCita(cita: { id: string; enlace?: string }) {
 
 /** No llegó: la cita deja de ocupar la agenda y el anticipo pagado se queda como anticipo perdido (cuenta como ingreso) */
 export const marcarNoLlego = (c: { id: string; anticipoConfirmado?: boolean; montoAnticipo?: number }) =>
-  db.citas.update(c.id, { estado: 'no_llego', ...(c.anticipoConfirmado && c.montoAnticipo ? { anticipoPerdido: c.montoAnticipo } : {}) });
+  db.transaction('rw', db.citas, db.pedidos, async () => {
+    await db.citas.update(c.id, { estado: 'no_llego', ...(c.anticipoConfirmado && c.montoAnticipo ? { anticipoPerdido: c.montoAnticipo } : {}) });
+    // Lo que apartó y no pagó vuelve a la venta (sin esto quedaría apartado sin plazo)
+    const porPagar = await db.pedidos.where('citaId').equals(c.id).filter(p => p.estado === 'por_pagar').toArray();
+    await Promise.all(porPagar.map(p => db.pedidos.update(p.id, { estado: 'cancelado', motivo: 'No llegó a su cita' })));
+  });
 
 /** Cuántas citas no llegó la clienta (para pedirle anticipo la próxima vez) */
 export const useFaltas = (clienteId?: string) =>

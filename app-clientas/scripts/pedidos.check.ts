@@ -19,7 +19,7 @@ const tablas: Record<string, any[]> = {
     { id: 'p2', nombre: 'Mascarilla', precio: 380, cantidad: 1, enApp: true },
     { id: 'p3', nombre: 'Tinte profesional', precio: 200, cantidad: 10 }   // no se vende en la app
   ],
-  clientes: [], empleados: [], empleadoEvents: [], citas: [], avisos: [], fotos: [], movimientosSaldo: [], pedidos: []
+  clientes: [], empleados: [], empleadoEvents: [], citas: [], avisos: [], fotos: [], movimientosSaldo: [], pedidos: [], ventas: []
 };
 for (const filas of Object.values(tablas)) for (const f of filas) f.realmId ??= 'r';
 let trasLeerPedidos: (() => void) | null = null;   // simula al salón escribiendo justo después de que el Worker leyó
@@ -132,6 +132,15 @@ assert.deepEqual(await vencerPedidos(env), { vencidos: 0, noRecogidos: 1 });
 assert.deepEqual(tablas.movimientosSaldo.filter(m => m.clienteId === 'kP').map(m => m.monto), [450]);
 assert.equal(tablas.pedidos.find(p => p.id === 'pPag').estado, 'no_recogido');
 assert.equal((await vencerPedidos(env)).noRecogidos, 0);
+// Lo pagado y no recogido entra como ingreso, sin productos (no regresa stock ni da puntos)
+assert.deepEqual(tablas.ventas.filter(v => v.id === 'vta_pedido_pPag').map(v => [v.total, v.productos]), [[450, undefined]]);
+// Si su cita se movió y sigue por delante, no vence: los recoge en su cita
+tablas.citas.push({ id: 'cFutura', clienteId: 'kF', servicioId: 's1', fecha: lejos, hora: '12:00', estado: 'confirmada', realmId: 'r' });
+tablas.pedidos.push({ id: 'pFut', clienteId: 'kF', citaId: 'cFutura', items: [{ productoId: 'p1', nombre: 'Shampoo matizador', cantidad: 1, precio: 450 }], totalProductos: 450,
+  anticipo: 0, total: 450, estado: 'pagado', recogerHasta: new Date(Date.now() - 1000).toISOString(), creado: '', enlace: 'f'.repeat(32), realmId: 'r' });
+assert.equal((await vencerPedidos(env)).noRecogidos, 0);
+assert.equal(tablas.pedidos.find(p => p.id === 'pFut').estado, 'pagado');
+tablas.pedidos = tablas.pedidos.filter(p => p.id !== 'pFut');
 
 // 9. El salón registra el pago (o la entrega) mientras el Worker revisa: el Worker no lo pisa ni abona saldo
 tablas.pedidos.push({ id: 'pCarrera', clienteId: 'kC', items: [], totalProductos: 0, anticipo: 150, total: 150, estado: 'por_pagar',

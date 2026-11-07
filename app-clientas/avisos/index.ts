@@ -123,7 +123,13 @@ export async function vencerPedidos(env: Env, ahora = Date.now()) {
     if (!p) continue;
     nNoRecogidos++;
     // Política de pedidos: pasados 10 días, lo pagado queda como saldo a favor (abono con id fijo: nunca se duplica)
+    // Si su cita sigue por delante (se movió después de pagar), los recoge ahí
+    const cita = p.citaId ? await uno<any>(env, 'citas', p.citaId) : null;
+    if (cita && ['pendiente', 'confirmada', 'iniciada'].includes(cita.estado) && cita.fecha >= hoyHermosillo()) { nNoRecogidos--; continue; }
     const rebasa = p.totalProductos > TOPE_ABONO_AUTOMATICO;
+    // Ya se había cobrado y no llegó a ser venta: es ingreso ahora (sin productos, no toca stock ni da puntos). Id fijo: una sola vez
+    await guardar(env, 'ventas', [{ id: `vta_pedido_${p.id}`, fecha: marca, clienteId: p.clienteId, total: p.totalProductos, metodoPago: p.formaPago || 'transferencia',
+      concepto: `Pedido pagado que no se recogió (${productos(p)})`, realmId: p.realmId }]);
     if (!rebasa) await guardar(env, 'movimientosSaldo', [{ id: `sal_pedido_${p.id}`, clienteId: p.clienteId, fecha: marca, monto: p.totalProductos,
       concepto: `Productos pagados que no se recogieron en 10 días (${productos(p)})`, realmId: p.realmId }]);
     await guardar(env, 'pedidos', [{ ...p, estado: 'no_recogido', motivo: 'No lo recogió en 10 días' }]);
