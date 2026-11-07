@@ -34,6 +34,9 @@ import { notaReserva } from "../../utils/reserva";
 import { enlaceWhatsApp } from "../../utils/lealtad";
 import { MessageCircle } from "lucide-react";
 import { avisar, confirmar } from "../Confirmar";
+import { pedirAnularCobro, pedirCancelacion } from "./cancelarCita";
+import { citaCerrada, motivoNoBorrar } from "../../utils/estadoCita";
+import { useRolSalon } from "../../db/salon";
 
 /** Nombre de la zona (componente aparte: CitaCard tiene un return antes de sus hooks) */
 const NombreUbicacion = ({ ubicacion }: { ubicacion: string }) => {
@@ -77,6 +80,7 @@ export default function CitaCard({
   const [anticipoInput, setAnticipoInput] = useState(cita.montoAnticipo?.toString() || "");
   const [isEditingAnticipo, setIsEditingAnticipo] = useState(false);
   const [pidiendoFirma, setPidiendoFirma] = useState(false);
+  const esDuena = useRolSalon() === "duena";
   const faltas = useFaltas(cita.clienteId);
 
   const cliente = clientes.find((c) => c.id === cita.clienteId)?.nombre || "Cliente no encontrado";
@@ -187,6 +191,10 @@ export default function CitaCard({
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
+
+  const cancelar = () => pedirCancelacion(cita, esDuena, cliente);
+  const cerrada = citaCerrada(cita);
+  const sePuedeBorrar = !motivoNoBorrar(cita);
 
   const handleConfirmAnticipo = () => {
     const monto = parseFloat(anticipoInput) || 0;
@@ -489,10 +497,10 @@ export default function CitaCard({
         {/* Acciones - Solo para citas NO completadas */}
         {cita.estado !== "completada" ? (
           <div className="flex flex-col gap-2">
-            {cita.estado === "pendiente" && (
+            {(cita.estado === "pendiente" || cita.estado === "confirmada") && (
               <>
                 <button
-                  onClick={() => onEstadoChange(cita.id, "cancelada")}
+                  onClick={cancelar}
                   className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
                 >
                   <XCircle size={14} className="inline mr-1" /> Cancelar
@@ -503,13 +511,15 @@ export default function CitaCard({
                 >
                   <RefreshCw size={14} className="inline mr-1" /> Reagendar
                 </button>
-                <button
-                  onClick={() => onEstadoChange(cita.id, "confirmada")}
-                  className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
-                >
-                  <CheckCircle size={14} className="inline mr-1" /> Confirmar
-                </button>
               </>
+            )}
+            {cita.estado === "pendiente" && (
+              <button
+                onClick={() => onEstadoChange(cita.id, "confirmada")}
+                className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
+              >
+                <CheckCircle size={14} className="inline mr-1" /> Confirmar
+              </button>
             )}
 
             {canShowIniciarButton && (
@@ -588,25 +598,29 @@ export default function CitaCard({
               {pidiendoFirma && clienteData && (
                 <PedirFirma clienteId={clienteData.id} citaId={cita.id} nombre={clienteData.nombre} telefono={clienteData.telefono} onClose={() => setPidiendoFirma(false)} />
               )}
-              <button
-                onClick={onOpenEdit}
-                className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
-                title="Editar cita"
-              >
-                <Edit size={16} />
-              </button>
-              <button
-                onClick={() => onDelete(cita.id)}
-                className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
-                disabled={cita.estado === "iniciada"}
-                title="Eliminar cita"
-              >
-                <Trash2 size={16} />
-              </button>
+              {!cerrada && (
+                <button
+                  onClick={onOpenEdit}
+                  className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
+                  title="Editar cita"
+                >
+                  <Edit size={16} />
+                </button>
+              )}
+              {sePuedeBorrar && (
+                <button
+                  onClick={() => onDelete(cita.id)}
+                  className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
+                  disabled={cita.estado === "iniciada"}
+                  title="Eliminar cita"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
             </div>
           </div>
         ) : (
-          /* Para citas completadas, mostrar botón de eliminar */
+          /* Cita ya cobrada: no se edita ni se elimina */
           <div className="flex flex-col items-center justify-center p-4 min-w-[120px]">
             <div className="bg-green-100 p-3 rounded-full mb-3">
               <CheckCircle size={24} className="text-green-600" />
@@ -617,13 +631,11 @@ export default function CitaCard({
                 {new Date(cita.fechaCompletada).toLocaleDateString("es-ES")}
               </span>
             )}
-            <button
-              onClick={() => onDelete(cita.id)}
-              className="px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 flex items-center gap-1"
-            >
-              <CheckCircle size={12} />
-              Eliminar
-            </button>
+            {esDuena && (
+              <button onClick={() => pedirAnularCobro(cita, cliente)} className="min-h-[40px] rounded border border-red-200 px-3 text-xs text-red-700 hover:bg-red-50">
+                Anular cobro
+              </button>
+            )}
           </div>
         )}
       </div>

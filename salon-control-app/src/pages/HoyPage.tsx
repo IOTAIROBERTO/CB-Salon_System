@@ -5,6 +5,7 @@ import { db } from '../db/db';
 import useCitas from '../hooks/useCitas';
 import { useRolSalon } from '../db/salon';
 import { enlaceMiCita, marcarNoLlego, urlMiCita } from '../db/miCita';
+import { registrarAnticipo } from '../db/pedidos';
 import { type Cita } from '../types/citas';
 import CobroExpres from '../components/hoy/CobroExpres';
 import CitaExpres from '../components/hoy/CitaExpres';
@@ -65,7 +66,10 @@ export default function HoyPage() {
     const cl = clientes.find(x => x.id === c.clienteId);
     return c.enlace ? enlaceWhatsApp(cl?.telefono, `¡Hola, ${(cl?.nombre || '').split(' ')[0]}! Te recordamos tu cita de mañana, ${diaLargo(c.fecha)}, a las ${c.hora} para ${servicio(c.servicioId)} en ${DATOS_SALON.nombre}. Ve, cambia o cancela tu cita aquí: ${urlMiCita(c.id, c.enlace)}`) : null;
   };
-  const anticipoRecibido = (c: Cita) => db.citas.update(c.id, { anticipoConfirmado: true, estado: 'confirmada' });
+  const anticipoRecibido = async (c: Cita) => {
+    await registrarAnticipo(c.id, c.montoAnticipo || 0);
+    await db.citas.update(c.id, { estado: 'confirmada', propuestaVence: undefined });
+  };
 
   const tarjeta = 'rounded-lg border bg-white p-4 shadow-sm';
   const titulo = 'mb-2 flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.2em] text-gray-500';

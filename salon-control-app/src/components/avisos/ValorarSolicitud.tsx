@@ -8,7 +8,8 @@ import { enlaceMiCita, urlMiCita, useFaltas } from '../../db/miCita';
 import { useAgenda, nombrePersona } from '../../hooks/useAgenda';
 import { porAsignar, resumenPreferencias, sugerirHorarios } from '../../utils/agenda';
 import HorariosLibres, { AvisosAgenda } from '../citas/HorariosLibres';
-import { confirmar } from '../Confirmar';
+import { pedirCancelacion } from '../citas/cancelarCita';
+import { useRolSalon } from '../../db/salon';
 
 // Atender una solicitud de la app (proceso estándar): Cristina ve cómo trae el cabello la clienta y sus fotos, le pone la
 // hora (con sugerencias y su porqué, o la que ella decida), fija el precio y el anticipo con su forma de pago y manda el
@@ -43,6 +44,7 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
   const preferencias = cita?.preferencias?.length ? cita.preferencias : cita ? [{ fecha: cita.fecha, franja: 'cualquiera' as const }] : [];
   const fechasPedidas = preferencias.map(p => p.fecha).join();
   const citasDeEsosDias = useLiveQuery(() => db.citas.where('fecha').anyOf(fechasPedidas ? fechasPedidas.split(',') : []).toArray(), [fechasPedidas]) || [];
+  const esDuena = useRolSalon() === 'duena';
   const faltaHora = !!cita && porAsignar(cita);
   const sugerencias = useMemo(() => faltaHora && cita ? sugerirHorarios({ preferencias, servicioId: cita.servicioId, adicionales: (cita.serviciosAdicionales || []).map(a => a.servicioId),
     personas, citas: citasDeEsosDias, servicios: servicios as any, config, ignorarCitaId: cita.id }) : [], [faltaHora, cita, citasDeEsosDias, servicios, config, personas]);
@@ -75,7 +77,9 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
 
   if (!cita) return null;
   const pideAnticipo = forma === 'transferencia' || forma === 'deposito';
-  const montoFinal = forma === 'incluido' || forma === 'sin' ? 0 : anticipo;
+  // Ya recibido: no se cambia aquí (pasarlo a «Sin anticipo» borraría dinero cobrado). Se devuelve cancelando la cita
+  const anticipoFijo = !!cita.anticipoConfirmado && (cita.montoAnticipo || 0) > 0;
+  const montoFinal = anticipoFijo ? cita.montoAnticipo! : forma === 'incluido' || forma === 'sin' ? 0 : anticipo;
   // Si cambia lo que la clienta ya aceptó (precio, anticipo o resumen), tiene que volver a aceptarlo
   const cambioLoAceptado = !!cita.aceptacion && (cita.aceptacion.precio !== precio || cita.aceptacion.anticipo !== montoFinal || cita.aceptacion.resumen !== resumen.trim());
   const sinElegir = faltaHora && !elegida;
@@ -94,11 +98,7 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
     anticipoConfirmado: pideAnticipo ? recibido : cita.anticipoConfirmado, ...(cambioLoAceptado ? { aceptadaEn: undefined } : {}), ...conHora(), ...extra
   });
   const rechazar = async () => {
-    if (!await confirmar(`¿Cancelar la solicitud de ${cliente?.nombre || 'esta clienta'}? Si apartó productos, vuelven a la venta. Avísale por WhatsApp.`)) return;
-    await db.citas.update(citaId, { estado: 'cancelada', canceladaPor: 'salon', canceladaEn: new Date().toISOString() });
-    const porPagar = await db.pedidos.where('citaId').equals(citaId).filter(p => p.estado === 'por_pagar').toArray();
-    await Promise.all(porPagar.map(p => db.pedidos.update(p.id, { estado: 'cancelado', motivo: 'Se canceló su solicitud' })));
-    onClose();
+    if (await pedirCancelacion(cita, esDuena, cliente?.nombre || 'esta clienta')) onClose();
   };
   const whatsapp = enlaceWhatsApp(cliente?.telefono, mensaje);
   const v = cita.valoracion;
@@ -159,16 +159,18 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
             <span className="text-xs text-gray-500">Catálogo: desde {formatCurrency(servicio?.precioSugerido || 0)}</span>
           </label>
           <label className="block">Anticipo
-            <input type="number" min={0} value={anticipo} disabled={forma === 'incluido' || forma === 'sin'} onChange={e => setAnticipo(Number(e.target.value))} className="mt-1 w-full rounded border p-2 disabled:bg-gray-100" />
+            <input type="number" min={0} value={anticipoFijo ? montoFinal : anticipo} disabled={anticipoFijo || forma === 'incluido' || forma === 'sin'} onChange={e => setAnticipo(Number(e.target.value))} className="mt-1 w-full rounded border p-2 disabled:bg-gray-100" />
           </label>
           <label className="col-span-2 block">Forma del anticipo
-            <select value={forma} onChange={e => setForma(e.target.value as Forma)} className="mt-1 w-full rounded border p-2">
+            <select value={forma} disabled={anticipoFijo} onChange={e => setForma(e.target.value as Forma)} className="mt-1 w-full rounded border p-2 disabled:bg-gray-100">
               {(Object.keys(FORMAS) as Forma[]).map(k => <option key={k} value={k}>{FORMAS[k]}</option>)}
             </select>
           </label>
-          {pideAnticipo && (
-            <label className="col-span-2 flex items-center gap-2"><input type="checkbox" checked={recibido} onChange={e => setRecibido(e.target.checked)} /> Ya recibimos el anticipo</label>
-          )}
+          {anticipoFijo
+            ? <p className="col-span-2 text-xs text-gray-500">Anticipo ya recibido: no se cambia aquí. Si hay que devolverlo, cancela la cita y pasa a su saldo a favor.</p>
+            : pideAnticipo && (
+              <label className="col-span-2 flex items-center gap-2"><input type="checkbox" checked={recibido} onChange={e => setRecibido(e.target.checked)} /> Ya recibimos el anticipo</label>
+            )}
         </div>
 
         <label className="block text-sm">Lo que haremos <span className="text-xs text-gray-500">(lo ve y lo acepta la clienta en su enlace)</span>
@@ -195,7 +197,7 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
           <button onClick={async () => { await guardar(); onClose(); }} className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50">Guardar sin confirmar</button>
         </div>
         {cita.estado === 'solicitud'
-          ? <button onClick={rechazar} className="min-h-[40px] text-sm text-red-700 hover:underline">Cancelar esta solicitud</button>
+          ? <div className="text-sm"><button onClick={rechazar} className="min-h-[40px] text-red-700 hover:underline">Cancelar esta solicitud</button><p className="text-xs text-gray-500">Si apartó productos, vuelven a la venta. Avísale por WhatsApp.</p></div>
           : <p className="text-[11px] text-gray-400">Para cambiarla de hora o cancelarla, ábrela en Citas.</p>}
       </div>
     </div>

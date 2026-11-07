@@ -19,13 +19,13 @@ import {
   NOMBRE_NIVEL, NOMBRE_CIRCULO, estadoCirculo, parametrosDe, beneficiosDisponibles, datosBeneficio, descuentoServicio, porcentajeReferida, textoSaldoPuntos, montoCanje, costoPuntos, AVISO_GASTO,
   type ClaveBeneficio
 } from "../../utils/lealtad";
-import { confirmar } from "../Confirmar";
+import { avisar, confirmar } from "../Confirmar";
 
 interface CobroModalProps {
   cita: Cita;
   servicios: Servicio[];
   onClose: () => void;
-  onCompletar: (citaId: string, precioFinal: number, metodoPago: string, notas: string, serviciosAdicionales?: any[]) => void;
+  onCompletar: (citaId: string, precioFinal: number, metodoPago: string, notas: string, serviciosAdicionales?: any[]) => Promise<void> | void;
 }
 
 interface ServicioAdicional {
@@ -45,9 +45,11 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
   const [descuentoClub, setDescuentoClub] = useState<'referida' | 'nivel' | null>(null); // descuento del Club aplicado en este cobro
   const [propina, setPropina] = useState(0);
 
-  const [anticipoRecibido, setAnticipoRecibido] = useState(cita.montoAnticipo || 0);
+  // Solo lo que de verdad se recibió, igual que el cobro exprés (utils/cobro): un anticipo pendiente se cobra aquí
+  const [anticipoRecibido, setAnticipoRecibido] = useState(cita.anticipoConfirmado ? cita.montoAnticipo || 0 : 0);
   const [conSaldo, setConSaldo] = useState(0); // saldo a favor que se usa en este cobro
-  const [metodoPago, setMetodoPago] = useState("");
+  const [metodoElegido, setMetodoPago] = useState("");
+  const [guardando, setGuardando] = useState(false);
   const [notas, setNotas] = useState("");
   const [descripcionTrabajo, setDescripcionTrabajo] = useState(cita.descripcionTrabajo || "");
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -76,6 +78,9 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
     propina,
     anticipoRecibido + saldoAplicado
   );
+  // «saldo» solo cuando el saldo aplicado de verdad cubre todo lo que falta; nunca se elige a mano (quedaría pagada sin descontar nada)
+  const pagaTodoConSaldo = saldoAplicado > 0 && calculoFinal.totalFinal === 0;
+  const metodoPago = pagaTodoConSaldo ? "saldo" : metodoElegido;
 
   // Obtener empleados para el desglose de comisiones
   const empleadosArray = useLiveQuery(() => db.empleados.toArray()) || [];
@@ -157,7 +162,7 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
     setShowConfirmation(true);
   };
 
-  const confirmarCompletado = () => {
+  const confirmarCompletado = async () => {
     // El precio final incluye todo: saldo + redondeo + propina
     const precioFinalCompleto = calculoFinal.subtotalConDescuento + calculoFinal.montoRedondeo + calculoFinal.propina;
 
@@ -180,10 +185,20 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
 
     // Convertir a array si es lo que espera onCompletar (aunque parece que espera un objeto según el nombre de la prop en CobroModalProps)
     // Pero la firma dice serviciosAdicionales?: any[]
-    onCompletar(cita.id, precioFinalCompleto, metodoPago, notas, [datosCompletos]);
-    registrarCanjes(cita.clienteId, aplicados, cita.id);
-    usarSaldo(cita.clienteId, saldoAplicado, cita.id);
-    onClose();
+    // Todo o nada: si algo falla no queda saldo descontado ni canje gastado en una cita sin cobrar
+    setGuardando(true);
+    try {
+      await db.transaction('rw', db.citas, db.clientes, db.movimientosSaldo, async () => {
+        await onCompletar(cita.id, precioFinalCompleto, metodoPago, notas, [datosCompletos]);
+        await registrarCanjes(cita.clienteId, aplicados, cita.id);
+        await usarSaldo(cita.clienteId, saldoAplicado, cita.id);
+      });
+      onClose();
+    } catch (e) {
+      setGuardando(false);
+      setShowConfirmation(false);
+      await avisar(`No se pudo guardar el cobro y no cambió nada. ${(e as Error).message}`);
+    }
   };
 
   const cancelarCompletado = () => {
@@ -243,9 +258,10 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
             </button>
             <button
               onClick={confirmarCompletado}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              disabled={guardando}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
             >
-              Confirmar y Finalizar
+              {guardando ? "Guardando…" : "Confirmar y Finalizar"}
             </button>
           </div>
         </div>
@@ -392,6 +408,9 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
                   min="0"
                 />
               </div>
+              {!cita.anticipoConfirmado && (cita.montoAnticipo || 0) > 0 && (
+                <p className="mt-1 text-xs text-gray-500">Su anticipo de {formatCurrency(cita.montoAnticipo || 0)} no se ha recibido: se cobra aquí. Si ya lo recibiste, escríbelo arriba.</p>
+              )}
             </div>
 
             {/* Saldo a favor de la clienta */}
@@ -420,18 +439,21 @@ export default function CobroModal({ cita, servicios, onClose, onCompletar }: Co
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Método de pago *
               </label>
-              <select
-                value={metodoPago}
-                onChange={(e) => setMetodoPago(e.target.value)}
-                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                <option value="">Seleccionar método de pago</option>
-                <option value="efectivo">Efectivo</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="mixto">Mixto</option>
-                <option value="saldo">Saldo a favor</option>
-              </select>
+              {pagaTodoConSaldo ? (
+                <p className="rounded border bg-green-50 px-3 py-2 text-sm text-gray-700">Se paga completo con su saldo a favor.</p>
+              ) : (
+                <select
+                  value={metodoElegido}
+                  onChange={(e) => setMetodoPago(e.target.value)}
+                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="">Seleccionar método de pago</option>
+                  <option value="efectivo">Efectivo</option>
+                  <option value="tarjeta">Tarjeta</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="mixto">Mixto</option>
+                </select>
+              )}
             </div>
 
             {/* Qué se hizo y por qué se cobró así */}

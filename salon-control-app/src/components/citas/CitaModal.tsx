@@ -47,10 +47,15 @@ export default function CitaModal({ servicios, onClose, onSave, citaEdit, inicia
 
   const [errorFechaHora, setErrorFechaHora] = useState<string | null>(null);
 
+  // Solo se valida la fecha que cambió: una cita de hoy con hora ya pasada debe poder corregirse (notas, servicio)
+  const validarLaFecha = () => (citaEdit && formData.fecha === citaEdit.fecha && formData.hora === citaEdit.hora)
+    ? { valido: true, mensaje: undefined }
+    : validarFechaHora(formData.fecha, formData.hora);
+
   // Validar fecha y hora cada vez que cambien
   useEffect(() => {
     if (formData.fecha && formData.hora) {
-      const validacion = validarFechaHora(formData.fecha, formData.hora);
+      const validacion = validarLaFecha();
       setErrorFechaHora(validacion.valido ? null : validacion.mensaje || null);
     } else {
       setErrorFechaHora(null);
@@ -59,7 +64,7 @@ export default function CitaModal({ servicios, onClose, onSave, citaEdit, inicia
 
   const handleSave = async () => {
     // Validar fecha y hora antes de guardar
-    const validacion = validarFechaHora(formData.fecha, formData.hora);
+    const validacion = validarLaFecha();
     if (!validacion.valido) {
       avisar(validacion.mensaje || 'Fecha u hora inválida');
       return;
@@ -270,7 +275,7 @@ export default function CitaModal({ servicios, onClose, onSave, citaEdit, inicia
             </div>
           )}
 
-          {/* Campo de estado solo en modo edición */}
+          {/* Campo de estado solo en modo edición. Cancelar y cobrar tienen su propio camino: mueven dinero */}
           {citaEdit && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -284,8 +289,6 @@ export default function CitaModal({ servicios, onClose, onSave, citaEdit, inicia
                 <option value="pendiente">Pendiente</option>
                 <option value="confirmada">Confirmada</option>
                 <option value="iniciada">Iniciada</option>
-                <option value="completada">Completada</option>
-                <option value="cancelada">Cancelada</option>
               </select>
             </div>
           )}

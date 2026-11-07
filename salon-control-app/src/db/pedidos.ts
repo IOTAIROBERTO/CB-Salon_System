@@ -4,6 +4,7 @@
 import { db, type Pedido } from './db';
 import { registrarVenta } from '../hooks/useVentas';
 import { recogerHasta } from '../utils/pedidos';
+import { pedidoTrasAnticipo } from '../utils/estadoCita';
 
 /** Llegó el pago (transferencia, depósito, efectivo o tarjeta en el salón) */
 export async function marcarPagado(p: Pedido, formaPago: NonNullable<Pedido['formaPago']>) {
@@ -16,6 +17,20 @@ export async function marcarPagado(p: Pedido, formaPago: NonNullable<Pedido['for
       ...(cita.estado === 'pendiente' && cita.aceptadaEn ? { estado: 'confirmada' as const } : {})
     });
   });
+}
+
+/** Se recibió el anticipo fuera del pedido («Recibido» en Hoy, editarlo en Citas). El pedido de esa cita debe enterarse:
+ *  si no, la clienta seguiría viendo «por pagar» y al vencer se avisaría «Venció sin pago». Sin productos queda pagado;
+ *  con productos, estos siguen por pagar solos, sin el anticipo. $0 = sin anticipo recibido. */
+export async function registrarAnticipo(citaId: string, monto: number) {
+  const cita = await db.citas.get(citaId);
+  await db.citas.update(citaId, { anticipoConfirmado: monto > 0, montoAnticipo: monto });
+  if (!(monto > 0)) return;
+  const p = (await db.pedidos.where('citaId').equals(citaId).toArray()).find(x => x.estado === 'por_pagar');
+  if (!p) return;
+  const queda = pedidoTrasAnticipo(p);
+  if (queda.pagarCompleto) await marcarPagado(p, cita?.formaAnticipo === 'deposito' ? 'deposito' : 'transferencia');
+  else await db.pedidos.update(p.id, { anticipo: queda.anticipo, total: queda.total });
 }
 
 /** Se entregaron los productos: venta con los precios del pedido; usa lo que el pedido tenía apartado */

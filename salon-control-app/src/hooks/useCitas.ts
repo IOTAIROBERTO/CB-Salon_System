@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "../db/db";
 import { type Cita, type Cliente } from "../types/citas";
-import { confirmar } from "../components/Confirmar";
+import { avisar, confirmar } from "../components/Confirmar";
+import { motivoNoBorrar } from "../utils/estadoCita";
+import { registrarAnticipo } from "../db/pedidos";
 
 export default function useCitas() {
   const [modalState, setModalState] = useState<{ type: string; data?: Cita | null }>({
@@ -36,10 +38,17 @@ export default function useCitas() {
   };
 
   const deleteCita = async (id: string) => {
+    const cita = await db.citas.get(id);
+    const motivo = cita ? motivoNoBorrar(cita) : '';
+    if (motivo) { await avisar(motivo); return false; }
     if (!(await confirmar('¿Estás seguro de que quieres eliminar esta cita?'))) {
       return false;
     }
-    await db.citas.delete(id);
+    await db.transaction('rw', db.citas, db.pedidos, async () => {
+      await db.citas.delete(id);
+      const porPagar = await db.pedidos.where('citaId').equals(id).filter(p => p.estado === 'por_pagar').toArray();
+      await Promise.all(porPagar.map(p => db.pedidos.update(p.id, { estado: 'cancelado', motivo: 'Se eliminó su cita' })));
+    });
     return true;
   };
 
@@ -47,12 +56,7 @@ export default function useCitas() {
     await db.citas.update(id, { estado: newEstado });
   };
 
-  const updateAnticipo = async (id: string, anticipoConfirmado: boolean, monto?: number) => {
-    await db.citas.update(id, {
-      anticipoConfirmado,
-      montoAnticipo: monto || 0
-    });
-  };
+  const updateAnticipo = (id: string, _anticipoConfirmado: boolean, monto?: number) => registrarAnticipo(id, monto || 0);
 
   const completarCita = async (citaId: string, precioFinal: number, metodoPago: string, notas: string, datosCompletos?: any) => {
     const info = Array.isArray(datosCompletos) ? datosCompletos[0] : datosCompletos;

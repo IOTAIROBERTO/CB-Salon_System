@@ -8,7 +8,8 @@ const servicios = [
   { id: 'color', nombre: 'Babylights', categoria: 'color', duracion: 120, tiempoProceso: 35, tiempoCierre: 40 },
   { id: 'ampolleta', nombre: 'Ampolleta', categoria: 'tratamiento', duracion: 30 }
 ];
-const config: ConfigAgenda = { ...AGENDA_INICIAL, margen: 15, intervalo: 30, anticipacionHoras: 0, bloqueos: [] };
+// La mañana protegida y la comida se prueban en app-clientas/scripts/agenda.check.ts
+const config: ConfigAgenda = { ...AGENDA_INICIAL, margen: 15, intervalo: 30, anticipacionHoras: 0, bloqueos: [], proteccion: null, comida: null };
 const cristina = { id: 'cristina', nombre: 'Cristina' };
 const lunes = '2026-10-19'; // lunes, 10:00–19:00
 const ahora = new Date('2026-10-01T09:00:00');
@@ -16,10 +17,10 @@ const ahora = new Date('2026-10-01T09:00:00');
 // Tramos: 45 activos, 35 libres, 40 activos + 15 de margen
 assert.deepEqual(tramosCita(600, 'color', [], servicios, 15).tramos, [{ de: 600, a: 645 }, { de: 680, a: 735 }]);
 
-// Día vacío: el corte cabe de 10:00 a 18:00 (termina 19:00)
+// Día vacío: el corte cabe de 10:00 a 17:30 (termina 18:30 + 15 de preparación antes de cerrar)
 const libres = horariosLibres({ fecha: lunes, servicioId: 'corte', personas: [cristina], citas: [], servicios, config, ahora });
 assert.equal(libres[0].hora, '10:00');
-assert.equal(libres.at(-1)!.hora, '18:00');
+assert.equal(libres.at(-1)!.hora, '17:30');
 
 // Color a las 10:00: el corte de 60 min no cabe en los 35 de proceso, pero sí a las 12:30
 const citas = [{ id: 'c1', fecha: lunes, hora: '10:00', servicioId: 'color' }];
@@ -67,5 +68,5 @@ assert.equal(horasLargo[horasLargo.length - 1], '13:00');
 assert.deepEqual(choques({ id: 'c7', fecha: lunes, hora: '14:00', servicioId: 'balayage' }, [], largo, config),
   ['Trabajo de 4 h o más: conviene empezar a más tardar a las 13:00']);
 // Sin reglas (config vieja con largos vacío) solo manda el cierre
-assert.equal(horariosLibres({ fecha: lunes, servicioId: 'balayage', personas: [cristina], citas: [], servicios: largo, config: { ...config, largos: [] }, ahora }).map(h => h.hora).pop(), '15:00');
+assert.equal(horariosLibres({ fecha: lunes, servicioId: 'balayage', personas: [cristina], citas: [], servicios: largo, config: { ...config, largos: [] }, ahora }).map(h => h.hora).pop(), '14:30');
 console.log('agenda: ok');
