@@ -461,11 +461,12 @@ export default function CitaCard({
           )}
 
           {/* Lo que hizo la clienta desde «Mi cita» y qué pasó con su anticipo */}
-          {(cita.canceladaPor || cita.reagendadaEn || cita.anticipoASaldo || cita.anticipoPerdido) && (
+          {(cita.canceladaPor || cita.reagendadaEn || cita.anticipoASaldo || cita.anticipoPerdido || cita.anticipoPorAprobar) && (
             <p className="text-xs text-gray-600">
               {cita.canceladaPor === "clienta" ? "La canceló la clienta desde la app. " : cita.canceladaPor === "sistema" ? `Se canceló sola: ${cita.canceladaMotivo || "no se pagó a tiempo"}. ` : cita.estado !== "cancelada" && cita.reagendadaEn ? "La clienta la cambió desde la app. " : ""}
               {cita.anticipoASaldo ? `Su anticipo de ${formatCurrency(cita.anticipoASaldo)} pasó a su saldo a favor.` : ""}
               {cita.anticipoPerdido ? `Anticipo perdido: ${formatCurrency(cita.anticipoPerdido)}.` : ""}
+              {cita.anticipoPorAprobar ? `Anticipo de ${formatCurrency(cita.anticipoPorAprobar)} por revisar: no se abonó solo. Si procede, abónalo en su ficha.` : ""}
             </p>
           )}
 

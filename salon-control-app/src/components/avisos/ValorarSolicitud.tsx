@@ -70,8 +70,10 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
     const miCita = cita.enlace ? `\n\n${plazo}Revisa el resumen y acéptalo aquí (ahí también la cambias o cancelas tú misma): ${urlMiCita(cita.id, cita.enlace)}` : '';
     if (forma === 'transferencia' || forma === 'deposito')
       return `${base}\n\nPara confirmar tu cita, el anticipo es de ${formatCurrency(anticipo)} por ${forma === 'deposito' ? 'depósito' : 'transferencia'}:\n${datosPago || '(faltan los datos para el anticipo en Configuración → General)'}\n\nMándanos tu comprobante por aquí y tu cita queda confirmada. Cambios o cancelaciones con al menos 48 horas.${miCita}`;
-    if (forma === 'salon') return `${base}\n\nTu cita queda confirmada. El anticipo de ${formatCurrency(anticipo)} lo pagas en el salón el día de tu cita. Cambios o cancelaciones con al menos 48 horas.${miCita}`;
-    return `${base}\n\nTu cita queda confirmada; el pago lo haces completo el día de tu cita. Cambios o cancelaciones con al menos 48 horas.${miCita}`;
+    // Una hora propuesta aún no está confirmada: se confirma cuando la acepte
+    const confirmada = cita.estado === 'solicitud' ? 'Al aceptarla, tu cita queda confirmada.' : 'Tu cita queda confirmada.';
+    if (forma === 'salon') return `${base}\n\n${confirmada} El anticipo de ${formatCurrency(anticipo)} lo pagas en el salón el día de tu cita. Cambios o cancelaciones con al menos 48 horas.${miCita}`;
+    return `${base}\n\n${confirmada} El pago lo haces completo el día de tu cita. Cambios o cancelaciones con al menos 48 horas.${miCita}`;
   }, [cita, servicio, cliente, precio, anticipo, forma, datosPago, elegida, config.plazoPropuestaHoras]);
   useEffect(() => { if (!editado) setMensaje(sugerido); }, [sugerido, editado]);
 
@@ -112,7 +114,7 @@ export default function ValorarSolicitud({ citaId, onClose }: { citaId: string; 
             <p className="text-[10px] uppercase tracking-[0.28em] text-marca-dorado-prof">{faltaHora ? 'Asignar hora' : 'Valorar solicitud'}</p>
             <h3 className="text-xl text-gray-900">{cliente?.nombre || 'Clienta'}</h3>
             <p className="text-sm text-gray-600">{servicio?.nombre}{cita.hora ? ` · ${fechaLarga(cita.fecha)} ${cita.hora}` : ''}{servicio?.duracion ? ` · ${servicio.duracion} min` : ''}</p>
-            {cita.propuestaVence && !cita.aceptadaEn && <p className="mt-1 text-sm text-gray-600">Se libera {new Date(cita.propuestaVence).toLocaleString('es-MX', { weekday: 'long', hour: 'numeric', minute: '2-digit' })} si no la acepta.</p>}
+            {cita.propuestaVence && !cita.aceptadaEn && !cita.anticipoConfirmado && <p className="mt-1 text-sm text-gray-600">Se libera {new Date(cita.propuestaVence).toLocaleString('es-MX', { weekday: 'long', hour: 'numeric', minute: '2-digit' })} si no la acepta.</p>}
             {faltas > 0 && <p className="mt-1 text-sm font-medium text-red-700">No llegó a {faltas} {faltas === 1 ? 'cita' : 'citas'}: conviene pedirle anticipo.</p>}
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Cerrar"><X size={18} /></button>

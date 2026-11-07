@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { atender } from '../api/salon';
 import { firmar } from '../api/sesion';
+import { htmlConsentimiento } from '../../salon-control-app/src/utils/consentimiento';
 
 const hex = (n: number) => n.toString(16).padStart(32, '0');
 const ID = `firma_${hex(1)}`, VENCIDO = `firma_${hex(2)}`;
@@ -78,5 +79,12 @@ assert.ok(tablas.avisos.some(a => a.tipo === 'sistema' && a.titulo.includes('Lau
 assert.equal((await api(`firma/${ID}`, bien)).status, 409);
 assert.equal((await api(`firma/${ID}`)).status, 409);
 assert.deepEqual((await (await api('mi-club', undefined, sesion)).json()).porFirmar, []);
+
+// La firma se pinta en un <img> que abre CB Control: solo pasa un PNG en base64; las comillas se escapan
+const respuestas = (firma: string) => ({ salud: [], fotos: false, redes: 'no' as const, marketing: false, nombreFirma: 'Ana "x" <b>', firma, firmadoEn: '2026-01-01T00:00:00Z' });
+const conFirma = (firma: string) => htmlConsentimiento({ respuestas: respuestas(firma) }, 'logo.svg');
+assert.ok(conFirma('data:image/png;base64,QUJD').includes('<img src="data:image/png;base64,QUJD"'));
+assert.ok(!conFirma('data:image/png;base64,"><img src=x onerror=alert(1)>').includes('onerror'));
+assert.ok(conFirma('data:image/png;base64,QUJD').includes('Ana &quot;x&quot; &lt;b&gt;'));
 
 console.log('firma ok');

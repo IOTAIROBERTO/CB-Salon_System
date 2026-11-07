@@ -13,6 +13,7 @@ import { MENU_ANTOJOS, esCategoriaBreak } from '../../salon-control-app/src/data
 import { borrar, guardar, leer, uno, type EnvDexie } from './dexie';
 import { calendariosAgenda, ocupadoGoogle, type EnvGoogle } from './google';
 import { avisarSalon, plantilla, whatsappListo, type EnvWhatsApp } from './whatsapp';
+import { TOPE_ABONO_AUTOMATICO } from '../../salon-control-app/src/utils/saldo';
 import { DIAS_SESION, MIN_RETO, codigoNuevo, firmar, huellaCodigo, leerFirmado, type Reto, type Sesion } from './sesion';
 
 export type Env = EnvDexie & EnvWhatsApp & EnvGoogle & { SESION_SECRETO?: string; TURNSTILE_SECRETO?: string; LIMITES?: DurableObjectNamespace };
@@ -167,7 +168,7 @@ function validarClienta(b: DatosClienta) {
   if (nombre.length < 3 || nombre.length > 80) throw new ErrorCliente('Escribe tu nombre completo');
   const telefono = tel10(b.telefono);
   if (telefono.length !== 10) throw new ErrorCliente('Escribe tu teléfono de 10 dígitos');
-  const cumple = b.cumple && FECHA.test(b.cumple) ? b.cumple : undefined;
+  const cumple = typeof b.cumple === 'string' && FECHA.test(b.cumple) ? b.cumple : undefined;
   return { nombre, telefono, cumple, recomendo: tel10(b.recomendo) };
 }
 
@@ -237,7 +238,7 @@ function preferenciasDe(b: any): Preferencia[] {
     : b?.fecha ? [{ fecha: b.fecha, franja: HORA.test(String(b.hora || '')) ? franjaDe(b.hora) : 'cualquiera' }] : [];
   const lista: Preferencia[] = [];
   for (const p of crudas.slice(0, 3)) {
-    if (!FECHA.test(String(p?.fecha)) || !FRANJAS_VALIDAS.includes(p?.franja)) throw new ErrorCliente('Elige día y horario');
+    if (typeof p?.fecha !== 'string' || !FECHA.test(p.fecha) || !FRANJAS_VALIDAS.includes(p?.franja)) throw new ErrorCliente('Elige día y horario');
     if (!lista.some(x => x.fecha === p.fecha && x.franja === p.franja)) lista.push({ fecha: p.fecha, franja: p.franja });
   }
   if (!lista.length) throw new ErrorCliente('Elige al menos un día');
@@ -328,8 +329,9 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
       fotosGuardadas = fotos.length;
     } catch (e) { console.log('fotos', (e as Error).message); }
   }
-  // ponytail: `cita_recibida` dice «a las {{hora}}» y aquí todavía no hay hora: sin WhatsApp de acuse hasta aprobar una
-  // plantilla `solicitud_recibida` en Meta. Mientras, la clienta ve su solicitud en la app y «Mi cita».
+  // Acuse por WhatsApp (solo teléfono verificado). Hasta que Meta apruebe `solicitud_recibida` el envío falla sin afectar
+  // la solicitud: queda en el log y la clienta la ve en la app y en «Mi cita».
+  if (sesion) ctx.waitUntil(plantilla(env, d.telefono, 'solicitud_recibida', [d.nombre.split(' ')[0], s.nombre]));
   await aviso(env, ctx, ag.realmId, {
     tipo: 'cita', titulo: `Nueva solicitud desde la app: ${cliente.nombre}`,
     detalle: `${s.nombre} · ${textoPreferencias(preferencias)}${itemsCita.length ? ` · aparta ${resumenItems(itemsCita)} (${pesos(totalItems(itemsCita))})` : ''}${notas ? ` · «${notas}»` : ''}${resumenValoracion(valoracion)}${fotos.length ? ` · ${fotosGuardadas ? `${fotosGuardadas} foto(s)${sesion ? '' : ' (teléfono sin verificar)'}` : 'mandó fotos pero no se guardaron: pídeselas por WhatsApp'}` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
@@ -452,6 +454,9 @@ async function firmarConsentimiento(env: Env, ctx: ExecutionContext, id: string,
 export const HORAS_SIN_COSTO = 48;
 const ABIERTAS = ['pendiente', 'confirmada'];     // con hora
 const VIGENTES = ['solicitud', ...ABIERTAS];      // también las que esperan hora
+/** Falta que la clienta acepte: con hora y precio, sin aceptar. Una que Cristina confirmó directo no lo pide, salvo que
+ *  antes la hubiera aceptado y Cristina le cambiara algo (ValorarSolicitud borra `aceptadaEn` y deja `aceptacion`) */
+const pideAceptar = (c: any) => !!c.hora && c.precioAcordado != null && !c.aceptadaEn && (c.estado !== 'confirmada' || !!c.aceptacion);
 export const secretoNuevo = () => [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
 /** Horas que faltan para la cita (Hermosillo, UTC−7) */
 export const horasPara = (c: { fecha: string; hora: string }, ahora = Date.now()) => c.hora ? (Date.parse(`${c.fecha}T${c.hora}:00-07:00`) - ahora) / 3600000 : Infinity;   // sin hora todavía: nada corre
@@ -490,11 +495,11 @@ async function vistaCita(env: Env, cita: any) {
     // Lo que paga junto (productos del carrito + anticipo) y hasta cuándo; sin `venceEn` espera la valoración
     pedido: pedido ? { items: pedido.items, totalProductos: pedido.totalProductos, anticipo: pedido.anticipo, total: pedido.total, estado: pedido.estado,
       venceEn: pedido.venceEn, recogerHasta: pedido.recogerHasta } : null,
-    anticipoASaldo: cita.anticipoASaldo, anticipoPerdido: cita.anticipoPerdido,
+    anticipoASaldo: cita.anticipoASaldo, anticipoPerdido: cita.anticipoPerdido, anticipoPorAprobar: cita.anticipoPorAprobar,
     sinCosto: faltan >= HORAS_SIN_COSTO, puedeCancelar: abierta,
     puedeReagendar: abierta && faltan >= HORAS_SIN_COSTO && !!servicio && enLinea(servicio),
     // Cristina ya la valoró: la clienta acepta el resumen (lo que se hará, precio final y anticipo) en un toque
-    resumen: cita.resumenClienta || '', aceptadaEn: cita.aceptadaEn, porAceptar: abierta && !!cita.hora && cita.precioAcordado != null && !cita.aceptadaEn,
+    resumen: cita.resumenClienta || '', aceptadaEn: cita.aceptadaEn, porAceptar: abierta && pideAceptar(cita),
     // Mientras no se valora (sin precio ni anticipo pagado) puede cambiar de servicio en vez de pedir otra cita
     puedeCambiarServicio: abierta && faltan >= HORAS_SIN_COSTO && cita.estado !== 'confirmada' && cita.precioAcordado == null && !pagado
   };
@@ -517,7 +522,7 @@ async function citaQueSeRepite(env: Env, clienteId: string, servicioId: string, 
  *  lo que vio la clienta (lo que manda la app) sigue igual: si Cristina lo cambió mientras tanto, 409 y lo revisa de
  *  nuevo. Queda la constancia de lo que aceptó; si no falta anticipo por transferencia o depósito, queda confirmada. */
 async function aceptarPorEnlace(env: Env, ctx: ExecutionContext, ref: string, request: Request, b: any) {
-  const porAceptar = (c: any) => ABIERTAS.includes(c.estado) && horasPara(c) > 0 && c.precioAcordado != null && !c.aceptadaEn;
+  const porAceptar = (c: any) => ABIERTAS.includes(c.estado) && horasPara(c) > 0 && pideAceptar(c);
   // Lo que vio la clienta debe seguir igual; se revisa antes del candado (un rechazo no la hace esperar) y otra vez con él
   const loQueVio = (c: any) => Number(b?.precio) === Number(c.precioAcordado) && Number(b?.anticipo) === (Number(c.montoAnticipo) || 0)
     && String(b?.resumen ?? '') === (c.resumenClienta || '');
@@ -565,7 +570,7 @@ async function cancelarPorEnlace(env: Env, ctx: ExecutionContext, ref: string) {
   const aTiempo = horasPara(cita) >= HORAS_SIN_COSTO, pagado = cita.anticipoConfirmado ? Number(cita.montoAnticipo) || 0 : 0;
   const ahora = new Date().toISOString();
   const nueva = { ...cita, estado: 'cancelada', canceladaPor: 'clienta', canceladaEn: ahora,
-    ...(pagado ? (aTiempo ? { anticipoASaldo: pagado } : { anticipoPerdido: pagado }) : {}) };
+    ...(pagado ? (!aTiempo ? { anticipoPerdido: pagado } : pagado > TOPE_ABONO_AUTOMATICO ? { anticipoPorAprobar: pagado } : { anticipoASaldo: pagado }) : {}) };
   // El abono va primero y con id fijo por cita (cancelar dos veces no lo duplica); si la cita no se pudo guardar como
   // cancelada, el abono se quita: nunca queda saldo a favor con la cita viva
   const abono = `sal_cancelada_${cita.id}`;
@@ -578,7 +583,7 @@ async function cancelarPorEnlace(env: Env, ctx: ExecutionContext, ref: string) {
   const [cliente, servicio] = await Promise.all([uno<any>(env, 'clientes', cita.clienteId), uno<any>(env, 'servicios', cita.servicioId)]);
   await aviso(env, ctx, cita.realmId, {
     tipo: 'cita', titulo: `Canceló su cita desde la app: ${cliente?.nombre || 'Clienta'}`,
-    detalle: `${servicio?.nombre || 'Servicio'} · ${cuando(cita)}. ${nueva.anticipoASaldo ? `Su anticipo de ${pesos(pagado)} pasó a su saldo a favor.`
+    detalle: `${servicio?.nombre || 'Servicio'} · ${cuando(cita)}. ${nueva.anticipoPorAprobar ? `Revísalo: su anticipo de ${pesos(pagado)} rebasa el tope y no se abonó solo. Si procede, abónalo en su ficha.` : nueva.anticipoASaldo ? `Su anticipo de ${pesos(pagado)} pasó a su saldo a favor.`
       : nueva.anticipoPerdido ? `Faltaban menos de 48 h: el anticipo de ${pesos(pagado)} se queda como anticipo perdido.` : 'No tenía anticipo pagado.'}${cita.hora ? ' El horario quedó libre.' : ''}`,
     refId: cita.id, clienteId: cita.clienteId
   });
@@ -641,9 +646,12 @@ async function productosApp(env: Env) {
 
 /** Valida lo que pidió y lo arma con los precios del Inventario; falla si ya no hay suficientes piezas disponibles */
 async function itemsDelCarrito(env: Env, pedidos: unknown): Promise<ItemPedido[]> {
-  const lista = (Array.isArray(pedidos) ? pedidos : []).slice(0, 10)
-    .map((x: any) => ({ productoId: String(x?.productoId || ''), cantidad: Math.floor(Number(x?.cantidad)) }))
-    .filter(x => x.productoId && x.cantidad >= 1 && x.cantidad <= 20);
+  const porProducto = new Map<string, number>();   // dos renglones del mismo producto cuentan juntos contra lo disponible
+  for (const x of (Array.isArray(pedidos) ? pedidos : []).slice(0, 10)) {
+    const productoId = String(x?.productoId || ''), cantidad = Math.floor(Number(x?.cantidad));
+    if (productoId && cantidad >= 1 && cantidad <= 20) porProducto.set(productoId, (porProducto.get(productoId) || 0) + cantidad);
+  }
+  const lista = [...porProducto].map(([productoId, cantidad]) => ({ productoId, cantidad }));
   if (!lista.length) return [];
   const [inventario, todos] = await Promise.all([leer<any>(env, 'inventario'), leer<any>(env, 'pedidos')]);
   const aparts = apartados(todos);
@@ -818,8 +826,8 @@ export async function atender(request: Request, env: Env, ctx: ExecutionContext)
       const sesion = ruta === 'acceso/codigo' ? null : await sesionDe(request, env);
       // Con el WhatsApp del salón conectado, solo aparta horario quien confirmó su teléfono con el código (la app lo pide
       // en ese momento y reintenta). Se revisa antes del «no soy robot» para que su token sirva para pedir el código.
-      if (ruta === 'citas' && !sesion && whatsappListo(env) && env.SESION_SECRETO)
-        throw new ErrorCliente('Para apartar tu horario, confirma tu teléfono con el código que te mandamos por WhatsApp.', 428);
+      if ((ruta === 'citas' || ruta === 'pedidos') && !sesion && whatsappListo(env) && env.SESION_SECRETO)
+        throw new ErrorCliente(`Para apartar ${ruta === 'citas' ? 'tu horario' : 'tus productos'}, confirma tu teléfono con el código que te mandamos por WhatsApp.`, 428);
       const humano = !!sesion || await esHumano(env, body?.turnstile, ip);
       if (ruta === 'acceso/codigo') {   // cada código es un WhatsApp que cuesta: aquí sí se rechaza
         if (!humano) throw new ErrorCliente('No pudimos confirmar que no eres un robot. Recarga la página e intenta de nuevo.', 403);

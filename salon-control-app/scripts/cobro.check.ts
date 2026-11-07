@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { cobroExpres, precioBase } from '../src/utils/cobro';
 import { calculateChargeBreakdown } from '../src/utils/financialUtils';
-import { citaCerrada, consecuenciaCancelar, motivoNoBorrar, pedidoTrasAnticipo, reversaCobro } from '../src/utils/estadoCita';
+import { citaCerrada, consecuenciaCancelar, motivoNoBorrar, pedidoTrasAnticipo, reversaCobro, soloCambios } from '../src/utils/estadoCita';
 
 const servicios = [{ id: 's1', precioSugerido: 500 }, { id: 's2', precioSugerido: 1200 }];
 
@@ -62,5 +62,9 @@ assert.equal(reversaCobro('c1', [mov('a', 'c1', -300), mov('b', 'c1', 300)], [])
 // Sin saldo ni canjes: nada que revertir
 rev = reversaCobro('c9', [mov('m1', 'c1', -300)], canjes);
 assert.deepEqual([rev.devolver, rev.movimientosABorrar, rev.canjes.length], [0, [], 3]);
+
+// Guardar solo lo cambiado: lo demás no se manda, así no pisa lo que pasó con el modal abierto
+assert.deepEqual(soloCambios({ fecha: 'a', notas: undefined, hora: 'h', aceptadaEn: 'ya' }, { fecha: 'b', notas: '', hora: 'h' }), { fecha: 'b' });
+assert.deepEqual(soloCambios({ empleadoIds: ['e'] }, { empleadoIds: ['e'] }), {});
 
 console.log('cobro: ok');

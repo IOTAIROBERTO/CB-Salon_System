@@ -16,6 +16,7 @@ import { useAgenda } from "../../hooks/useAgenda";
 import { db } from "../../db/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { avisar, confirmar } from "../Confirmar";
+import { AL_MOVER_CITA, soloCambios } from "../../utils/estadoCita";
 
 interface CitaModalProps {
   servicios: Servicio[];
@@ -72,12 +73,9 @@ export default function CitaModal({ servicios, onClose, onSave, citaEdit, inicia
 
     if (citaEdit && !(await confirmar('¿Guardar los cambios de esta cita?'))) return;
     if (citaEdit) {
-      // Modo edición: crear objeto de cita completo manteniendo campos existentes
-      const citaActualizada = {
-        ...citaEdit,
-        ...formData,
-      };
-      onSave(citaActualizada);
+      const cambios = soloCambios(citaEdit, formData);
+      const seMovio = 'fecha' in cambios || 'hora' in cambios;
+      onSave({ id: citaEdit.id, ...cambios, ...(seMovio ? AL_MOVER_CITA : {}) });
     } else {
       // Modo creación: solo los campos básicos
       onSave({

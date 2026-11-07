@@ -10,11 +10,18 @@ import { avisarCelulares, pushListo, type EnvPush } from '../api/push';
 import { avisarSalon, plantilla, whatsappListo } from '../api/whatsapp';
 import { fechaLegible, hoyHermosillo, masDias, type Env as EnvApi } from '../api/salon';
 import { ultimaPreferencia } from '../../salon-control-app/src/utils/agenda';
+import { TOPE_ABONO_AUTOMATICO } from '../../salon-control-app/src/utils/saldo';
 
 type Env = EnvApi & EnvPush & { RECORDATORIOS?: 'app' | 'todas' };   // 'todas': también las citas que agenda el salón a mano
 
 const CADA_MINUTO = '* * * * *';   // igual que en wrangler.toml
 const pesos = (n: number) => `$${Number(n || 0).toLocaleString('es-MX')}`;
+/** Dexie Cloud reemplaza el objeto entero: se relee justo antes de escribir, para no pisar con una copia vieja lo que la
+ *  clienta o el salón hicieron mientras se mandaban los avisos (aceptar, asignar hora, cobrar) */
+const marcarCita = async (env: Env, id: string, cambios: object) => {
+  const actual = await uno<any>(env, 'citas', id);
+  if (actual) await guardar(env, 'citas', [{ ...actual, ...cambios }]);
+};
 
 export async function revisar(env: Env) {
   const hoy = hoyHermosillo(), manana = masDias(hoy, 1);
@@ -39,7 +46,7 @@ export async function revisar(env: Env) {
       await plantilla(env, cliente.telefono, 'recordatorio_cita', [nombre, servicio, fechaLegible(c.fecha), c.hora])) {
       cambios.recordatorio = new Date().toISOString();
     }
-    if (Object.keys(cambios).length) { await guardar(env, 'citas', [{ ...c, ...cambios }]); enviados++; }
+    if (Object.keys(cambios).length) { await marcarCita(env, c.id, cambios); enviados++; }
   }
   return { enviados, porConfirmar, pedidos, propuestas };
 }
@@ -116,10 +123,13 @@ export async function vencerPedidos(env: Env, ahora = Date.now()) {
     if (!p) continue;
     nNoRecogidos++;
     // Política de pedidos: pasados 10 días, lo pagado queda como saldo a favor (abono con id fijo: nunca se duplica)
-    await guardar(env, 'movimientosSaldo', [{ id: `sal_pedido_${p.id}`, clienteId: p.clienteId, fecha: marca, monto: p.totalProductos,
+    const rebasa = p.totalProductos > TOPE_ABONO_AUTOMATICO;
+    if (!rebasa) await guardar(env, 'movimientosSaldo', [{ id: `sal_pedido_${p.id}`, clienteId: p.clienteId, fecha: marca, monto: p.totalProductos,
       concepto: `Productos pagados que no se recogieron en 10 días (${productos(p)})`, realmId: p.realmId }]);
     await guardar(env, 'pedidos', [{ ...p, estado: 'no_recogido', motivo: 'No lo recogió en 10 días' }]);
-    await avisar(p, 'no_recogido', `No recogió su pedido: ${await quien(p)}`, `${productos(p)}: volvió a la venta y ${pesos(p.totalProductos)} quedaron como su saldo a favor.`);
+    await avisar(p, 'no_recogido', `No recogió su pedido: ${await quien(p)}`, rebasa
+      ? `${productos(p)}: volvió a la venta. Revísalo: ${pesos(p.totalProductos)} rebasa el tope y no se abonó solo. Si procede, abónalo en su ficha.`
+      : `${productos(p)}: volvió a la venta y ${pesos(p.totalProductos)} quedaron como su saldo a favor.`);
   }
   return { vencidos: nVencidos, noRecogidos: nNoRecogidos };
 }
@@ -133,9 +143,9 @@ const llegada = (c: any) => Date.parse(c.creada || '') || Number(String(c.id).sp
 export async function recordarAlSalon(env: Env, clientes: any[], hoy: string, ahora = Date.now()) {
   const hora = new Date(ahora - 7 * HORA).getUTCHours();
   if (hora < 9 || hora >= 21 || !(env.WA_AVISOS || pushListo(env))) return 0;
-  // Las que ya tienen hora propuesta esperan a la clienta, no al salón
+  // Las que tienen hora propuesta o ya aceptada y por pagar esperan a la clienta, no al salón
   const abiertas = (await Promise.all(['pendiente', 'solicitud'].map(estado => leer<any>(env, 'citas', { estado })))).flat();
-  const toca = abiertas.filter(c => c.origen && ultimaPreferencia(c) >= hoy && !c.propuestaVence
+  const toca = abiertas.filter(c => c.origen && ultimaPreferencia(c) >= hoy && !c.propuestaVence && !c.aceptadaEn
     && ahora - llegada(c) > 2 * HORA && (!c.recordatorioSalon || ahora - Date.parse(c.recordatorioSalon) > 4 * HORA));
   if (!toca.length) return 0;
   const lista = toca.map(c => `${String(clientes.find(x => x.id === c.clienteId)?.nombre || 'Clienta').split(' ')[0]} ${c.hora ? `${fechaLegible(c.fecha)} ${c.hora}` : 'sin hora'}`).join('; ');
@@ -143,7 +153,7 @@ export async function recordarAlSalon(env: Env, clientes: any[], hoy: string, ah
   await avisarSalon(env, `${titulo}: ${lista}`.slice(0, 900) + '. Confírmalas en CB Control (campana).');
   await avisarCelulares(env, { titulo, detalle: `${lista}. Valóralas en la campana.`.slice(0, 300) });
   const marca = new Date(ahora).toISOString();
-  await guardar(env, 'citas', toca.map(c => ({ ...c, recordatorioSalon: marca })));
+  for (const c of toca) await marcarCita(env, c.id, { recordatorioSalon: marca });
   return toca.length;
 }
 

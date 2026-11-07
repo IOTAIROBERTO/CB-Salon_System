@@ -220,7 +220,13 @@ export interface EstadoCirculo {
   activa: boolean;
 }
 
-const dia = (c: CitaL) => (c.fechaCompletada || c.fecha).slice(0, 10);
+/** Día en Hermosillo (UTC−7 todo el año) de una fecha ISO con hora, igual en el navegador y en el servidor: cortar el ISO
+ *  daría el día UTC, y un cobro del lunes a las 18:00 contaría como martes (puntos dobles que no tocan) */
+export const diaHermosillo = (f: string) => {
+  const ms = f.length > 10 ? Date.parse(f) : NaN;
+  return Number.isNaN(ms) ? f.slice(0, 10) : new Date(ms - 7 * 3600000).toISOString().slice(0, 10);
+};
+const dia = (c: CitaL) => diaHermosillo(c.fechaCompletada || c.fecha);
 const hoyISO = (hoy: Date) => `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 const masDias = (fecha: string, n: number) => {
   const d = new Date(`${fecha}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10);
@@ -265,14 +271,14 @@ export const estadoCirculo = (cliente: ClienteL, citas: CitaL[], ventas: VentaL[
     eventos.push({ fecha: f, concepto: 'Visita', puntos: Math.floor(monto / p.pesosPorPuntoServicio), visita: true, compra: true, servicio: true });
     if (c.origen === 'app') eventos.push({ fecha: f, concepto: 'Reserva en línea', puntos: p.reservaEnLinea, visita: true });
   }
-  for (const v of ventas.filter(v => v.clienteId === cliente.id && (v.productos?.length ?? 0) > 0 && enRango(v.fecha.slice(0, 10)))) {
-    eventos.push({ fecha: v.fecha.slice(0, 10), concepto: 'Compra de producto', puntos: Math.floor((v.total || 0) / p.pesosPorPuntoProducto), visita: true, compra: true });
+  for (const v of ventas.filter(v => v.clienteId === cliente.id && (v.productos?.length ?? 0) > 0 && enRango(diaHermosillo(v.fecha)))) {
+    eventos.push({ fecha: diaHermosillo(v.fecha), concepto: 'Compra de producto', puntos: Math.floor((v.total || 0) / p.pesosPorPuntoProducto), visita: true, compra: true });
   }
   for (const r of primerasDeReferidas(cliente.id, clientes, citas, p, fin).filter(r => !r.conDescuento)) {
     eventos.push({ fecha: r.fecha, concepto: 'Amiga recomendada', puntos: p.referida, visita: false });
   }
-  for (const m of saldo.filter(m => m.clienteId === cliente.id && m.origen === 'club' && m.puntos && enRango(m.fecha.slice(0, 10)))) {
-    eventos.push({ fecha: m.fecha.slice(0, 10), concepto: m.concepto || 'Canje de puntos', puntos: -m.puntos!, visita: false });
+  for (const m of saldo.filter(m => m.clienteId === cliente.id && m.origen === 'club' && m.puntos && enRango(diaHermosillo(m.fecha)))) {
+    eventos.push({ fecha: diaHermosillo(m.fecha), concepto: m.concepto || 'Canje de puntos', puntos: -m.puntos!, visita: false });
   }
   eventos.sort((a, b) => a.fecha.localeCompare(b.fecha));
 
@@ -347,7 +353,7 @@ export const descuentosReferidaDisponibles = (cliente: ClienteL, clientes: Clien
 
 /** Visitas seguidas (sin pasar constanciaDias entre una y otra) desde la última ampolleta de constancia */
 export const rachaConstancia = (cliente: ClienteL, citas: CitaL[], p: ParametrosCirculo = PARAMETROS_CIRCULO) => {
-  const ultimoCanje = (cliente.canjes || []).filter(c => c.clave === 'constancia').map(c => c.fecha.slice(0, 10)).sort().pop() || '';
+  const ultimoCanje = (cliente.canjes || []).filter(c => c.clave === 'constancia').map(c => diaHermosillo(c.fecha)).sort().pop() || '';
   const dias = [...new Set(citas.filter(c => c.clienteId === cliente.id && c.estado === 'completada' && dia(c) >= p.inicio).map(dia))].sort();
   let racha = 0, anterior = '';
   for (const d of dias) {
@@ -366,14 +372,14 @@ export const beneficiosDisponibles = (cliente: ClienteL, nivel: Nivel, clientes:
   const res: ClaveBeneficio[] = [];
   const mes = String(hoy.getMonth() + 1).padStart(2, '0');
   const anio = String(hoy.getFullYear());
-  const usado = (clave: ClaveBeneficio, prefijo: string) => canjes.some(c => c.clave === clave && c.fecha.startsWith(prefijo));
+  const usado = (clave: ClaveBeneficio, prefijo: string) => canjes.some(c => c.clave === clave && diaHermosillo(c.fecha).startsWith(prefijo));
   if (cliente.cumple?.slice(5, 7) === mes && !usado('cumple', anio)) res.push('cumple');
   if (rachaConstancia(cliente, citas, p) >= p.constanciaVisitas) res.push('constancia');
   // Regalos de nivel: todos los de su nivel y los de abajo, uno de cada uno; vuelven a los 12 meses de usarlos
   const haceUnAnio = masDias(hoyISO(hoy), -365);
   for (const clave of CLAVES_REGALO) {
     const r = REGALOS_NIVEL[clave];
-    if (orden(nivel) >= orden(r.nivel) && r.puntos <= puntos && !canjes.some(c => c.clave === clave && c.fecha.slice(0, 10) > haceUnAnio)) res.push(clave);
+    if (orden(nivel) >= orden(r.nivel) && r.puntos <= puntos && !canjes.some(c => c.clave === clave && diaHermosillo(c.fecha) > haceUnAnio)) res.push(clave);
   }
   if (orden(nivel) >= orden('ambar') && !usado('flequillo', `${anio}-${mes}`)) res.push('flequillo');
   if (BENEFICIOS_NIVEL[nivel].antojoCortesia && !usado('antojoOnix', `${anio}-${mes}`)) res.push('antojoOnix');

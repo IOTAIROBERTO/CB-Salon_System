@@ -165,6 +165,13 @@ const enSalon = { id: 'salon1', clienteId: 'k1', servicioId: 's1', fecha: lejos,
 tablas.citas.push(enSalon);
 v = await (await pedir(`cita/salon1.${'b'.repeat(32)}/aceptar`, { precio: 500, anticipo: 150, resumen: '' })).json();
 assert.equal(v.estado, 'confirmada');
+// Confirmada directo por Cristina: no se le pide aceptar. Si ya había aceptado y Cristina le cambió algo, sí
+const directa = { id: 'directa', clienteId: 'k1', servicioId: 's1', fecha: lejos, hora: '12:00', estado: 'confirmada', precioAcordado: 500, enlace: 'e'.repeat(32), realmId: 'r' };
+tablas.citas.push(directa);
+assert.equal((await (await pedir(`cita/directa.${'e'.repeat(32)}`)).json()).porAceptar, false);
+assert.equal((await pedir(`cita/directa.${'e'.repeat(32)}/aceptar`, { precio: 500, anticipo: 0, resumen: '' })).status, 409);
+Object.assign(directa, { aceptacion: { precio: 400 } });
+assert.equal((await (await pedir(`cita/directa.${'e'.repeat(32)}`)).json()).porAceptar, true);
 
 // 10. Hora propuesta sin aceptar: se suelta y vuelve a esperar hora. Sin fechas por delante, se cancela sola y suelta el carrito
 const opciones = [{ fecha: lejos, franja: 'tarde' }];
@@ -184,5 +191,17 @@ v = await (await pedir(`cita/sola.${'c'.repeat(32)}`)).json();
 assert.deepEqual([v.sinCosto, v.puedeCancelar, v.puedeReagendar, v.porAceptar], [true, true, true, false]);
 v = await (await pedir(`cita/sola.${'c'.repeat(32)}/cancelar`, {})).json();
 assert.equal(v.estado, 'cancelada');
+
+// Anticipo mayor al tope: no se abona solo, queda por revisar y la Dueña recibe el aviso
+const grande = { id: 'grande', clienteId: 'k1', servicioId: 's1', fecha: lejos, hora: '12:30', estado: 'confirmada', anticipoConfirmado: true, montoAnticipo: 50000, enlace: 'f'.repeat(32), realmId: 'r' };
+tablas.citas.push(grande);
+v = await (await pedir(`cita/grande.${'f'.repeat(32)}/cancelar`, {})).json();
+assert.deepEqual([v.estado, v.anticipoASaldo, v.anticipoPorAprobar], ['cancelada', undefined, 50000]);
+assert.ok(!tablas.movimientosSaldo.some(m => m.citaId === 'grande'));
+assert.ok(tablas.avisos.some(a => a.refId === 'grande' && /rebasa el tope/.test(a.detalle)));
+// En el tope todavía se abona
+const justa = { ...grande, id: 'justa', hora: '13:00', montoAnticipo: 5000, enlace: 'a'.repeat(31) + 'b' };
+tablas.citas.push(justa);
+assert.equal((await (await pedir(`cita/justa.${justa.enlace}/cancelar`, {})).json()).anticipoASaldo, 5000);
 
 console.log('micita ok');

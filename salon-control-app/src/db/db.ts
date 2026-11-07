@@ -138,6 +138,7 @@ export interface Cita {
     cambioPedido?: boolean; // ya tiene hora y pidió otra: conserva la suya hasta que Cristina se la cambie
     propuestaVencida?: boolean; // no aceptó la hora a tiempo y volvió a esperar otra
     canceladaMotivo?: string; // por qué se canceló sola (Worker cb-avisos)
+    anticipoPorAprobar?: number; // canceló a tiempo con un anticipo mayor al tope: la Dueña decide si lo abona a mano
     avisoConfirmacion?: string; // ISO: cuándo se le mandó la confirmación por WhatsApp (Worker cb-avisos)
     recordatorio?: string; // ISO: cuándo se le mandó el recordatorio del día anterior
     creada?: string; // ISO: cuándo llegó desde la app

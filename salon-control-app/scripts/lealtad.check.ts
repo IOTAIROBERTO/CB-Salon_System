@@ -6,6 +6,7 @@ import {
   descuentosReferidaDisponibles, parametrosDe, datosBeneficio, textoSaldoPuntos, permanentesDe, costoPuntos, ANIVERSARIO_PUNTOS
 } from '../src/utils/lealtad';
 import { descuentoAntojo, esCategoriaBreak } from '../src/data/menuAntojos';
+import { diaHermosillo } from '../src/utils/lealtad';
 
 const P = PARAMETROS_CIRCULO;
 const P2 = { ...P, miel: 300, ambar: 900, dorado: 2000, onix: 3500 }; // umbrales altos: prueban multiplicadores paso a paso
@@ -170,4 +171,11 @@ assert.equal(descuentoAntojo('onix', 'Maruchan'), 15);
 assert.equal(descuentoAntojo('onix', 'Coca-Cola 355 ml'), 0); // bebidas sin descuento
 assert.equal(descuentoAntojo('onix', 'Algo nuevo'), 0);
 assert.equal(descuentoAntojo('onix', ''), 0);
+// Día en Hermosillo, no en UTC: un cobro del lunes 1 de febrero a las 18:00 (ya martes en UTC) no es de martes doble
+assert.equal(diaHermosillo('2027-02-02T01:00:00.000Z'), '2027-02-01');
+assert.equal(diaHermosillo('2027-02-02'), '2027-02-02');
+const visita = estadoCirculo({ id: 'tz' }, [{ clienteId: 'tz', servicioId: 's', estado: 'completada', fecha: '2027-02-01', fechaCompletada: '2027-02-02T01:00:00.000Z', precioFinal: 1000 }], [], [], [], PARAMETROS_CIRCULO, new Date('2027-02-10T12:00:00'))
+  .movimientos.find(m => m.concepto.startsWith('Visita'))!;
+assert.deepEqual([visita.fecha, visita.puntos], ['2027-02-01', 100]);
+
 console.log('lealtad: ok');

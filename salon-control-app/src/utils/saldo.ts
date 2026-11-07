@@ -5,6 +5,10 @@
 
 export const MONTOS_TARJETA = [300, 500, 1000, 1500, 2000, 2500];
 export const MESES_PARA_ACTIVAR = 6;
+/** Hasta aquí la API y el Worker abonan saldo solos (el anticipo más alto del catálogo es $3,150). Más que esto lo revisa la
+ *  Dueña: esos montos salen de citas y pedidos, que una empleada puede editar aunque no pueda escribir saldo.
+ *  ponytail: tope fijo, no prueba que el dinero entró; registrar lo recibido en una tabla solo de la Dueña lo cerraría del todo. */
+export const TOPE_ABONO_AUTOMATICO = 5000;
 
 interface TarjetaS { folio: string; monto: number; fechaVenta: string; activadaPor?: string }
 interface MovS { clienteId: string; monto: number }

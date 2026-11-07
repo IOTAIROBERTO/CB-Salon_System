@@ -85,6 +85,7 @@ assert.equal((await post(conWhatsApp, 'citas', cita('6629999999'), sesion)).stat
 const nueva = tablas.citas[tablas.citas.length - 1];
 assert.equal(tablas.clientes.find(c => c.id === nueva.clienteId).telefono, '6620000004');
 assert.deepEqual([!!nueva.creada, nueva.estado, nueva.hora, nueva.preferencias], [true, 'solicitud', '', [{ fecha: lunes, franja: 'mediodia' }]]);
+assert.ok(whatsapp.includes('solicitud_recibida') && !whatsapp.includes('cita_recibida'));   // acuse sin hora: la plantilla vieja decía «a las…»
 
 // El mismo día no se agenda en línea (Cristina lo revisa por WhatsApp): sin horarios y rechazo al pedirlo
 const hoyDisp = await (await atender(new Request(`https://app/api/disponibilidad?servicioId=s1&desde=${dia(0)}&dias=1`), base as any, ctx)).json();
@@ -136,7 +137,10 @@ assert.deepEqual(whatsapp, ['aviso_salon']);   // un solo mensaje con las dos
 assert.ok(tablas.citas.every(c => c.recordatorioSalon));
 assert.equal(await recordarAlSalon(conWhatsApp as any, tablas.clientes, dia(0), a10 + 3 * HORA), 0);   // aún no pasan 4 h
 assert.equal(await recordarAlSalon(conWhatsApp as any, tablas.clientes, dia(0), a10 + 5 * HORA), 2);
+// No pisa con su copia vieja: si al guardar ya cambió, se conserva. Y lo aceptado o propuesto espera a la clienta, no al salón
 tablas.citas[0].estado = 'confirmada';   // la confirmada ya no se recuerda
 assert.equal(await recordarAlSalon(conWhatsApp as any, tablas.clientes, dia(0), a10 + 10 * HORA), 1);
+tablas.citas.push({ ...tablas.citas[1], id: 'aceptada', estado: 'pendiente', hora: '10:00', aceptadaEn: 'ya', recordatorioSalon: undefined }, { ...tablas.citas[1], id: 'propuesta', estado: 'pendiente', hora: '11:00', propuestaVence: 'x', recordatorioSalon: undefined });
+assert.equal(await recordarAlSalon(conWhatsApp as any, tablas.clientes, dia(0), a10 + 10 * HORA), 0);
 
 console.log('reservas ok');

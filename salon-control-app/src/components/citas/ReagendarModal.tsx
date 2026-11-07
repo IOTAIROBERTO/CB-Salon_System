@@ -16,6 +16,8 @@ import { db } from "../../db/db";
 import { enlaceWhatsApp } from "../../utils/lealtad";
 import { avisar } from "../Confirmar";
 
+import { AL_MOVER_CITA } from "../../utils/estadoCita";
+
 interface ReagendarModalProps {
   cita: Cita;
   onClose: () => void;
@@ -49,12 +51,8 @@ export default function ReagendarModal({ cita, onClose, onSave }: ReagendarModal
     }
 
     // Crear objeto de cita actualizada manteniendo todos los campos existentes
-    const citaActualizada = {
-      ...cita,
-      fecha,
-      hora,
-      atiendeId
-    };
+    const seMovio = fecha !== cita.fecha || hora !== cita.hora;
+    const citaActualizada = { id: cita.id, fecha, hora, atiendeId, ...(seMovio ? AL_MOVER_CITA : {}) };
     
     onSave(citaActualizada);
     onClose();

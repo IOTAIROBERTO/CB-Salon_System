@@ -7,7 +7,7 @@ import { useRolSalon } from '../db/salon';
 import {
   NOMBRE_NIVEL, NOMBRE_CIRCULO, NIVELES, BENEFICIOS_NIVEL, DIAS_PUNTOS_DOBLES, estadoCirculo, siguienteNivel, beneficiosDisponibles, descuentoProducto,
   datosBeneficio, textoSaldoPuntos, REGLA_CANJE, AVISO_GASTO, permanentesDe, costoPuntos, multiplicador, montoCanje, montoTarjeta, rachaConstancia, tituloCanje, enlaceWhatsApp, codigoClienta, parametrosDe, umbral,
-  PARAMETROS_CIRCULO, type Nivel, type ClaveBeneficio, type ParametrosCirculo
+  PARAMETROS_CIRCULO, diaHermosillo, type Nivel, type ClaveBeneficio, type ParametrosCirculo
 } from '../utils/lealtad';
 import { imprimirTarjeta } from '../utils/tarjetaCirculo';
 import { normalizar } from '../utils/texto';
@@ -65,7 +65,7 @@ export default function CirculoPage() {
     await db.clientes.update(id, { activo: false });
     setSeleccionadaId(null);
   };
-  const arrancado = new Date().toISOString().slice(0, 10) >= p.inicio;
+  const arrancado = diaHermosillo(new Date().toISOString()) >= p.inicio;
 
   const filas = useMemo(() => clientes
     .filter(c => c.activo !== false)

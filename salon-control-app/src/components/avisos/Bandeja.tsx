@@ -43,8 +43,8 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
   const servicios = useLiveQuery(() => db.servicios.toArray()) || [];
   const sinLeer = avisos.filter(a => !a.leido).length;
   const hoy = fechaLocalISO();
-  // Las que ya tienen hora propuesta esperan a la clienta, no a Cristina
-  const porConfirmar = citas.filter(c => c.origen && ultimaPreferencia(c) >= hoy && !c.propuestaVence).sort((a, b) => `${a.fecha}${a.hora}`.localeCompare(`${b.fecha}${b.hora}`));
+  // Las que tienen hora propuesta o ya aceptada y por pagar esperan a la clienta, no a Cristina
+  const porConfirmar = citas.filter(c => c.origen && ultimaPreferencia(c) >= hoy && !c.propuestaVence && !c.aceptadaEn).sort((a, b) => `${a.fecha}${a.hora}`.localeCompare(`${b.fecha}${b.hora}`));
 
   // Notificación del navegador por cada aviso nuevo que llega con la ventana abierta
   useEffect(() => {

@@ -32,7 +32,7 @@ interface DatosConsentimiento {
   respuestas?: RespuestasConsentimiento;   // firmado en la app: se muestra lo que marcó y su firma
 }
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const fechaLarga = (iso?: string) =>
   iso ? parseFechaLocal(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
@@ -83,7 +83,8 @@ const autorizaciones = (r?: RespuestasConsentimiento) => r
      [r.redes !== 'no', `${PREGUNTA_REDES} ${OPCIONES_REDES[r.redes]}`], [r.marketing, AUTORIZACION_MARKETING]] as [boolean, string][]
   : AUTORIZACIONES.map(a => [false, a] as [boolean, string]);
 
-const firmaClienta = (r?: RespuestasConsentimiento) => r && r.firma.startsWith('data:image/png;base64,')
+// La misma regla que la API: una empleada escribe directo en la base y esto se abre en el origen de CB Control
+const firmaClienta = (r?: RespuestasConsentimiento) => r && /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(r.firma)
   ? `<img src="${r.firma}" alt="Firma">${esc(r.tutor ? '' : r.nombreFirma)}<br>` : '';
 
 export const htmlConsentimiento = (d: DatosConsentimiento, logoUrl: string) => `<!doctype html><html lang="es"><head><meta charset="utf-8">

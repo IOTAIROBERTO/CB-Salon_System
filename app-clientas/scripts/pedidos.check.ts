@@ -106,6 +106,11 @@ const citaMs = Date.parse(`${lejos}T11:00:00-07:00`), vence = Date.parse(v.pedid
 assert.ok(vence <= citaMs - 48 * HORA && vence <= Date.now() + 48 * HORA + 60000);   // 48 h y nunca después de 48 h antes de la cita
 assert.ok(tablas.avisos.some(a => /Aceptó su cita/.test(a.titulo) && /para pagar \$650/.test(a.detalle)));
 
+// Dos renglones del mismo producto cuentan juntos: no se puede apartar más de lo que hay
+await espera();
+const duplicado = await pedir('pedidos', { nombre: 'Doble Línea', telefono: '6620000099', productos: [{ productoId: 'p1', cantidad: 20 }, { productoId: 'p1', cantidad: 20 }] });
+assert.equal(duplicado.status, 409);
+
 // 7. No pagó a tiempo: el pedido vence, la cita (que esperaba ese pago) se cancela y todo vuelve a estar disponible
 const despues = vence + 60000;
 assert.ok((await vencerPedidos(env, despues)).vencidos >= 1);   // el de la cita (y los de solo productos, pedidos antes)

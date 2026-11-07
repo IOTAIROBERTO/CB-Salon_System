@@ -29,7 +29,8 @@ function estadoDe(c: VistaCita): { titulo: string; texto: string; color: string 
     case 'completada': return { titulo: '¡Gracias por tu visita!', texto: 'Tu cita quedó registrada. Te esperamos pronto.', color: 'bg-marca-dorado text-marca-negro' }
     case 'cancelada': return {
       titulo: 'Cancelada', color: 'bg-marca-linea text-marca-negro',
-      texto: c.anticipoASaldo ? `Tu anticipo de ${pesos(c.anticipoASaldo)} quedó como saldo a favor para tu próxima cita.`
+      texto: c.anticipoPorAprobar ? `Cristina revisa tu anticipo de ${pesos(c.anticipoPorAprobar)} y te confirma tu saldo a favor.`
+        : c.anticipoASaldo ? `Tu anticipo de ${pesos(c.anticipoASaldo)} quedó como saldo a favor para tu próxima cita.`
         : c.anticipoPerdido ? `Se canceló con menos de 48 horas: el anticipo de ${pesos(c.anticipoPerdido)} no se devuelve.` : c.hora ? 'Tu horario quedó libre.' : 'Tu solicitud quedó cancelada.'
     }
     case 'no_llego': return { titulo: 'No asististe', texto: c.anticipoPerdido ? `El anticipo de ${pesos(c.anticipoPerdido)} no se devuelve.` : 'Cuando quieras, agenda de nuevo.', color: 'bg-marca-linea text-marca-negro' }
@@ -147,12 +148,12 @@ export default function MiCita() {
             <div className="renglon">
               <span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Precio</span>
               <span className="text-marca-negro">{cita.precioAcordado ? pesos(cita.precio) : `Desde ${pesos(cita.precio)}`}
-                <span className="block text-sm text-marca-gris">{cita.aceptadaEn ? 'Precio final que aceptaste.' : cita.precioAcordado ? 'Precio final que propone Cristina.' : 'Cristina te confirma el precio de tu servicio.'}</span></span>
+                <span className="block text-sm text-marca-gris">{cita.aceptadaEn ? 'Precio final que aceptaste.' : cita.estado === 'confirmada' && cita.precioAcordado ? 'Precio final de tu servicio.' : cita.precioAcordado ? 'Precio final que propone Cristina.' : 'Cristina te confirma el precio de tu servicio.'}</span></span>
             </div>
             {cita.anticipo > 0 && (
               <div className="renglon">
                 <span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Anticipo</span>
-                <span className="min-w-0 flex-1 text-marca-negro">{pesos(cita.anticipo)} · {cita.anticipoPagado ? 'recibido, se descuenta del total' : cita.formaAnticipo === 'salon' ? 'lo pagas en el salón' : 'pendiente'}
+                <span className="min-w-0 flex-1 text-marca-negro">{pesos(cita.anticipo)} · {cita.anticipoPagado ? 'recibido, se descuenta del total' : !cita.hora ? 'lo pagas cuando aceptes tu hora, no antes' : cita.formaAnticipo === 'salon' ? 'lo pagas en el salón' : 'pendiente'}
                   {cita.datosPago && !cita.pedido && (
                     <span className="mt-2 block rounded-sm bg-marca-marfil p-3 text-sm leading-relaxed text-marca-grafito">
                       <span className="block whitespace-pre-line">{cita.datosPago}</span>

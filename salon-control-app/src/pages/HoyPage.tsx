@@ -122,7 +122,7 @@ export default function HoyPage() {
                     <Clock size={14} className="shrink-0 text-gray-400" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium text-gray-900">{nombre(c.clienteId)} · {servicio(c.servicioId)}</span>
-                      <span className="block text-gray-600">{new Date(`${c.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })} {c.hora} · se libera {new Date(c.propuestaVence!).toLocaleString('es-MX', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</span>
+                      <span className="block text-gray-600">{new Date(`${c.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })} {c.hora} · {c.anticipoConfirmado ? 'anticipo recibido: no se libera' : `se libera ${new Date(c.propuestaVence!).toLocaleString('es-MX', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`}</span>
                     </span>
                   </button>
                 ))}

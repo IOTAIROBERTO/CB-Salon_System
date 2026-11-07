@@ -2,7 +2,7 @@
 // clienta en «Mi cita» (app-clientas/api/salon.ts). Sin hora todavía nada corre: siempre está a tiempo.
 export const HORAS_SIN_COSTO = 48;
 
-interface CitaDinero { fecha: string; hora?: string; estado?: string; anticipoConfirmado?: boolean; montoAnticipo?: number; anticipoASaldo?: number; anticipoPerdido?: number }
+interface CitaDinero { fecha: string; hora?: string; estado?: string; anticipoConfirmado?: boolean; montoAnticipo?: number; anticipoASaldo?: number; anticipoPerdido?: number; anticipoPorAprobar?: number }
 
 /** Qué pasa con el anticipo si se cancela ahora */
 export function consecuenciaCancelar(c: CitaDinero, ahora = Date.now()) {
@@ -18,7 +18,7 @@ export const citaCerrada = (c: { estado?: string }) => c.estado === 'completada'
 /** Por qué no se puede borrar, o '' si se puede: borrar una cita con dinero dejaría cargos sin su cita y bajaría el ingreso */
 export function motivoNoBorrar(c: CitaDinero) {
   if (c.estado === 'completada') return 'Esta cita ya se cobró: no se puede eliminar. La Dueña puede anular el cobro.';
-  if (c.anticipoASaldo || c.anticipoPerdido) return 'Esta cita tiene un anticipo registrado en el saldo o en los ingresos: no se puede eliminar.';
+  if (c.anticipoASaldo || c.anticipoPerdido || c.anticipoPorAprobar) return 'Esta cita tiene un anticipo registrado en el saldo o en los ingresos: no se puede eliminar.';
   if (c.anticipoConfirmado && c.montoAnticipo) return 'Esta cita tiene un anticipo recibido: cancélala para que el anticipo quede registrado.';
   return '';
 }
@@ -38,6 +38,15 @@ export function reversaCobro<C extends CanjeCobro>(citaId: string, movimientos: 
     movimientosABorrar: movimientos.filter(m => m.origen === 'club' && m.puntos && fechas.has(m.fecha)).map(m => m.id)
   };
 }
+
+/** Solo lo que el formulario cambió. Guardar la cita entera con la copia que se abrió revertiría lo que pasó mientras
+ *  tanto (que la clienta aceptó, que el Worker mandó un recordatorio, que se recibió el anticipo). */
+export function soloCambios(antes: object, despues: object): Record<string, unknown> {
+  const norma = (x: unknown) => JSON.stringify(x ?? '');
+  return Object.fromEntries(Object.entries(despues).filter(([k, v]) => norma(v) !== norma((antes as Record<string, unknown>)[k])));
+}
+/** Al mover una cita de día u hora: sus avisos de WhatsApp se vuelven a mandar y ya no queda un cambio por atender */
+export const AL_MOVER_CITA = { recordatorio: undefined, avisoConfirmacion: undefined, cambioPedido: undefined };
 
 /** Lo que queda del pedido al recibir el anticipo por fuera de él: sin productos se paga completo; con productos, siguen por pagar solos */
 export const pedidoTrasAnticipo = (p: { items: unknown[]; totalProductos: number }) =>

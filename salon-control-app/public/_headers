@@ -1,6 +1,9 @@
+# ponytail: CSP mínima. La completa (script-src, connect-src) se agrega al poder probarla con sesión real: mal puesta deja al salón sin entrar.
 # Cloudflare Pages: los mismos encabezados que netlify.toml.
 # SAMEORIGIN y no DENY: la página Galería de la app muestra /galeria/ en un iframe.
 /*
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ancestors 'self'

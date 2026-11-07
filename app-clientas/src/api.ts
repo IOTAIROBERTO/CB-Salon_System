@@ -51,7 +51,7 @@ export interface VistaCita {
   estado: 'solicitud' | 'pendiente' | 'confirmada' | 'iniciada' | 'completada' | 'cancelada' | 'no_llego'
   preferencias: Preferencia[]; cambioPedido: boolean; propuestaVence?: string; propuestaVencida: boolean
   precio: number; precioAcordado: boolean; anticipo: number; anticipoPagado: boolean; formaAnticipo?: string; datosPago: string
-  anticipoASaldo?: number; anticipoPerdido?: number; sinCosto: boolean; puedeCancelar: boolean; puedeReagendar: boolean
+  anticipoASaldo?: number; anticipoPerdido?: number; anticipoPorAprobar?: number; sinCosto: boolean; puedeCancelar: boolean; puedeReagendar: boolean
   resumen: string; aceptadaEn?: string; porAceptar: boolean; puedeCambiarServicio: boolean
   pedido: PedidoVista | null   // lo que paga junto (productos del carrito + anticipo) y hasta cuándo
 }
