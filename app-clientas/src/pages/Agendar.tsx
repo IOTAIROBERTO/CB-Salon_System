@@ -5,28 +5,29 @@ import Encabezado from '@/components/Encabezado'
 import { NOMBRE_CLUB, POLITICAS_RESERVA, enlaceWhatsApp, nombreCategoria, pesos, type Servicio } from '@/salon'
 import { reducirFoto } from '@/fotos'
 import { fechaCumple } from '@/components/UnirmeClub'
-import { citasGuardadas, crearCita, disponibilidad, guardarCita, misDatos, olvidarDatos, pedirCodigo, recordarDatos, serviciosEnLinea, sesion, verificarCodigo, type DiaLibre } from '@/api'
-import ElegirHorario from '@/components/ElegirHorario'
+import { citasGuardadas, crearCita, disponibilidad, guardarCita, misDatos, olvidarDatos, pedirCodigo, recordarDatos, serviciosEnLinea, sesion, verificarCodigo, type DiaLibre, type Preferencia } from '@/api'
+import ElegirPreferencias from '@/components/ElegirPreferencias'
+import { NOMBRE_FRANJA, ultimaPreferencia } from '@salon/utils/agenda'
 import { leerCarrito, paraApartar, totalCarrito, vaciarCarrito } from '@/carrito'
 import Ventana from '@/components/Ventana'
 import NoSoyRobot, { conTurnstile } from '@/components/NoSoyRobot'
 import { useEnVivo } from '@/vivo'
 
-// Agenda en tiempo real: los horarios salen del mismo motor que usa CB Control (API /api/disponibilidad) y la cita
-// se aparta al enviar; llega «pendiente» a CB Control y a la bandeja de avisos para que el salón la confirme.
+// Solicitud con preferencia: la clienta dice qué días y en qué parte del día le acomoda (solo lo que de verdad cabe, con el
+// motor de CB Control vía /api/disponibilidad). Nada se aparta: Cristina la valora, le propone la hora y ella la acepta en «Mi cita».
 // Si la API no responde, queda WhatsApp como respaldo. «No soy robot» (Turnstile) en cada envío; con el WhatsApp del
-// salón conectado, la API pide confirmar el teléfono con un código antes de apartar (428) y aquí se pide en el momento.
+// salón conectado, la API pide confirmar el teléfono con un código antes de enviar (428) y aquí se pide en el momento.
 const ORDEN = ['color', 'corte', 'tratamiento', 'maquillaje', 'peinado']   // el color primero: es la especialidad
 const categoriasDe = (lista: Servicio[]) => [...new Set(lista.map(s => s.categoria))].sort((a, b) => (ORDEN.indexOf(a) + 1 || 99) - (ORDEN.indexOf(b) + 1 || 99))
 
+const textoPreferencias = (lista: Preferencia[]) => lista.map(p => { const t = new Date(`${p.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }); return `${t.charAt(0).toUpperCase() + t.slice(1)} · ${NOMBRE_FRANJA[p.franja].toLowerCase()}` })
 const horas = (min: number) => min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ''}` : `${min} min`
 
 /** Vista previa antes de pedir: la clienta revisa y acepta lo que pide (servicio, día y hora, precio «desde», anticipo
  *  y políticas). La API guarda la constancia (`politicasAceptadas`). */
-function VistaPrevia({ servicio, fecha, hora, nombre, telefono, valoracion, onAceptar, onCerrar }: {
-  servicio: Servicio; fecha: string; hora: string; nombre: string; telefono: string; valoracion: boolean; onAceptar: () => void; onCerrar: () => void
+function VistaPrevia({ servicio, preferencias, nombre, telefono, valoracion, onAceptar, onCerrar }: {
+  servicio: Servicio; preferencias: Preferencia[]; nombre: string; telefono: string; valoracion: boolean; onAceptar: () => void; onCerrar: () => void
 }) {
-  const dia = new Date(`${fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
   // Si en este teléfono ya pidió ese servicio, mejor cambiar esa cita que pedir otra
   const ya = citasGuardadas().find(c => c.servicio === servicio.nombre && c.fecha >= new Date().toLocaleDateString('en-CA'))
   const renglon = 'flex gap-4 border-b border-marca-linea/70 py-3 last:border-0'
@@ -41,7 +42,7 @@ function VistaPrevia({ servicio, fecha, hora, nombre, telefono, valoracion, onAc
           <button onClick={onCerrar} aria-label="Cerrar" className="p-2 text-marca-gris"><X size={18} strokeWidth={1.5} /></button>
         </div>
         <div className="mt-4 text-sm">
-          <div className={renglon}><span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Cuándo</span><span className="text-marca-negro">{dia.charAt(0).toUpperCase() + dia.slice(1)} a las {hora}</span></div>
+          <div className={renglon}><span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Cuándo</span><span className="text-marca-negro">{textoPreferencias(preferencias).map(t => <span key={t} className="block">{t}</span>)}<span className="mt-1 block text-marca-gris">Cristina elige la mejor opción y te propone la hora exacta. Tu lugar queda apartado cuando la aceptes.</span></span></div>
           <div className={renglon}><span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Precio</span>
             <span className="text-marca-negro">Desde {pesos(servicio.precio)}<span className="block text-marca-gris">{valoracion ? 'Con tus fotos y respuestas Cristina te confirma el precio final antes de tu cita.' : 'Cristina te confirma el precio final antes de tu cita.'}</span></span></div>
           <div className={renglon}><span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Anticipo</span>
@@ -59,10 +60,10 @@ function VistaPrevia({ servicio, fecha, hora, nombre, telefono, valoracion, onAc
         {ya && (
           <p className="mt-4 rounded-sm bg-marca-marfil p-3 text-xs leading-relaxed text-marca-grafito">
             Ya pediste {servicio.nombre} para el {new Date(`${ya.fecha}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })} desde este teléfono.
-            Si quieres otro día u hora, <Link to={`/cita/${ya.ref}`} className="underline">cámbiala en «Mi cita»</Link> en vez de pedir otra.
+            Si quieres otro día, <Link to={`/cita/${ya.ref}`} className="underline">cámbiala en «Mi cita»</Link> en vez de pedir otra.
           </p>
         )}
-        <button onClick={onAceptar} className="boton mt-5 w-full">Acepto y pido mi cita</button>
+        <button onClick={onAceptar} className="boton mt-5 w-full">Acepto y envío mi solicitud</button>
         <button onClick={onCerrar} className="mt-2 w-full py-3 text-[11px] uppercase tracking-[0.2em] text-marca-gris">Cambiar algo</button>
     </Ventana>
   )
@@ -90,8 +91,7 @@ export default function Agendar() {
     const pedido = catalogo?.find(s => s.id === params.get('servicio'))
     if (pedido) setElegido(e => e ?? pedido)
   }, [catalogo, params])
-  const [fecha, setFecha] = useState('')
-  const [hora, setHora] = useState('')
+  const [preferencias, setPreferencias] = useState<Preferencia[]>([])
   const [notas, setNotas] = useState('')
   const [club, setClub] = useState(false)   // quiere unirse al Club con esta cita (no es obligatorio)
   const [trampa, setTrampa] = useState('')  // campo oculto: solo los robots lo llenan
@@ -99,7 +99,7 @@ export default function Agendar() {
   const [cargando, setCargando] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState('')
-  const [lista, setLista] = useState<{ fecha: string; hora: string; servicio: string; anticipo: number; enlace: string } | null>(null)
+  const [lista, setLista] = useState<{ servicio: string; anticipo: number; enlace: string; preferencias: Preferencia[] } | null>(null)
   const formulario = useRef<HTMLElement>(null)
   const [robot, setRobot] = useState('')          // token de Turnstile (sirve una vez)
   const [vueltaRobot, setVueltaRobot] = useState(0)
@@ -122,33 +122,37 @@ export default function Agendar() {
   // En el celular el formulario queda abajo de la lista y se baja a él; en computadora ya está a la derecha
   const bajarAlFormulario = () => { if (!matchMedia('(min-width: 1024px)').matches) formulario.current?.scrollIntoView({ behavior: 'smooth' }) }
 
+  // Lo que se llenó mientras elegía se quita solo (si esa franja ya no cabe, queda «cualquier hora» de ese día)
+  const soloLoQueCabe = (d: DiaLibre[]) => setPreferencias(v => v.flatMap(p => {
+    const franjas = d.find(x => x.fecha === p.fecha)?.franjas || []
+    return !franjas.length ? [] : [{ ...p, franja: p.franja === 'cualquiera' || franjas.includes(p.franja) ? p.franja : 'cualquiera' as const }]
+  }))
   const cargarHorarios = (s: Servicio) => {
     setCargando(true); setError(''); setDias(null)
     disponibilidad(s.id)
-      .then(r => { setDias(r.dias); const primero = r.dias.find(d => d.horas.length); setFecha(f => r.dias.some(d => d.fecha === f && d.horas.length) ? f : primero?.fecha || '') })
+      .then(r => { setDias(r.dias); soloLoQueCabe(r.dias) })
       .catch(e => setError(e.message))
       .finally(() => setCargando(false))
   }
   useEffect(() => {
     if (!elegido) return
     bajarAlFormulario()
-    setHora(''); cargarHorarios(elegido)
-  }, [elegido?.id])   // por id: el refresco del catálogo actualiza precio y nombre sin borrar la hora elegida
+    setPreferencias([]); cargarHorarios(elegido)
+  }, [elegido?.id])   // por id: el refresco del catálogo actualiza precio y nombre sin borrar lo elegido
   useEnVivo(() => elegido && !lista && disponibilidad(elegido.id).then(r => {
-    setDias(r.dias)
-    setHora(h => h && r.dias.find(d => d.fecha === fecha)?.horas.includes(h) ? h : '')
+    setDias(r.dias); soloLoQueCabe(r.dias)
   }).catch(() => { /* se queda lo último */ }), 60_000, !!elegido)
 
   const enviar = async () => {
-    if (!elegido || !hora) return
+    if (!elegido || !preferencias.length) return
     setRevisando(false); setEnviando(true); setError('')
     try {
       const carrito = leerCarrito()
-      const r = await crearCita({ servicioId: elegido.id, fecha, hora, ...datos, notas, club, sitio: trampa, turnstile: robot, acepta: true, productos: paraApartar(carrito),
+      const r = await crearCita({ servicioId: elegido.id, preferencias, ...datos, notas, club, sitio: trampa, turnstile: robot, acepta: true, productos: paraApartar(carrito),
         ...(pideValoracion ? { valoracion: cabello, fotos } : {}) })
       if (recordar) recordarDatos({ ...datos, ultimoServicio: elegido.id }); else olvidarDatos()
-      if (r.cita.enlace) { guardarCita({ ref: r.cita.enlace, fecha: r.cita.fecha, hora: r.cita.hora, servicio: r.cita.servicio }); vaciarCarrito() }
-      setLista(r.cita)
+      if (r.cita.enlace) { guardarCita({ ref: r.cita.enlace, fecha: ultimaPreferencia({ fecha: r.cita.fecha, preferencias }), hora: '', servicio: r.cita.servicio }); vaciarCarrito() }
+      setLista({ ...r.cita, preferencias })
       setReto('')
       otroRobot()
       setTimeout(bajarAlFormulario, 50)
@@ -158,7 +162,7 @@ export default function Agendar() {
         try { setReto((await pedirCodigo(datos.telefono, robot)).reto) } catch (e2) { setError((e2 as Error).message) }
       } else setError(err.message)
       otroRobot()
-      if (err.status === 409) cargarHorarios(elegido)   // el horario se ocupó: se actualizan los libres
+      if (err.status === 409) cargarHorarios(elegido)   // esos días se llenaron: se actualizan los libres
     } finally { setEnviando(false) }
   }
 
@@ -171,14 +175,14 @@ export default function Agendar() {
 
   const mensajeWhatsApp = elegido ? [
     `Hola, soy ${datos.nombre.trim() || '(mi nombre)'}. Quiero agendar: ${elegido.nombre} (desde ${pesos(elegido.precio)}).`,
-    fecha && `Me acomoda el ${new Date(`${fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}${hora ? ` a las ${hora}` : ''}.`,
+    preferencias.length && `Me acomoda: ${textoPreferencias(preferencias).join('; ')}.`,
     notas.trim(),
     club && `Quiero unirme al ${NOMBRE_CLUB}${datos.cumple ? `; mi cumpleaños es el ${fechaCumple(datos.cumple)}` : ''}.`
   ].filter(Boolean).join(' ') : ''
 
   return (
     <>
-      <Encabezado rotulo="Paso 1 de 2 · Servicio" titulo="Agenda tu cita" bajada="Elige tu servicio, el día y la hora. Ves los horarios libres en tiempo real y tu lugar queda apartado al enviar." />
+      <Encabezado rotulo="Paso 1 de 2 · Servicio" titulo="Agenda tu cita" bajada="Elige tu servicio y dinos qué días te acomodan. Cristina revisa tu solicitud y te propone la hora; tú la aceptas en un toque." />
       <nav className="contenido sticky top-0 z-[5] -mt-2 mb-4 flex gap-2 overflow-x-auto bg-marca-marfil/90 px-6 py-3 backdrop-blur-md [scrollbar-width:none] lg:top-16 lg:mb-8">
         {categorias.map(cat => (
           <button key={cat} onClick={() => document.getElementById(`cat-${cat}`)?.scrollIntoView({ behavior: 'smooth' })}
@@ -241,25 +245,25 @@ export default function Agendar() {
         {!elegido && !lista && (
           <aside className="tarjeta hidden space-y-3 p-8 lg:sticky lg:top-36 lg:block">
             <p className="rotulo">Paso 2 de 2</p>
-            <p className="titulo text-2xl">Día, hora y tus datos</p>
-            <p className="text-sm leading-relaxed text-marca-gris">Elige un servicio de la lista y aquí aparecen los días y horarios libres en tiempo real.</p>
+            <p className="titulo text-2xl">Cuándo y tus datos</p>
+            <p className="text-sm leading-relaxed text-marca-gris">Elige un servicio de la lista y aquí aparecen los días en que puede hacerse, en tiempo real.</p>
           </aside>
         )}
 
         {elegido && !lista && (
           <section ref={formulario} className="tarjeta aparece scroll-mt-6 space-y-5 p-6 lg:sticky lg:top-36 lg:max-h-[calc(100svh-10rem)] lg:overflow-y-auto">
             <div>
-              <p className="rotulo">Paso 2 de 2 · Día, hora y tus datos</p>
+              <p className="rotulo">Paso 2 de 2 · Cuándo y tus datos</p>
               <h2 className="titulo mt-2 text-3xl">{elegido.nombre}</h2>
               <p className="mt-1 text-sm text-marca-gris">Desde {pesos(elegido.precio)} · {horas(elegido.duracion)}</p>
             </div>
 
-            {cargando && <p className="text-sm text-marca-gris">Buscando horarios libres…</p>}
+            {cargando && <p className="text-sm text-marca-gris">Buscando días libres…</p>}
             {dias && !cargando && (
-              <ElegirHorario dias={dias} fecha={fecha} hora={hora} onFecha={setFecha} onHora={setHora}>
-                {!dias.some(d => d.horas.length) && <p className="mt-2 text-sm text-marca-gris">No hay horarios libres en las próximas dos semanas. Escríbenos y te buscamos lugar.</p>}
+              <ElegirPreferencias dias={dias} valor={preferencias} onCambio={setPreferencias}>
+                {!dias.some(d => d.franjas.length) && <p className="mt-2 text-sm text-marca-gris">No hay lugar en las próximas dos semanas. Escríbenos y te buscamos lugar.</p>}
                 <p className="mt-2 text-xs text-marca-gris">¿Para hoy? Cristina lo revisa en su agenda: <a href={enlaceWhatsApp(`Hola, ¿tienen espacio hoy para ${elegido.nombre}?`)} className="underline">escríbenos por WhatsApp</a>.</p>
-              </ElegirHorario>
+              </ElegirPreferencias>
             )}
 
             {pideValoracion && (
@@ -346,7 +350,7 @@ export default function Agendar() {
             <input className="hidden" tabIndex={-1} autoComplete="off" value={trampa} onChange={e => setTrampa(e.target.value)} aria-hidden="true" />
             {reto && (
               <div className="space-y-3 rounded-sm bg-marca-marfil p-4">
-                <p className="text-sm leading-relaxed text-marca-grafito">Te mandamos un código por WhatsApp al {datos.telefono}. Escríbelo para apartar tu horario.</p>
+                <p className="text-sm leading-relaxed text-marca-grafito">Te mandamos un código por WhatsApp al {datos.telefono}. Escríbelo para enviar tu solicitud.</p>
                 <input className="campo text-center text-2xl tracking-[0.5em]" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
                   placeholder="······" value={codigo} onChange={e => setCodigo(e.target.value.replace(/\D/g, ''))} />
               </div>
@@ -355,10 +359,10 @@ export default function Agendar() {
             {error && <p className="rounded-sm bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
             {reto
               ? <button onClick={confirmarTelefono} disabled={enviando || codigo.length !== 6} className="boton w-full disabled:opacity-40">
-                  {enviando ? 'Confirmando…' : `Confirmar y apartar ${hora}`}
+                  {enviando ? 'Confirmando…' : 'Confirmar y enviar'}
                 </button>
-              : <button onClick={() => setRevisando(true)} disabled={enviando || !hora || (conTurnstile && !robot && !sesion())} className="boton w-full disabled:opacity-40">
-                  {enviando ? 'Enviando…' : !hora ? 'Elige día y hora' : conTurnstile && !robot && !sesion() ? 'Verificando…' : `Pedir ${hora}`}
+              : <button onClick={() => setRevisando(true)} disabled={enviando || !preferencias.length || (conTurnstile && !robot && !sesion())} className="boton w-full disabled:opacity-40">
+                  {enviando ? 'Enviando…' : !preferencias.length ? 'Elige al menos un día' : conTurnstile && !robot && !sesion() ? 'Verificando…' : 'Revisar y enviar'}
                 </button>}
             {(error || (dias === null && !cargando)) && (
               <a href={enlaceWhatsApp(mensajeWhatsApp)} className="boton-claro w-full"><MessageCircle size={16} strokeWidth={1.5} /> Mejor por WhatsApp</a>
@@ -367,7 +371,7 @@ export default function Agendar() {
         )}
 
         {revisando && elegido && (
-          <VistaPrevia servicio={elegido} fecha={fecha} hora={hora} nombre={datos.nombre} telefono={datos.telefono} valoracion={pideValoracion}
+          <VistaPrevia servicio={elegido} preferencias={preferencias} nombre={datos.nombre} telefono={datos.telefono} valoracion={pideValoracion}
             onAceptar={enviar} onCerrar={() => setRevisando(false)} />
         )}
 
@@ -377,15 +381,15 @@ export default function Agendar() {
             <p className="rotulo">Solicitud recibida</p>
             <h2 className="titulo text-3xl">¡Listo, {datos.nombre.split(' ')[0]}!</h2>
             <p className="text-sm leading-relaxed text-marca-gris">
-              {lista.servicio} · {new Date(`${lista.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })} a las {lista.hora}.
-              Cristina revisa tu solicitud y te escribe por WhatsApp con el precio de tu servicio{lista.anticipo ? ' y, para confirmar, los datos de tu anticipo' : ''}.
+              {lista.servicio}: {textoPreferencias(lista.preferencias).join('; ').toLowerCase()}.
+              Cristina revisa tu solicitud y te escribe por WhatsApp con la hora y el precio de tu servicio{lista.anticipo ? ' y, para confirmar, los datos de tu anticipo' : ''}. Tu lugar queda apartado cuando aceptes la hora.
               Si tu servicio lo pide, también te llega tu consentimiento para firmarlo aquí en la app.
             </p>
             {lista.enlace && <Link to={`/cita/${lista.enlace}`} className="boton w-full">Ver mi cita</Link>}
-            {lista.enlace && <p className="text-xs leading-relaxed text-marca-gris">Ahí ves cuándo queda confirmada, y la cambias o cancelas tú misma. También aparece en Inicio.</p>}
-            <a href={enlaceWhatsApp(`Hola, soy ${datos.nombre.trim()}. Acabo de pedir mi cita en la app: ${lista.servicio}, el ${new Date(`${lista.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })} a las ${lista.hora}.${fotos.length ? ' Ya mandé fotos de mi cabello.' : ''}`)}
+            {lista.enlace && <p className="text-xs leading-relaxed text-marca-gris">Ahí ves la hora que te propone, la aceptas, y la cambias o cancelas tú misma. También aparece en Inicio.</p>}
+            <a href={enlaceWhatsApp(`Hola, soy ${datos.nombre.trim()}. Acabo de pedir mi cita en la app: ${lista.servicio}. Me acomoda: ${textoPreferencias(lista.preferencias).join('; ')}.${fotos.length ? ' Ya mandé fotos de mi cabello.' : ''}`)}
               className={`${lista.enlace ? 'boton-claro' : 'boton'} w-full`}><MessageCircle size={16} strokeWidth={1.5} /> Avisar a Cristina por WhatsApp</a>
-            <button onClick={() => { setLista(null); setElegido(null); setHora(''); setFecha(''); setFotos([]); setCabello({}) }} className="text-xs uppercase tracking-[0.2em] text-marca-dorado-prof">Agendar otra cita</button>
+            <button onClick={() => { setLista(null); setElegido(null); setPreferencias([]); setFotos([]); setCabello({}) }} className="text-xs uppercase tracking-[0.2em] text-marca-dorado-prof">Agendar otra cita</button>
           </section>
         )}
       </main>

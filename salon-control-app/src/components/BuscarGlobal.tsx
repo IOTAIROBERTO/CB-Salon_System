@@ -47,7 +47,7 @@ export default function BuscarGlobal({ variante = 'icono' }: { variante?: 'icono
     .sort((a, b) => Number(b.activo !== false) - Number(a.activo !== false)).slice(0, 8);
   const ids = new Set(deClientas.map(c => c.id));
   const hoy = fechaLocalISO();
-  const deCitas = !hay ? [] : citas.filter(c => c.estado !== 'cancelada' && (ids.has(c.clienteId) || norma(servicios.find(s => s.id === c.servicioId)?.nombre).includes(q)))
+  const deCitas = !hay ? [] : citas.filter(c => c.estado !== 'cancelada' && c.estado !== 'solicitud' && (ids.has(c.clienteId) || norma(servicios.find(s => s.id === c.servicioId)?.nombre).includes(q)))
     .sort((a, b) => (Number(b.fecha >= hoy) - Number(a.fecha >= hoy)) || (a.fecha >= hoy ? `${a.fecha}${a.hora}`.localeCompare(`${b.fecha}${b.hora}`) : `${b.fecha}${b.hora}`.localeCompare(`${a.fecha}${a.hora}`)))
     .slice(0, 6);
   const deTarjetas = folio.length >= 2 ? tarjetas.filter(t => t.folio.includes(folio)).slice(0, 4) : [];

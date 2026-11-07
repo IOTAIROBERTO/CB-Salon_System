@@ -8,7 +8,7 @@ interface ServicioModalProps {
   isOpen: boolean;
   editingServicio: Servicio | null;
   formData: ServicioFormData;
-  updateFormData: (field: keyof ServicioFormData, value: string | number) => void;
+  updateFormData: (field: keyof ServicioFormData, value: string | number | boolean) => void;
   onSave: (servicio: Servicio) => void;
   onUpdate: (servicioId: string, updatedData: Partial<Servicio>) => void;
   onClose: () => void;
@@ -149,8 +149,12 @@ export default function ServicioModal({
               </div>
               <p className="col-span-3 text-xs text-gray-500">
                 Para la agenda: {Math.max((formData.duracion || 60) - (formData.tiempoProceso || 0) - (formData.tiempoCierre || 0), 0)} min aplicando,
-                {' '}{formData.tiempoProceso || 0} de proceso (quien atiende queda libre para otra clienta) y {formData.tiempoCierre || 0} de enjuague, secado o peinado.
+                {' '}{formData.tiempoProceso || 0} de proceso (quien atiende queda libre para otra clienta o para comer) y {formData.tiempoCierre || 0} de enjuague, secado o peinado.
               </p>
+              <label className="col-span-3 flex items-start gap-2 text-sm text-gray-700">
+                <input type="checkbox" className="mt-0.5" checked={!!formData.prioritario} onChange={(e) => updateFormData('prioritario', e.target.checked)} />
+                <span>Prioritario: la clienta puede pedirlo en la mañana protegida aunque dure poco (por ejemplo, maquillaje).</span>
+              </label>
             </div>
 
             <div>

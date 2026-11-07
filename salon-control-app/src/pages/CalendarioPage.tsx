@@ -13,7 +13,7 @@ export default function CalendarioPage() {
     const [dia, setDia] = useState(fechaLocalISO());
     const moverDia = (n: number) => { const d = new Date(`${dia}T12:00:00`); d.setDate(d.getDate() + n); setDia(fechaLocalISO(d)); };
 
-    const citas = useLiveQuery(() => db.citas.toArray());
+    const citas = useLiveQuery(() => db.citas.filter(c => c.estado !== 'solicitud').toArray());   // sin hora todavía: no ocupan
     const events = useLiveQuery(() => db.empleadoEvents.toArray());
     const empleados = useLiveQuery(() => db.empleados.toArray());
     const clientes = useLiveQuery(() => db.clientes.toArray());

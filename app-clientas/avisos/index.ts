@@ -9,6 +9,7 @@ import { espejo } from '../api/google';
 import { avisarCelulares, pushListo, type EnvPush } from '../api/push';
 import { avisarSalon, plantilla, whatsappListo } from '../api/whatsapp';
 import { fechaLegible, hoyHermosillo, masDias, type Env as EnvApi } from '../api/salon';
+import { ultimaPreferencia } from '../../salon-control-app/src/utils/agenda';
 
 type Env = EnvApi & EnvPush & { RECORDATORIOS?: 'app' | 'todas' };   // 'todas': también las citas que agenda el salón a mano
 
@@ -18,9 +19,10 @@ const pesos = (n: number) => `$${Number(n || 0).toLocaleString('es-MX')}`;
 export async function revisar(env: Env) {
   const hoy = hoyHermosillo(), manana = masDias(hoy, 1);
   const pedidos = await vencerPedidos(env).catch(e => ({ error: (e as Error).message }));
+  const propuestas = await vencerSolicitudes(env, hoy).catch(e => ({ error: (e as Error).message }));
   const clientes = await leer<any>(env, 'clientes');
   const porConfirmar = await recordarAlSalon(env, clientes, hoy);
-  if (!whatsappListo(env)) return { enviados: 0, motivo: 'WhatsApp sin conectar', porConfirmar, pedidos };
+  if (!whatsappListo(env)) return { enviados: 0, motivo: 'WhatsApp sin conectar', porConfirmar, pedidos, propuestas };
   const [citas, servicios] = await Promise.all([leer<any>(env, 'citas', { estado: 'confirmada' }), leer<any>(env, 'servicios')]);
   let enviados = 0;
   for (const c of citas.filter(x => x.fecha >= hoy)) {
@@ -39,7 +41,41 @@ export async function revisar(env: Env) {
     }
     if (Object.keys(cambios).length) { await guardar(env, 'citas', [{ ...c, ...cambios }]); enviados++; }
   }
-  return { enviados, porConfirmar, pedidos };
+  return { enviados, porConfirmar, pedidos, propuestas };
+}
+
+/** Cada 10 min: la hora propuesta que no se aceptó a tiempo se suelta y la solicitud vuelve a esperar hora; la que ya no
+ *  tiene ninguna fecha por delante se cancela sola (y suelta lo que apartó del carrito). Cada caso avisa en la campana.
+ *  Se relee antes de escribir para no pisar lo que acabe de hacer la clienta o el salón. */
+export async function vencerSolicitudes(env: Env, hoy: string, ahora = Date.now()) {
+  const marca = new Date(ahora).toISOString();
+  const [pendientes, solicitudes] = await Promise.all(['pendiente', 'solicitud'].map(estado => leer<any>(env, 'citas', { estado })));
+  const vencida = (c: any) => c.estado === 'pendiente' && c.propuestaVence && !c.aceptadaEn && !c.anticipoConfirmado && Date.parse(c.propuestaVence) <= ahora;
+  const sinFechas = (c: any) => c.estado === 'solicitud' && ultimaPreferencia(c) <= hoy;
+  let liberadas = 0, canceladas = 0;
+  for (const vista of [...pendientes.filter(vencida), ...solicitudes.filter(sinFechas)]) {
+    const c = await uno<any>(env, 'citas', vista.id);
+    if (!c || !(vencida(c) || sinFechas(c))) continue;
+    const quien = String((await uno<any>(env, 'clientes', c.clienteId))?.nombre || 'Clienta');
+    const servicio = (await uno<any>(env, 'servicios', c.servicioId))?.nombre || 'Servicio';
+    const preferencias = (c.preferencias || []).filter((p: any) => p.fecha > hoy);
+    const avisar = (titulo: string, detalle: string) => guardar(env, 'avisos', [{ id: `avi_solicitud_${c.id}_${ahora}`, fecha: marca, tipo: 'cita', titulo, detalle,
+      refId: c.id, clienteId: c.clienteId, leido: false, realmId: c.realmId }]);
+    if (preferencias.length) {
+      await guardar(env, 'citas', [{ ...c, estado: 'solicitud', fecha: preferencias[0].fecha, hora: '', atiendeId: undefined, propuestaVence: undefined, preferencias,
+        propuestaVencida: true, recordatorioSalon: undefined }]);
+      await avisar(`No aceptó la hora a tiempo: ${quien}`, `${servicio}, ${fechaLegible(c.fecha)} a las ${c.hora}. El horario quedó libre y la solicitud espera otra hora.`);
+      liberadas++;
+    } else {
+      const motivo = c.hora ? 'no se aceptó la hora a tiempo' : 'pasaron sus fechas sin hora';
+      await guardar(env, 'citas', [{ ...c, estado: 'cancelada', canceladaPor: 'sistema', canceladaEn: marca, canceladaMotivo: motivo, propuestaVence: undefined }]);
+      const porPagar = (await leer<any>(env, 'pedidos', { citaId: c.id })).filter(p => p.estado === 'por_pagar');
+      if (porPagar.length) await guardar(env, 'pedidos', porPagar.map(p => ({ ...p, estado: 'cancelado', motivo: 'Se canceló su solicitud' })));
+      await avisar(`Se canceló sola una solicitud: ${quien}`, `${servicio}: ${motivo}.${porPagar.length ? ' Lo que apartó volvió a la venta.' : ''}`);
+      canceladas++;
+    }
+  }
+  return { liberadas, canceladas };
 }
 
 /** «Mi carrito» (cada 10 min): lo que no se pagó a tiempo vence solo y libera los productos y, si la cita seguía
@@ -97,11 +133,13 @@ const llegada = (c: any) => Date.parse(c.creada || '') || Number(String(c.id).sp
 export async function recordarAlSalon(env: Env, clientes: any[], hoy: string, ahora = Date.now()) {
   const hora = new Date(ahora - 7 * HORA).getUTCHours();
   if (hora < 9 || hora >= 21 || !(env.WA_AVISOS || pushListo(env))) return 0;
-  const toca = (await leer<any>(env, 'citas', { estado: 'pendiente' })).filter(c => c.origen && c.fecha >= hoy
+  // Las que ya tienen hora propuesta esperan a la clienta, no al salón
+  const abiertas = (await Promise.all(['pendiente', 'solicitud'].map(estado => leer<any>(env, 'citas', { estado })))).flat();
+  const toca = abiertas.filter(c => c.origen && ultimaPreferencia(c) >= hoy && !c.propuestaVence
     && ahora - llegada(c) > 2 * HORA && (!c.recordatorioSalon || ahora - Date.parse(c.recordatorioSalon) > 4 * HORA));
   if (!toca.length) return 0;
-  const lista = toca.map(c => `${String(clientes.find(x => x.id === c.clienteId)?.nombre || 'Clienta').split(' ')[0]} ${fechaLegible(c.fecha)} ${c.hora}`).join('; ');
-  const titulo = `${toca.length === 1 ? 'Hay 1 cita' : `Hay ${toca.length} citas`} de la app sin confirmar`;
+  const lista = toca.map(c => `${String(clientes.find(x => x.id === c.clienteId)?.nombre || 'Clienta').split(' ')[0]} ${c.hora ? `${fechaLegible(c.fecha)} ${c.hora}` : 'sin hora'}`).join('; ');
+  const titulo = `${toca.length === 1 ? 'Hay 1 solicitud' : `Hay ${toca.length} solicitudes`} de la app por atender`;
   await avisarSalon(env, `${titulo}: ${lista}`.slice(0, 900) + '. Confírmalas en CB Control (campana).');
   await avisarCelulares(env, { titulo, detalle: `${lista}. Valóralas en la campana.`.slice(0, 300) });
   const marca = new Date(ahora).toISOString();

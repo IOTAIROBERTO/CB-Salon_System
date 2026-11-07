@@ -14,7 +14,7 @@ const TRABAJOS = [
   { foto: 'corte-bob-cobrizo', nombre: 'Corte' }
 ]
 
-const ESTADO: Partial<Record<VistaCita['estado'], string>> = { pendiente: 'Por confirmar', confirmada: 'Confirmada', iniciada: 'En curso' }
+const ESTADO: Partial<Record<VistaCita['estado'], string>> = { solicitud: 'Esperando hora', pendiente: 'Por confirmar', confirmada: 'Confirmada', iniciada: 'En curso' }
 
 /** La próxima cita pedida o abierta en este celular, con su estado en vivo (al tocarla abre «Mi cita») */
 function ProximaCita() {
@@ -38,7 +38,7 @@ function ProximaCita() {
       <span className="min-w-0 flex-1">
         <span className="rotulo block">Tu próxima cita · {ESTADO[v.estado]}</span>
         <span className="mt-1 block font-display text-xl text-marca-negro">{v.servicio}</span>
-        <span className="block text-sm text-marca-gris">{dia.charAt(0).toUpperCase() + dia.slice(1)} a las {v.hora}</span>
+        <span className="block text-sm text-marca-gris">{v.hora ? `${dia.charAt(0).toUpperCase() + dia.slice(1)} a las ${v.hora}` : 'Cristina te propone la hora'}</span>
       </span>
       <ArrowRight size={16} strokeWidth={1.4} className="shrink-0 text-marca-dorado-prof" />
     </Link>

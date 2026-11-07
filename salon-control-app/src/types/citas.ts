@@ -9,7 +9,7 @@ export interface Cita {
   servicioId: string;
   fecha: string;
   hora: string;
-  estado: "pendiente" | "confirmada" | "iniciada" | "completada" | "cancelada" | "no_llego";
+  estado: "solicitud" | "pendiente" | "confirmada" | "iniciada" | "completada" | "cancelada" | "no_llego";
   notas?: string;
   montoAnticipo?: number;
   anticipoConfirmado?: boolean;
@@ -37,6 +37,11 @@ export interface Cita {
   precioAcordado?: number; // precio que Cristina confirmó al valorar (el de catálogo es «desde»)
   formaAnticipo?: 'transferencia' | 'deposito' | 'salon' | 'incluido' | 'sin';
   origen?: 'app' | 'bot';
+  preferencias?: { fecha: string; franja: 'manana' | 'mediodia' | 'tarde' | 'cualquiera' }[];
+  propuestaVence?: string;
+  propuestaVencida?: boolean;
+  cambioPedido?: boolean;
+  canceladaMotivo?: string;
   recordatorio?: string; // ISO: ya se le recordó la cita (WhatsApp oficial o a mano desde «Hoy»)
   aceptadaEn?: string; // ISO: la clienta aceptó en «Mi cita» el resumen, precio final y anticipo
   anticipoASaldo?: number; // anticipo que pasó a su saldo a favor (canceló con 48 h o más)

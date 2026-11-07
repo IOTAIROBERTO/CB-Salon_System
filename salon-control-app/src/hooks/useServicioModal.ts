@@ -32,6 +32,7 @@ export const useServicioModal = () => {
       duracion: servicio.duracion || 60,
       tiempoProceso: servicio.tiempoProceso || 0,
       tiempoCierre: servicio.tiempoCierre || 0,
+      prioritario: !!servicio.prioritario,
       descripcionApp: servicio.descripcionApp || '',
       categoria: servicio.categoria || ''
     });
@@ -45,7 +46,7 @@ export const useServicioModal = () => {
     setFormData(INITIAL_FORM_DATA);
   };
 
-  const updateFormData = (field: keyof ServicioFormData, value: string | number) => {
+  const updateFormData = (field: keyof ServicioFormData, value: string | number | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value

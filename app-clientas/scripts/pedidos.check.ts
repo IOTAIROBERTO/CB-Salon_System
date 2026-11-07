@@ -1,4 +1,4 @@
-// Check: npx esbuild scripts/pedidos.check.ts --bundle --platform=node --format=esm --log-level=warning | node --input-type=module
+﻿// Check: npx esbuild scripts/pedidos.check.ts --bundle --platform=node --format=esm --log-level=warning | node --input-type=module
 // «Mi carrito»: productos de la app con lo disponible, pedido con plazo de pago (48 h y nunca después de 48 h antes de la
 // cita), vencimiento automático que libera horario y productos, y lo pagado no recogido en 10 días a saldo a favor.
 // Dexie Cloud simulado con fetch.
@@ -99,7 +99,7 @@ const refCita = c.cita.enlace, idCita = refCita.split('.')[0];
 const pc = tablas.pedidos.find(p => p.citaId === idCita);
 assert.deepEqual([pc.totalProductos, pc.anticipo, pc.venceEn], [450, 0, undefined]);   // sin plazo hasta la valoración
 assert.ok(tablas.avisos.some(a => a.refId === idCita && /aparta 1 × Shampoo matizador/.test(a.detalle)));
-Object.assign(tablas.citas.find(x => x.id === idCita), { precioAcordado: 600, montoAnticipo: 200, formaAnticipo: 'transferencia', resumenClienta: 'Corte en capas' });
+Object.assign(tablas.citas.find(x => x.id === idCita), { estado: 'pendiente', hora: '11:00', precioAcordado: 600, montoAnticipo: 200, formaAnticipo: 'transferencia', resumenClienta: 'Corte en capas' });
 v = await (await pedir(`cita/${refCita}/aceptar`, { precio: 600, anticipo: 200, resumen: 'Corte en capas' })).json();
 assert.deepEqual([v.estado, v.pedido.total, v.pedido.anticipo, v.pedido.estado, v.datosPago], ['pendiente', 650, 200, 'por_pagar', 'BBVA 0123 4567']);
 const citaMs = Date.parse(`${lejos}T11:00:00-07:00`), vence = Date.parse(v.pedido.venceEn);

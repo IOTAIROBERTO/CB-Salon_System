@@ -1,3 +1,4 @@
+import type { Preferencia } from '@salon/utils/agenda'
 // Llamadas a la API del salón (/api en la misma dirección de la app). Si la API no responde, las pantallas
 // ofrecen WhatsApp como respaldo para que ninguna clienta se quede sin agendar.
 export class ErrorApi extends Error { constructor(msg: string, public status = 0) { super(msg) } }
@@ -17,9 +18,10 @@ async function llamar<T>(ruta: string, init?: RequestInit): Promise<T> {
 }
 
 export interface ServicioEnLinea { id: string; nombre: string; categoria: string; precio: number; anticipo: number; duracion: number; descripcion?: string }
+export type { Preferencia }
 export const serviciosEnLinea = () => llamar<{ servicios: ServicioEnLinea[] }>('servicios').then(r => r.servicios)
 
-export interface DiaLibre { fecha: string; horas: string[] }
+export interface DiaLibre { fecha: string; horas: string[]; franjas: string[] }
 export const disponibilidad = (servicioId: string, dias = 14) =>
   llamar<{ dias: DiaLibre[]; servicio: { anticipo: number } }>(`disponibilidad?servicioId=${encodeURIComponent(servicioId)}&dias=${dias}`)
 
@@ -46,7 +48,8 @@ export const olvidarDatos = () => {
 /** «Mi cita»: enlace personal de cada cita (<id>.<secreto>) para verla, cambiarla o cancelarla sin cuenta */
 export interface VistaCita {
   servicio: string; servicioId: string; duracion?: number; fecha: string; hora: string
-  estado: 'pendiente' | 'confirmada' | 'iniciada' | 'completada' | 'cancelada' | 'no_llego'
+  estado: 'solicitud' | 'pendiente' | 'confirmada' | 'iniciada' | 'completada' | 'cancelada' | 'no_llego'
+  preferencias: Preferencia[]; cambioPedido: boolean; propuestaVence?: string; propuestaVencida: boolean
   precio: number; precioAcordado: boolean; anticipo: number; anticipoPagado: boolean; formaAnticipo?: string; datosPago: string
   anticipoASaldo?: number; anticipoPerdido?: number; sinCosto: boolean; puedeCancelar: boolean; puedeReagendar: boolean
   resumen: string; aceptadaEn?: string; porAceptar: boolean; puedeCambiarServicio: boolean
@@ -74,8 +77,8 @@ export const guardarPedido = (ref: string) => {
 const rutaCita = (ref: string) => `cita/${encodeURIComponent(ref)}`
 export const miCita = (ref: string) => llamar<VistaCita>(rutaCita(ref))
 export const cancelarMiCita = (ref: string) => llamar<VistaCita>(`${rutaCita(ref)}/cancelar`, { method: 'POST', body: '{}' })
-export const reagendarMiCita = (ref: string, fecha: string, hora: string, servicioId?: string) =>
-  llamar<VistaCita>(`${rutaCita(ref)}/reagendar`, { method: 'POST', body: JSON.stringify({ fecha, hora, servicioId }) })
+export const reagendarMiCita = (ref: string, preferencias: Preferencia[], servicioId?: string) =>
+  llamar<VistaCita>(`${rutaCita(ref)}/reagendar`, { method: 'POST', body: JSON.stringify({ preferencias, servicioId }) })
 /** Acepta el resumen que dejó Cristina al valorar; manda lo que vio (si cambió mientras tanto, la API lo rechaza) */
 export const aceptarMiCita = (ref: string, visto: Pick<VistaCita, 'precio' | 'anticipo' | 'resumen'>) =>
   llamar<VistaCita>(`${rutaCita(ref)}/aceptar`, { method: 'POST', body: JSON.stringify({ precio: visto.precio, anticipo: visto.anticipo, resumen: visto.resumen }) })

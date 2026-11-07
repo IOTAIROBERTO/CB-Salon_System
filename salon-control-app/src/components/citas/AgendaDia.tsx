@@ -4,7 +4,7 @@ import { db } from '../../db/db';
 import { useAgenda } from '../../hooks/useAgenda';
 import useCitas from '../../hooks/useCitas';
 import ReagendarModal from './ReagendarModal';
-import { aMin, aHora, atiende, diaSemana, libera, tramosCita, ocupacion, tiemposServicio } from '../../utils/agenda';
+import { aMin, aHora, atiende, diaSemana, hayComida, libera, tramosCita, ocupacion, tiemposServicio } from '../../utils/agenda';
 
 const PX = 1.4; // píxeles por minuto
 
@@ -30,6 +30,10 @@ export default function AgendaDia({ fecha }: { fecha: string }) {
   const horas = Array.from({ length: Math.ceil((fin - desde) / 60) + 1 }, (_, i) => desde + i * 60);
   // Citas de alguien que ya no toma citas se muestran con Cristina
   const columna = (c: { atiendeId?: string }) => (personas.some(p => p.id === atiende(c)) ? atiende(c) : personas[0].id);
+  // La mañana protegida se ve mientras siga guardada (se va soltando conforme se acerca el día)
+  const faltan = (new Date(`${fecha}T09:00:00`).getTime() - Date.now()) / 3600000;
+  const nivel = [...(config.proteccion?.niveles || [])].sort((a, b) => b.masDeHoras - a.masDeHoras).find(n => faltan > n.masDeHoras);
+  const protegida = nivel && config.proteccion && h ? { de: Math.max(aMin(config.proteccion.desde), aMin(h.abre)), a: Math.min(aMin(config.proteccion.hasta), aMin(h.cierra)) } : null;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
@@ -40,11 +44,20 @@ export default function AgendaDia({ fecha }: { fecha: string }) {
         </div>
         {personas.map(p => {
           const bloqueos = ocupacion(p.id, fecha, [], servicios as any, config).fijos;
+          const sinComida = !!h && !!config.comida && !hayComida(config.comida, h, ocupacion(p.id, fecha, citas, servicios as any, config));
           return (
             <div key={p.id} className="w-56 shrink-0 border-l">
-              <div className="h-10 flex items-center justify-center text-sm font-semibold text-gray-700 border-b">{p.nombre}</div>
+              <div className="h-10 flex flex-col items-center justify-center text-sm font-semibold text-gray-700 border-b">
+                {p.nombre}
+                {sinComida && <span className="text-[10px] font-normal text-amber-700">Sin hueco para comer</span>}
+              </div>
               <div className="relative" style={{ height: alto }}>
                 {horas.map(m => <div key={m} className="absolute left-0 right-0 border-t border-gray-100" style={{ top: y(m) }} />)}
+                {protegida && (
+                  <div className="absolute left-0 right-0 bg-marca-marfil px-1 text-[10px] text-marca-dorado-prof" style={{ top: y(protegida.de), height: (protegida.a - protegida.de) * PX }}>
+                    Se guarda para trabajos de {nivel!.horas} h o más
+                  </div>
+                )}
                 {bloqueos.map((b, i) => (
                   <div key={i} className="absolute left-1 right-1 rounded bg-gray-100 text-[10px] text-gray-500 px-1"
                     style={{ top: y(Math.max(b.de, desde)), height: Math.max((Math.min(b.a, fin) - Math.max(b.de, desde)) * PX, 0),
@@ -84,7 +97,7 @@ export default function AgendaDia({ fecha }: { fecha: string }) {
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-purple-100 border border-purple-400" /> Pendiente</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-400" /> Confirmada o en curso</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 border border-green-400" /> Cobrada</span>
-        <span>Rayado: proceso, se puede agendar otra clienta · Gris: descanso o bloqueo · Toca una cita para moverla</span>
+        <span>Rayado: proceso, se puede agendar otra clienta o comer · Gris: descanso o bloqueo · Crema: mañana protegida · Toca una cita para moverla</span>
       </div>
       {moviendo && <ReagendarModal cita={moviendo} onClose={() => setMoviendo(null)} onSave={saveCita} />}
     </div>

@@ -43,6 +43,7 @@ export default function CitasPage() {
       Number(cerrada(a)) - Number(cerrada(b)) ||
       (cerrada(a) ? clave(b).localeCompare(clave(a)) : clave(a).localeCompare(clave(b))));
     return ordenadas.filter((cita) => {
+      if (cita.estado === 'solicitud') return false;   // sin hora todavía: se atienden en «Hoy» y en la campana
       return (
         !searchTerm ||
         clientes.find((c) => c.id === cita.clienteId)?.nombre

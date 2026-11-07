@@ -2,34 +2,39 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CalendarPlus, Check, Copy, MapPin, MessageCircle, RefreshCw, X } from 'lucide-react'
 import Encabezado from '@/components/Encabezado'
-import ElegirHorario from '@/components/ElegirHorario'
+import ElegirPreferencias from '@/components/ElegirPreferencias'
 import PagoPedido from '@/components/PagoPedido'
 import Ventana from '@/components/Ventana'
-import { aceptarMiCita, cancelarMiCita, disponibilidad, guardarCita, miCita, misDatos, olvidarCita, reagendarMiCita, serviciosEnLinea, type DiaLibre, type ServicioEnLinea, type VistaCita } from '@/api'
+import { aceptarMiCita, cancelarMiCita, disponibilidad, guardarCita, miCita, misDatos, olvidarCita, reagendarMiCita, serviciosEnLinea, type DiaLibre, type Preferencia, type ServicioEnLinea, type VistaCita } from '@/api'
+import { NOMBRE_FRANJA, ultimaPreferencia } from '@salon/utils/agenda'
 import { ENLACE_MAPA, enlaceWhatsApp, pesos } from '@/salon'
 import { useEnVivo, useSalon } from '@/vivo'
 
 // «Mi cita»: el enlace personal de cada cita (lo manda el salón por WhatsApp o sale al agendar). La clienta ve cómo va
-// su cita en vivo y la cambia o la cancela sola con la política de reserva: con 48 h o más conserva su anticipo (si
+// su cita en vivo, acepta la hora que le propone Cristina y la cambia o la cancela sola con la política de reserva: con 48 h o más conserva su anticipo (si
 // cancela, pasa a su saldo a favor); con menos solo puede cancelar y el anticipo se pierde.
 const largo = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
 const mayuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
-const corto = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })
+const opciones = (l: Preferencia[]) => l.map(p => `${mayuscula(largo(p.fecha))} · ${NOMBRE_FRANJA[p.franja].toLowerCase()}`)
+const hastaCuando = (iso: string) => new Date(iso).toLocaleString('es-MX', { weekday: 'long', hour: 'numeric', minute: '2-digit' })
 const horas = (min: number) => min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ''}` : `${min} min`
 
 function estadoDe(c: VistaCita): { titulo: string; texto: string; color: string } {
   switch (c.estado) {
+    case 'solicitud': return c.propuestaVencida
+      ? { titulo: 'Esperando otra hora', texto: 'La hora que te propuso Cristina venció y se liberó. Te propone otra en cuanto pueda.', color: 'bg-marca-dorado text-marca-negro' }
+      : { titulo: 'Esperando hora', texto: 'Cristina revisa tu solicitud y te propone la hora que mejor le queda a tu servicio. Todavía no hay nada apartado.', color: 'bg-marca-dorado text-marca-negro' }
     case 'confirmada': return { titulo: 'Confirmada', texto: 'Te esperamos. Si necesitas cambiarla, hazlo aquí mismo.', color: 'bg-marca-negro text-white' }
     case 'iniciada': return { titulo: 'En curso', texto: 'Estás en el salón. ¡Disfruta tu cita!', color: 'bg-marca-negro text-white' }
     case 'completada': return { titulo: '¡Gracias por tu visita!', texto: 'Tu cita quedó registrada. Te esperamos pronto.', color: 'bg-marca-dorado text-marca-negro' }
     case 'cancelada': return {
       titulo: 'Cancelada', color: 'bg-marca-linea text-marca-negro',
       texto: c.anticipoASaldo ? `Tu anticipo de ${pesos(c.anticipoASaldo)} quedó como saldo a favor para tu próxima cita.`
-        : c.anticipoPerdido ? `Se canceló con menos de 48 horas: el anticipo de ${pesos(c.anticipoPerdido)} no se devuelve.` : 'Tu horario quedó libre.'
+        : c.anticipoPerdido ? `Se canceló con menos de 48 horas: el anticipo de ${pesos(c.anticipoPerdido)} no se devuelve.` : c.hora ? 'Tu horario quedó libre.' : 'Tu solicitud quedó cancelada.'
     }
     case 'no_llego': return { titulo: 'No asististe', texto: c.anticipoPerdido ? `El anticipo de ${pesos(c.anticipoPerdido)} no se devuelve.` : 'Cuando quieras, agenda de nuevo.', color: 'bg-marca-linea text-marca-negro' }
     default: return c.porAceptar
-      ? { titulo: 'Revisa y acepta', texto: 'Cristina ya revisó tu solicitud: acepta el resumen y el precio para continuar.', color: 'bg-marca-dorado text-marca-negro' }
+      ? { titulo: 'Revisa y acepta', texto: `Cristina te propone esta hora y precio.${c.propuestaVence ? ` Te la guardamos hasta el ${hastaCuando(c.propuestaVence)}; después se libera.` : ''}`, color: 'bg-marca-dorado text-marca-negro' }
       : c.anticipo && !c.anticipoPagado && c.precioAcordado
       ? { titulo: 'Falta tu anticipo', texto: 'Cristina ya revisó tu solicitud. Con tu anticipo tu cita queda confirmada.', color: 'bg-marca-dorado text-marca-negro' }
       : { titulo: 'Solicitud recibida', texto: 'Tu horario está apartado. Cristina revisa tu solicitud y te escribe por WhatsApp para confirmarla.', color: 'bg-marca-dorado text-marca-negro' }
@@ -60,8 +65,7 @@ export default function MiCita() {
   const [enviando, setEnviando] = useState(false)
   const [aviso, setAviso] = useState('')
   const [dias, setDias] = useState<DiaLibre[] | null>(null)
-  const [fecha, setFecha] = useState('')
-  const [hora, setHora] = useState('')
+  const [preferencias, setPreferencias] = useState<Preferencia[]>([])
   const [copiado, setCopiado] = useState(false)
   const [resumenAbierto, setResumenAbierto] = useState(false)   // ventana para aceptar lo que dejó Cristina al valorar
   const [vistoResumen, setVistoResumen] = useState(false)       // se abre sola una vez; después, desde el botón
@@ -69,7 +73,7 @@ export default function MiCita() {
   const [servicioNuevo, setServicioNuevo] = useState('')
 
   const mostrar = (c: VistaCita) => {
-    setCita(c); setError(''); guardarCita({ ref, fecha: c.fecha, hora: c.hora, servicio: c.servicio })
+    setCita(c); setError(''); guardarCita({ ref, fecha: ultimaPreferencia(c), hora: c.hora, servicio: c.servicio })
     if (c.porAceptar && !vistoResumen) { setResumenAbierto(true); setVistoResumen(true) }
   }
   // En vivo: al abrir, al volver a la app y cada minuto (así ve cuando el salón la confirma); no mientras la cambia
@@ -79,15 +83,15 @@ export default function MiCita() {
   }), 60_000)
 
   const cargarDias = (servicioId: string) => {
-    setDias(null); setHora('')
+    setDias(null); setPreferencias([])
     disponibilidad(servicioId)
-      .then(r => { setDias(r.dias); setFecha(r.dias.find(d => d.horas.length)?.fecha || '') })
+      .then(r => setDias(r.dias))
       .catch(e => setAviso(e.message))
   }
   const cambiar = () => {
     if (!cita) return
     setModo('cambiar'); setAviso(''); setServicioNuevo(cita.servicioId)
-    if (cita.puedeCambiarServicio && !catalogo) serviciosEnLinea().then(setCatalogo).catch(() => { /* sin catálogo: solo día y hora */ })
+    if (cita.puedeCambiarServicio && !catalogo) serviciosEnLinea().then(setCatalogo).catch(() => { /* sin catálogo: solo el día */ })
     cargarDias(cita.servicioId)
   }
   const accion = async (f: () => Promise<VistaCita>, listo: string) => {
@@ -109,11 +113,12 @@ export default function MiCita() {
   if (!cita) return <><Encabezado rotulo="Tu cita" titulo="Un momento…" /><p className="contenido px-6 text-sm text-marca-gris">Cargando tu cita…</p></>
 
   const e = estadoDe(cita)
-  const futura = ['pendiente', 'confirmada'].includes(cita.estado)
+  const futura = ['pendiente', 'confirmada'].includes(cita.estado) && !!cita.hora
+  const vigente = futura || cita.estado === 'solicitud'
   const consecuencia = cita.anticipo && cita.anticipoPagado
     ? cita.sinCosto ? `Faltan más de 48 horas: tu anticipo de ${pesos(cita.anticipo)} queda como saldo a favor para tu próxima cita.`
       : `Faltan menos de 48 horas: según la política de reserva, tu anticipo de ${pesos(cita.anticipo)} no se devuelve.`
-    : 'Tu horario se libera para otra clienta.'
+    : cita.hora ? 'Tu horario se libera para otra clienta.' : 'Tu solicitud se cancela. No pierdes nada.'
 
   return (
     <>
@@ -137,7 +142,7 @@ export default function MiCita() {
             )}
             <div className="renglon">
               <span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Cuándo</span>
-              <span className="text-marca-negro">{mayuscula(largo(cita.fecha))} a las {cita.hora}{cita.duracion ? <span className="block text-sm text-marca-gris">Dura alrededor de {horas(cita.duracion)}</span> : null}</span>
+              <span className="text-marca-negro">{cita.hora ? `${mayuscula(largo(cita.fecha))} a las ${cita.hora}` : opciones(cita.preferencias).map(t => <span key={t} className="block">{t}</span>)}{cita.duracion ? <span className="block text-sm text-marca-gris">Dura alrededor de {horas(cita.duracion)}</span> : null}{cita.cambioPedido && <span className="mt-1 block text-sm text-marca-gris">Pediste cambiarla a: {opciones(cita.preferencias).join('; ')}. Conservas esta hora hasta que Cristina te asigne otra.</span>}</span>
             </div>
             <div className="renglon">
               <span className="w-24 shrink-0 text-xs uppercase tracking-[0.18em] text-marca-gris">Precio</span>
@@ -173,8 +178,8 @@ export default function MiCita() {
           {modo === 'cambiar' ? (
             <section className="tarjeta space-y-5 p-6">
               <div>
-                <p className="rotulo">{cita.puedeCambiarServicio ? 'Cambiar servicio, día u hora' : 'Cambiar día u hora'}</p>
-                <p className="mt-1 text-sm text-marca-gris">Horarios libres en tiempo real. Tu cita sigue {cita.estado === 'confirmada' ? 'confirmada' : 'igual'} y conservas tu anticipo.</p>
+                <p className="rotulo">{cita.puedeCambiarServicio ? 'Cambiar servicio o fecha' : 'Pedir otra fecha'}</p>
+                <p className="mt-1 text-sm text-marca-gris">{cita.hora && !cita.propuestaVence ? 'Conservas tu hora y tu anticipo hasta que Cristina te asigne la nueva.' : 'Dinos qué días te acomodan y Cristina te propone la hora.'}</p>
               </div>
               {cita.puedeCambiarServicio && catalogo && (
                 <label className="block">
@@ -185,34 +190,31 @@ export default function MiCita() {
                   <span className="mt-1 block text-xs text-marca-gris">Solo un servicio por cita: cambia este en vez de pedir otra. Cristina lo revisa antes de confirmarte.</span>
                 </label>
               )}
-              {!dias && !aviso && <p className="text-sm text-marca-gris">Buscando horarios libres…</p>}
-              {dias && <ElegirHorario dias={dias} fecha={fecha} hora={hora} onFecha={setFecha} onHora={setHora} />}
-              {hora && Date.parse(`${fecha}T${hora}:00-07:00`) - Date.now() < 48 * 3600000 && (
-                <p className="rounded-sm bg-marca-marfil p-3 text-xs leading-relaxed text-marca-grafito">Ese horario es en menos de 48 horas: después ya no podrás cambiarla aquí y, si la cancelas, el anticipo no se devuelve.</p>
-              )}
-              <button disabled={!hora || enviando} onClick={() => accion(() => reagendarMiCita(ref, fecha, hora, servicioNuevo && servicioNuevo !== cita.servicioId ? servicioNuevo : undefined), 'Listo: tu cita cambió. Le avisamos a Cristina.')} className="boton w-full disabled:opacity-40">
-                {enviando ? 'Cambiando…' : hora ? `Cambiar al ${corto(fecha)} a las ${hora}` : 'Elige día y hora'}
+              {!dias && !aviso && <p className="text-sm text-marca-gris">Buscando días libres…</p>}
+              {dias && <ElegirPreferencias dias={dias} valor={preferencias} onCambio={setPreferencias} />}
+              <button disabled={!preferencias.length || enviando} onClick={() => accion(() => reagendarMiCita(ref, preferencias, servicioNuevo && servicioNuevo !== cita.servicioId ? servicioNuevo : undefined), 'Listo: le avisamos a Cristina. Te propone la hora.')} className="boton w-full disabled:opacity-40">
+                {enviando ? 'Enviando…' : preferencias.length ? 'Enviar a Cristina' : 'Elige al menos un día'}
               </button>
               <button onClick={() => { setModo(''); setAviso('') }} className="w-full py-2 text-[11px] uppercase tracking-[0.2em] text-marca-gris">Volver</button>
             </section>
           ) : modo === 'cancelar' ? (
             <section className="tarjeta space-y-4 p-6">
-              <p className="rotulo">Cancelar mi cita</p>
+              <p className="rotulo">{cita.hora ? 'Cancelar mi cita' : 'Cancelar mi solicitud'}</p>
               <p className="text-sm leading-relaxed text-marca-grafito">{consecuencia}</p>
               <button disabled={enviando} onClick={() => accion(() => cancelarMiCita(ref), 'Tu cita quedó cancelada. Le avisamos a Cristina.')} className="boton w-full disabled:opacity-40">
-                {enviando ? 'Cancelando…' : 'Sí, cancelar mi cita'}
+                {enviando ? 'Cancelando…' : cita.hora ? 'Sí, cancelar mi cita' : 'Sí, cancelar mi solicitud'}
               </button>
               <button onClick={() => setModo('')} className="boton-claro w-full">No, la conservo</button>
             </section>
           ) : (<>
             {futura && <a href={`data:text/calendar;charset=utf-8,${encodeURIComponent(calendario(cita, salon.direccion))}`} download="mi-cita.ics" className="boton w-full"><CalendarPlus size={16} strokeWidth={1.5} /> Agregar a mi calendario</a>}
-            {cita.puedeReagendar && <button onClick={cambiar} className="boton-claro w-full"><RefreshCw size={15} strokeWidth={1.5} /> {cita.puedeCambiarServicio ? 'Cambiar servicio, día u hora' : 'Cambiar día u hora'}</button>}
+            {cita.puedeReagendar && <button onClick={cambiar} className="boton-claro w-full"><RefreshCw size={15} strokeWidth={1.5} /> {cita.puedeCambiarServicio ? 'Cambiar servicio o fecha' : 'Pedir otra fecha'}</button>}
             {cita.puedeCancelar && !cita.puedeReagendar && futura && (
               <p className="text-xs leading-relaxed text-marca-gris">Faltan menos de 48 horas: para cambiarla, escríbenos por WhatsApp.</p>
             )}
-            {cita.puedeCancelar && <button onClick={() => { setModo('cancelar'); setAviso('') }} className="boton-claro w-full"><X size={15} strokeWidth={1.5} /> Cancelar mi cita</button>}
-            <a href={enlaceWhatsApp(`Hola${nombre ? `, soy ${nombre}` : ''}. Sobre mi cita de ${cita.servicio} el ${largo(cita.fecha)} a las ${cita.hora}: `)} className="boton-claro w-full"><MessageCircle size={16} strokeWidth={1.5} /> Escríbenos</a>
-            {!futura && <Link to="/agendar" className="boton w-full">Agendar otra cita</Link>}
+            {cita.puedeCancelar && <button onClick={() => { setModo('cancelar'); setAviso('') }} className="boton-claro w-full"><X size={15} strokeWidth={1.5} /> {cita.hora ? 'Cancelar mi cita' : 'Cancelar mi solicitud'}</button>}
+            <a href={enlaceWhatsApp(`Hola${nombre ? `, soy ${nombre}` : ''}. Sobre mi cita de ${cita.servicio}${cita.hora ? ` el ${largo(cita.fecha)} a las ${cita.hora}` : ''}: `)} className="boton-claro w-full"><MessageCircle size={16} strokeWidth={1.5} /> Escríbenos</a>
+            {!vigente && <Link to="/agendar" className="boton w-full">Agendar otra cita</Link>}
             <p className="pt-2 text-xs leading-relaxed text-marca-gris">Cambios o cancelaciones con al menos 48 horas: conservas tu anticipo (si cancelas, queda como saldo a favor). Con menos, o si no llegas, se pierde.</p>
           </>)}
         </aside>

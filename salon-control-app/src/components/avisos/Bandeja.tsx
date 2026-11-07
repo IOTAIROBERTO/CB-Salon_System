@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Bell, CalendarCheck, Check, Crown, MessageCircle, ShoppingBag, X } from 'lucide-react';
 import { db, type Aviso } from '../../db/db';
+import { porAsignar, resumenPreferencias, ultimaPreferencia } from '../../utils/agenda';
 import { enlaceWhatsApp } from '../../utils/lealtad';
 import { fechaLocalISO } from '../../utils/dateValidation';
 import ValorarSolicitud from './ValorarSolicitud';
@@ -37,12 +38,13 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
   const [abierta, setAbierta] = useState(false);
   const [valorando, setValorando] = useState<string | null>(null);   // cita que se está valorando
   const avisos = useLiveQuery(() => db.avisos.orderBy('fecha').reverse().limit(60).toArray()) || [];
-  const citas = useLiveQuery(() => db.citas.where('estado').equals('pendiente').toArray()) || [];
+  const citas = useLiveQuery(() => db.citas.where('estado').anyOf('pendiente', 'solicitud', 'confirmada').filter(c => c.estado !== 'confirmada' || !!c.cambioPedido).toArray()) || [];
   const clientes = useLiveQuery(() => db.clientes.toArray()) || [];
   const servicios = useLiveQuery(() => db.servicios.toArray()) || [];
   const sinLeer = avisos.filter(a => !a.leido).length;
   const hoy = fechaLocalISO();
-  const porConfirmar = citas.filter(c => c.origen && c.fecha >= hoy).sort((a, b) => `${a.fecha}${a.hora}`.localeCompare(`${b.fecha}${b.hora}`));
+  // Las que ya tienen hora propuesta esperan a la clienta, no a Cristina
+  const porConfirmar = citas.filter(c => c.origen && ultimaPreferencia(c) >= hoy && !c.propuestaVence).sort((a, b) => `${a.fecha}${a.hora}`.localeCompare(`${b.fecha}${b.hora}`));
 
   // Notificación del navegador por cada aviso nuevo que llega con la ventana abierta
   useEffect(() => {
@@ -103,30 +105,31 @@ export default function Bandeja({ oscuro = true }: { oscuro?: boolean }) {
               <button onClick={() => setAbierta(false)} className="rounded-md p-2.5 text-gray-500 hover:bg-gray-100" aria-label="Cerrar"><X size={20} /></button>
             </div>
             <div className="flex items-center justify-between gap-2 border-b px-5 py-2 text-xs text-gray-500">
-              <span>{citas.length} cita{citas.length === 1 ? '' : 's'} por confirmar</span>
+              <span>{porConfirmar.length} solicitud{porConfirmar.length === 1 ? '' : 'es'} por atender</span>
               {sinLeer > 0 && <button onClick={marcarTodo} className="min-h-[40px] hover:underline">Marcar todo leído</button>}
             </div>
             <AvisosCelular />
             <div className="flex-1 overflow-y-auto">
               {porConfirmar.length > 0 && (
                 <div className="border-b bg-red-50/60 px-5 py-4">
-                  <p className="text-[10px] uppercase tracking-[0.28em] text-red-700">Por confirmar · desde la app</p>
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-red-700">Por atender · desde la app</p>
                   {porConfirmar.map(c => {
                     const cl = clientes.find(x => x.id === c.clienteId);
                     const sv = servicios.find(x => x.id === c.servicioId);
-                    const wa = enlaceWhatsApp(cl?.telefono, `¡Hola, ${(cl?.nombre || '').split(' ')[0]}! Sobre tu cita de ${sv?.nombre || 'tu servicio'} el ${fechaCorta(c.fecha)} a las ${c.hora}: `);
+                    const wa = enlaceWhatsApp(cl?.telefono, `¡Hola, ${(cl?.nombre || '').split(' ')[0]}! Sobre tu ${c.hora ? `cita de ${sv?.nombre || 'tu servicio'} el ${fechaCorta(c.fecha)} a las ${c.hora}` : `solicitud de ${sv?.nombre || 'tu servicio'}`}: `);
                     return (
                       <div key={c.id} className="mt-3 flex items-center gap-3">
                         <div className="min-w-0 flex-1 text-sm">
-                          <p className="font-medium text-gray-900">{cl?.nombre || 'Clienta'} · {fechaCorta(c.fecha)} {c.hora}</p>
+                          <p className="font-medium text-gray-900">{cl?.nombre || 'Clienta'}{c.hora ? ` · ${fechaCorta(c.fecha)} ${c.hora}` : ''}</p>
+                          {porAsignar(c) && <p className="text-gray-600">{c.cambioPedido ? 'Pide: ' : ''}{resumenPreferencias(c.preferencias)}</p>}
                           <p className="truncate text-gray-600">{sv?.nombre || 'Servicio'}{c.montoAnticipo ? ` · anticipo $${c.montoAnticipo.toLocaleString('es-MX')} ${c.anticipoConfirmado ? 'pagado' : 'pendiente'}` : ''}</p>
                         </div>
                         {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-white text-gray-700 hover:bg-gray-50" aria-label="WhatsApp"><MessageCircle size={15} /></a>}
-                        <button onClick={() => valorar(c.id)} className="flex min-h-[40px] shrink-0 items-center gap-1 rounded-md bg-marca-negro px-3 text-xs text-white hover:bg-gray-800"><Check size={13} /> Valorar</button>
+                        <button onClick={() => valorar(c.id)} className="flex min-h-[40px] shrink-0 items-center gap-1 rounded-md bg-marca-negro px-3 text-xs text-white hover:bg-gray-800"><Check size={13} /> {porAsignar(c) ? 'Asignar' : 'Valorar'}</button>
                       </div>
                     );
                   })}
-                  <p className="mt-3 text-[11px] text-gray-500">Valorar = ver fotos y respuestas, fijar precio y anticipo, mandar el WhatsApp y confirmar. Cambios de hora o cancelaciones, en Citas.</p>
+                  <p className="mt-3 text-[11px] text-gray-500">Asignar o valorar = ver fotos y respuestas, poner la hora, fijar precio y anticipo y mandar el WhatsApp.</p>
                 </div>
               )}
               {!avisos.length && <p className="p-6 text-sm text-gray-500">Aquí llegan las citas y registros al Club que las clientas hacen desde la app.</p>}

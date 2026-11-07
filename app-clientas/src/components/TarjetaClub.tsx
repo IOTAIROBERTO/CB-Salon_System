@@ -128,7 +128,7 @@ export default function TarjetaClub({ onSesion }: { onSesion?: (dentro: boolean)
             {datos.proximas.map(c => (
               <li key={c.fecha + c.hora} className="flex justify-between gap-4 border-b border-marca-linea/70 py-2.5">
                 <span className="text-marca-negro">{c.servicio}</span>
-                <span className="shrink-0 text-right text-marca-gris">{fecha(c.fecha)} · {c.hora}<span className="block text-[10px] uppercase tracking-[0.16em]">{c.estado === 'pendiente' ? 'por confirmar' : c.estado}</span></span>
+                <span className="shrink-0 text-right text-marca-gris">{c.hora ? `${fecha(c.fecha)} · ${c.hora}` : 'Hora por asignar'}<span className="block text-[10px] uppercase tracking-[0.16em]">{c.estado === 'pendiente' ? 'por confirmar' : c.estado === 'solicitud' ? 'solicitud' : c.estado}</span></span>
               </li>
             ))}
           </ul>

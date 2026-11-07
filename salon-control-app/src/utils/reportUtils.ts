@@ -24,7 +24,7 @@ export const calculateReportStats = (
   const gananciaNeta = totalIngresos - totalGastos;
 
   const saldosPendientes = citas
-    .filter(c => c.estado !== 'cancelada' && c.estado !== 'no_llego')
+    .filter(c => c.estado !== 'cancelada' && c.estado !== 'no_llego' && c.estado !== 'solicitud')
     .reduce((sum, c) => sum + (c.saldoPendiente || 0), 0);
 
   return {

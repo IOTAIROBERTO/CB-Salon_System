@@ -1,7 +1,7 @@
 // API de la app de clientas (Cloudflare Pages Functions, misma dirección que la app: /api/...).
 // Lee y escribe la base de CB Control con Dexie Cloud; reutiliza el motor de agenda de CB Control,
 // así la app ofrece exactamente los mismos horarios libres que ve el salón.
-import { AGENDA_INICIAL, DUENA, aMin, horariosLibres, tramosCita, type Bloqueo, type ConfigAgenda, type Persona } from '../../salon-control-app/src/utils/agenda';
+import { AGENDA_INICIAL, DUENA, NOMBRE_FRANJA, aMin, franjaDe, franjasLibres, horariosLibres, tramosCita, type Bloqueo, type ConfigAgenda, type Persona, type Preferencia } from '../../salon-control-app/src/utils/agenda';
 import {
   NOMBRE_NIVEL, beneficiosDisponibles, costoPuntos, datosBeneficio, estadoCirculo, parametrosDe, permanentesDe, siguienteNivel, textoSaldoPuntos
 } from '../../salon-control-app/src/utils/lealtad';
@@ -151,10 +151,11 @@ async function disponibilidad(env: Env, url: URL) {
   const s = ag.servicios.find(x => x.id === servicioId && enLinea(x));
   if (!s) throw new ErrorCliente('Ese servicio no se agenda en línea');
   const fechas = Array.from({ length: dias }, (_, i) => masDias(desde, i));
-  const res = await Promise.all(fechas.map(async fecha => ({
+  const res = await Promise.all(fechas.map(async fecha => {
     // El mismo día no se agenda en línea: Cristina lo revisa en su agenda (WhatsApp)
-    fecha, horas: fecha <= hoyHermosillo() ? [] : [...new Set((await libresDelDia(env, ag, fecha, servicioId)).map(h => h.hora))]
-  })));
+    const horas = fecha <= hoyHermosillo() ? [] : [...new Set((await libresDelDia(env, ag, fecha, servicioId)).map(h => h.hora))];
+    return { fecha, horas, franjas: franjasLibres(horas) };   // `horas` queda para versiones de la app que siguen abiertas
+  }));
   return json({ servicio: { id: s.id, nombre: s.nombre, duracion: s.duracion, precio: s.precioSugerido, anticipo: s.anticipoSugerido || 0 }, dias: res });
 }
 
@@ -228,27 +229,54 @@ const resumenValoracion = (v?: ReturnType<typeof valoracionDe>) => v ? ` · cabe
 const fotosDe = (f: unknown) => (Array.isArray(f) ? f : []).slice(0, 4).map(String)
   .filter(x => /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(x) && x.length < 600_000);
 
-/** POST /api/citas → la cita queda «pendiente» (ya aparta el horario) hasta que el salón la valora y confirma */
+const FRANJAS_VALIDAS = ['manana', 'mediodia', 'tarde', 'cualquiera'];
+const MAX_DIAS_SOLICITUD = 14;
+/** Hasta 3 opciones de día y franja, en el orden en que le acomodan. Una versión de la app que siga abierta aún manda fecha y hora */
+function preferenciasDe(b: any): Preferencia[] {
+  const crudas: any[] = Array.isArray(b?.preferencias) ? b.preferencias
+    : b?.fecha ? [{ fecha: b.fecha, franja: HORA.test(String(b.hora || '')) ? franjaDe(b.hora) : 'cualquiera' }] : [];
+  const lista: Preferencia[] = [];
+  for (const p of crudas.slice(0, 3)) {
+    if (!FECHA.test(String(p?.fecha)) || !FRANJAS_VALIDAS.includes(p?.franja)) throw new ErrorCliente('Elige día y horario');
+    if (!lista.some(x => x.fecha === p.fecha && x.franja === p.franja)) lista.push({ fecha: p.fecha, franja: p.franja });
+  }
+  if (!lista.length) throw new ErrorCliente('Elige al menos un día');
+  const hoy = hoyHermosillo();
+  if (lista.some(p => p.fecha <= hoy)) throw new ErrorCliente('Las citas para hoy las revisa Cristina en su agenda: escríbenos por WhatsApp.');
+  if (lista.some(p => p.fecha > masDias(hoy, MAX_DIAS_SOLICITUD))) throw new ErrorCliente(`Puedes pedir hasta ${MAX_DIAS_SOLICITUD} días adelante.`);
+  return lista;
+}
+/** Las opciones en que el servicio todavía cabe (nada se aparta: solo para no pedir lo imposible) */
+async function preferenciasQueCaben(env: Env, ag: Awaited<ReturnType<typeof cargarAgenda>>, lista: Preferencia[], servicioId: string, ignorarCitaId?: string) {
+  const porDia = new Map<string, string[]>();
+  for (const f of new Set(lista.map(p => p.fecha))) porDia.set(f, (await libresDelDia(env, ag, f, servicioId, ignorarCitaId)).map(h => h.hora));
+  return lista.filter(p => porDia.get(p.fecha)!.some(h => p.franja === 'cualquiera' || franjaDe(h) === p.franja));
+}
+const textoPreferencias = (lista: Preferencia[] = []) => lista.map(p => `${fechaLegible(p.fecha)} (${NOMBRE_FRANJA[p.franja].toLowerCase()})`).join('; ');
+const cuando = (c: { fecha: string; hora?: string }) => c.hora ? `${fechaLegible(c.fecha)} a las ${c.hora}` : 'sin hora todavía';
+
+/** POST /api/citas → llega como «solicitud»: dice cuándo le acomoda y no aparta nada; Cristina le pone la hora al valorarla */
 async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Sesion | null, sinApartar = '') {
   const d = validarClienta(sesion ? { ...body, telefono: sesion.tel } : body);
-  const { servicioId, fecha, hora } = body;
-  if (!FECHA.test(fecha) || !HORA.test(hora)) throw new ErrorCliente('Elige fecha y hora');
-  if (fecha <= hoyHermosillo()) throw new ErrorCliente('Las citas para hoy las revisa Cristina en su agenda: escríbenos por WhatsApp.');
+  const { servicioId } = body;
+  const pedidas = preferenciasDe(body);
   const valoracion = valoracionDe(body.valoracion), fotos = fotosDe(body.fotos);
   const notas = String(body.notas || '').trim().slice(0, 500);
+  const hora = '';
   // Sin «no soy robot» y pasado su tope: misma respuesta, sin leer ni escribir nada
-  if (sinApartar && !await cabeSinRobot(env)) return json({ ok: true, cita: { id: '', fecha, hora, servicio: '', anticipo: 0 } }, 201);
-  const ag = await cargarAgenda(env, fecha, masDias(fecha, 1));
+  if (sinApartar && !await cabeSinRobot(env)) return json({ ok: true, cita: { id: '', fecha: pedidas[0].fecha, hora, servicio: '', anticipo: 0 } }, 201);
+  const fechas = pedidas.map(p => p.fecha).sort();
+  const ag = await cargarAgenda(env, fechas[0], masDias(fechas[fechas.length - 1], 1));
   if (!ag.realmId) throw new Error('Sin realm del salón en configuración');
   const s = ag.servicios.find(x => x.id === servicioId && enLinea(x));
   if (!s) throw new ErrorCliente('Ese servicio no se agenda en línea');
-  const libre = (await libresDelDia(env, ag, fecha, servicioId)).find(h => h.hora === hora);
-  if (!libre) throw new ErrorCliente('Ese horario se acaba de ocupar. Elige otro, por favor.', 409);
-  // Mientras no se verifique el teléfono (código por WhatsApp, fase 2), dos topes para que nadie aparte la agenda con
-  // datos inventados: 2 citas por confirmar por teléfono y 6 por día desde la app. Al pasarlos no se rechaza (así nadie
-  // bloquea un día ni se revela nada de un número): la solicitud llega como aviso sin apartar horario, uno por teléfono
-  // y día (se sobrescribe), sin WhatsApp ni notas de texto libre.
-  const abiertas = (await leer<any>(env, 'citas', { estado: 'pendiente' })).filter(c => c.origen === 'app');
+  const preferencias = await preferenciasQueCaben(env, ag, pedidas, servicioId);
+  if (!preferencias.length) throw new ErrorCliente('Esos días se acaban de llenar. Elige otros, por favor.', 409);
+  const fecha = preferencias[0].fecha;
+  // Mientras no se verifique el teléfono (código por WhatsApp, fase 2), dos topes para que nadie llene la bandeja con
+  // datos inventados: 2 solicitudes abiertas por teléfono y 6 por día desde la app. Al pasarlos no se rechaza (así no se
+  // revela nada de un número): llega como aviso, sin WhatsApp ni notas de texto libre.
+  const abiertas = (await Promise.all(['pendiente', 'solicitud'].map(estado => leer<any>(env, 'citas', { estado })))).flat().filter(c => c.origen === 'app');
   const clientas = await leer<any>(env, 'clientes');
   // Una clienta no aparta dos veces: el mismo servicio ya pedido, o un horario que se cruza con otra cita suya. Solo con
   // su teléfono verificado (código por WhatsApp): sin verificar, cualquier respuesta distinta le diría a quien pruebe un
@@ -269,14 +297,14 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
     }
     await aviso(env, ctx, ag.realmId, {
       tipo: 'cita', titulo: `Solicitud por confirmar a mano: ${d.nombre}`,
-      detalle: `Tel. ${d.telefono} pidió ${s.nombre} · ${fechaLegible(fecha)} a las ${hora}. ${sinApartar ? `La solicitud ${sinApartar}` : deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: no se apartó el horario.`
+      detalle: `Tel. ${d.telefono} pidió ${s.nombre} · ${textoPreferencias(preferencias)}. ${sinApartar ? `La solicitud ${sinApartar}` : deEseTelefono >= 2 ? 'Ese teléfono ya tiene citas por confirmar' : 'Ese día ya tiene 6 solicitudes por confirmar'}: no se registró.`
     }, { whatsapp: false });
     return respuesta('');
   }
   const { cliente, pendiente } = await clientaPorTelefono(env, ag.realmId, d, !!body.club, !!sesion);
   const cita = {
-    id: id('cita_app'), clienteId: cliente.id, servicioId, fecha, hora, estado: 'pendiente', notas: notas || undefined, creada: new Date().toISOString(),
-    montoAnticipo: s.anticipoSugerido || 0, anticipoConfirmado: false, atiendeId: libre.personaId, origen: 'app', realmId: ag.realmId,
+    id: id('cita_app'), clienteId: cliente.id, servicioId, fecha, hora, preferencias, estado: 'solicitud', notas: notas || undefined, creada: new Date().toISOString(),
+    montoAnticipo: s.anticipoSugerido || 0, anticipoConfirmado: false, origen: 'app', realmId: ag.realmId,
     valoracion, enlace: secretoNuevo(), politicasAceptadas: body.acepta === true ? new Date().toISOString() : undefined
   };
   // «Mi carrito»: los productos quedan apartados con la cita y se pagan junto con su anticipo cuando acepte la valoración
@@ -300,11 +328,11 @@ async function crearCita(env: Env, ctx: ExecutionContext, body: any, sesion: Ses
       fotosGuardadas = fotos.length;
     } catch (e) { console.log('fotos', (e as Error).message); }
   }
-  // A la clienta: «recibimos tu solicitud» (cuando el WhatsApp del salón esté conectado)
-  if (sesion) ctx.waitUntil(plantilla(env, d.telefono, 'cita_recibida', [d.nombre.split(' ')[0], s.nombre, fechaLegible(fecha), hora]));
+  // ponytail: `cita_recibida` dice «a las {{hora}}» y aquí todavía no hay hora: sin WhatsApp de acuse hasta aprobar una
+  // plantilla `solicitud_recibida` en Meta. Mientras, la clienta ve su solicitud en la app y «Mi cita».
   await aviso(env, ctx, ag.realmId, {
-    tipo: 'cita', titulo: `Nueva cita desde la app: ${cliente.nombre}`,
-    detalle: `${s.nombre} · ${fechaLegible(fecha)} a las ${hora}${itemsCita.length ? ` · aparta ${resumenItems(itemsCita)} (${pesos(totalItems(itemsCita))})` : ''}${notas ? ` · «${notas}»` : ''}${resumenValoracion(valoracion)}${fotos.length ? ` · ${fotosGuardadas ? `${fotosGuardadas} foto(s)${sesion ? '' : ' (teléfono sin verificar)'}` : 'mandó fotos pero no se guardaron: pídeselas por WhatsApp'}` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
+    tipo: 'cita', titulo: `Nueva solicitud desde la app: ${cliente.nombre}`,
+    detalle: `${s.nombre} · ${textoPreferencias(preferencias)}${itemsCita.length ? ` · aparta ${resumenItems(itemsCita)} (${pesos(totalItems(itemsCita))})` : ''}${notas ? ` · «${notas}»` : ''}${resumenValoracion(valoracion)}${fotos.length ? ` · ${fotosGuardadas ? `${fotosGuardadas} foto(s)${sesion ? '' : ' (teléfono sin verificar)'}` : 'mandó fotos pero no se guardaron: pídeselas por WhatsApp'}` : ''}${pendiente ? ` · ${pendiente}` : body.club ? ' · se unió al Club' : ''}`,
     refId: cita.id, clienteId: cliente.id
   });
   return respuesta(cita.id, `${cita.id}.${cita.enlace}`);
@@ -422,10 +450,11 @@ async function firmarConsentimiento(env: Env, ctx: ExecutionContext, id: string,
 // puede cambiarla o cancelarla y conserva su anticipo (si cancela, pasa a su saldo a favor); con menos solo puede
 // cancelar y el anticipo se pierde.
 export const HORAS_SIN_COSTO = 48;
-const ABIERTAS = ['pendiente', 'confirmada'];
+const ABIERTAS = ['pendiente', 'confirmada'];     // con hora
+const VIGENTES = ['solicitud', ...ABIERTAS];      // también las que esperan hora
 export const secretoNuevo = () => [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
 /** Horas que faltan para la cita (Hermosillo, UTC−7) */
-export const horasPara = (c: { fecha: string; hora: string }, ahora = Date.now()) => (Date.parse(`${c.fecha}T${c.hora}:00-07:00`) - ahora) / 3600000;
+export const horasPara = (c: { fecha: string; hora: string }, ahora = Date.now()) => c.hora ? (Date.parse(`${c.fecha}T${c.hora}:00-07:00`) - ahora) / 3600000 : Infinity;   // sin hora todavía: nada corre
 const pesos = (n: number) => `$${Number(n || 0).toLocaleString('es-MX')}`;
 const iguales = (a: string, b: string) => a.length === b.length && [...a].reduce((x, c, i) => x | (c.charCodeAt(0) ^ b.charCodeAt(i)), 0) === 0;
 
@@ -449,11 +478,12 @@ async function vistaCita(env: Env, cita: any) {
   const [settings, servicio, pedidos] = await Promise.all([uno<any>(env, 'configuracion', 'settings'), uno<any>(env, 'servicios', cita.servicioId),
     leer<any>(env, 'pedidos', { citaId: cita.id })]);
   const pedido = pedidos.sort((a, b) => String(b.creado).localeCompare(String(a.creado)))[0];
-  const faltan = horasPara(cita), abierta = ABIERTAS.includes(cita.estado) && faltan > 0;
+  const faltan = horasPara(cita), abierta = VIGENTES.includes(cita.estado) && faltan > 0;
   const anticipo = Number(cita.montoAnticipo) || 0, pagado = !!cita.anticipoConfirmado;
   return {
     servicio: servicio?.nombre || 'Tu servicio', servicioId: cita.servicioId,
     duracion: servicio?.duracion, fecha: cita.fecha, hora: cita.hora, estado: cita.estado,
+    preferencias: cita.preferencias || [], cambioPedido: !!cita.cambioPedido, propuestaVence: cita.propuestaVence, propuestaVencida: !!cita.propuestaVencida,
     precio: cita.precioAcordado ?? servicio?.precioSugerido ?? 0, precioAcordado: cita.precioAcordado != null,
     anticipo, anticipoPagado: pagado, formaAnticipo: cita.formaAnticipo,
     datosPago: pedido?.estado === 'por_pagar' || (anticipo && !pagado && ['transferencia', 'deposito'].includes(cita.formaAnticipo)) ? settings?.datosPago || '' : '',
@@ -464,22 +494,23 @@ async function vistaCita(env: Env, cita: any) {
     sinCosto: faltan >= HORAS_SIN_COSTO, puedeCancelar: abierta,
     puedeReagendar: abierta && faltan >= HORAS_SIN_COSTO && !!servicio && enLinea(servicio),
     // Cristina ya la valoró: la clienta acepta el resumen (lo que se hará, precio final y anticipo) en un toque
-    resumen: cita.resumenClienta || '', aceptadaEn: cita.aceptadaEn, porAceptar: abierta && cita.precioAcordado != null && !cita.aceptadaEn,
+    resumen: cita.resumenClienta || '', aceptadaEn: cita.aceptadaEn, porAceptar: abierta && !!cita.hora && cita.precioAcordado != null && !cita.aceptadaEn,
     // Mientras no se valora (sin precio ni anticipo pagado) puede cambiar de servicio en vez de pedir otra cita
-    puedeCambiarServicio: abierta && faltan >= HORAS_SIN_COSTO && cita.estado === 'pendiente' && cita.precioAcordado == null && !pagado
+    puedeCambiarServicio: abierta && faltan >= HORAS_SIN_COSTO && cita.estado !== 'confirmada' && cita.precioAcordado == null && !pagado
   };
 }
 
 /** «Ya tienes …» si la clienta ya tiene abierta una cita de ese servicio o una que se cruza con ese horario */
 async function citaQueSeRepite(env: Env, clienteId: string, servicioId: string, fecha: string, hora: string, servicios: any[], ignorarCitaId?: string) {
   const propias = (await leer<any>(env, 'citas', { clienteId }))
-    .filter(c => c.id !== ignorarCitaId && ABIERTAS.includes(c.estado) && c.fecha >= hoyHermosillo());
+    .filter(c => c.id !== ignorarCitaId && VIGENTES.includes(c.estado) && c.fecha >= hoyHermosillo());
   const fin = (c: { hora: string; servicioId: string; serviciosAdicionales?: { servicioId: string }[] }) =>
     tramosCita(aMin(c.hora), c.servicioId, (c.serviciosAdicionales || []).map(a => a.servicioId), servicios, 0).fin;
   const nueva = { hora, servicioId };
   const otra = propias.find(c => c.servicioId === servicioId)
-    || propias.find(c => c.fecha === fecha && aMin(c.hora) < fin(nueva) && aMin(hora) < fin(c));
-  return otra ? `una cita de ${servicios.find(x => x.id === otra.servicioId)?.nombre || 'servicio'} el ${fechaLegible(otra.fecha)} a las ${otra.hora}` : '';
+    || (hora ? propias.find(c => c.fecha === fecha && c.hora && aMin(c.hora) < fin(nueva) && aMin(hora) < fin(c)) : undefined);
+  const nombre = otra && (servicios.find(x => x.id === otra.servicioId)?.nombre || 'servicio');
+  return !otra ? '' : otra.hora ? `una cita de ${nombre} el ${fechaLegible(otra.fecha)} a las ${otra.hora}` : `una solicitud de ${nombre} esperando hora`;
 }
 
 /** POST /api/cita/<enlace>/aceptar {precio, anticipo, resumen} → acepta el resumen que dejó Cristina al valorar. Solo si
@@ -511,7 +542,7 @@ async function aceptarPorEnlace(env: Env, ctx: ExecutionContext, ref: string, re
     await guardar(env, 'pedidos', [pedido]);
   }
   const nueva = {
-    ...cita, aceptadaEn: new Date().toISOString(), ...(porPagar > 0 ? {} : { estado: 'confirmada' }),
+    ...cita, aceptadaEn: new Date().toISOString(), propuestaVence: undefined, ...(porPagar > 0 ? {} : { estado: 'confirmada' }),
     aceptacion: { precio: cita.precioAcordado, anticipo, resumen: cita.resumenClienta || '', ip: request.headers.get('CF-Connecting-IP') || undefined }
   };
   await guardar(env, 'citas', [nueva]);
@@ -526,7 +557,7 @@ async function aceptarPorEnlace(env: Env, ctx: ExecutionContext, ref: string, re
 
 /** POST /api/cita/<enlace>/cancelar → con 48 h o más su anticipo pagado pasa a saldo a favor; con menos, se pierde */
 async function cancelarPorEnlace(env: Env, ctx: ExecutionContext, ref: string) {
-  const abierta = (c: any) => ABIERTAS.includes(c.estado) && horasPara(c) > 0;
+  const abierta = (c: any) => VIGENTES.includes(c.estado) && horasPara(c) > 0;
   const previa = await citaDeEnlace(env, ref);
   if (!abierta(previa)) throw new ErrorCliente('Esta cita ya no se puede cancelar desde aquí. Escríbenos por WhatsApp.', 409);
   const cita = await conCandado(env, ref, previa.id);
@@ -547,48 +578,47 @@ async function cancelarPorEnlace(env: Env, ctx: ExecutionContext, ref: string) {
   const [cliente, servicio] = await Promise.all([uno<any>(env, 'clientes', cita.clienteId), uno<any>(env, 'servicios', cita.servicioId)]);
   await aviso(env, ctx, cita.realmId, {
     tipo: 'cita', titulo: `Canceló su cita desde la app: ${cliente?.nombre || 'Clienta'}`,
-    detalle: `${servicio?.nombre || 'Servicio'} · ${fechaLegible(cita.fecha)} a las ${cita.hora}. ${nueva.anticipoASaldo ? `Su anticipo de ${pesos(pagado)} pasó a su saldo a favor.`
-      : nueva.anticipoPerdido ? `Faltaban menos de 48 h: el anticipo de ${pesos(pagado)} se queda como anticipo perdido.` : 'No tenía anticipo pagado.'} El horario quedó libre.`,
+    detalle: `${servicio?.nombre || 'Servicio'} · ${cuando(cita)}. ${nueva.anticipoASaldo ? `Su anticipo de ${pesos(pagado)} pasó a su saldo a favor.`
+      : nueva.anticipoPerdido ? `Faltaban menos de 48 h: el anticipo de ${pesos(pagado)} se queda como anticipo perdido.` : 'No tenía anticipo pagado.'}${cita.hora ? ' El horario quedó libre.' : ''}`,
     refId: cita.id, clienteId: cita.clienteId
   });
   return json(await vistaCita(env, nueva));
 }
 
-/** POST /api/cita/<enlace>/reagendar → otro horario libre real, con 48 h o más de anticipación. Sigue como estaba
- *  (confirmada o por confirmar) y la atiende la misma persona si está libre. */
+/** POST /api/cita/<enlace>/reagendar → nuevas opciones de día y franja, con 48 h o más de anticipación. Una hora ya
+ *  acordada se respeta hasta que Cristina le asigne otra; una que solo se le había propuesto se suelta (ella misma pidió
+ *  otra cosa) y la cita vuelve a esperar hora. */
 async function reagendarPorEnlace(env: Env, ctx: ExecutionContext, ref: string, b: any) {
   const cita = await citaDeEnlace(env, ref);
-  if (!ABIERTAS.includes(cita.estado)) throw new ErrorCliente('Esta cita ya no se puede cambiar.', 409);
+  if (!VIGENTES.includes(cita.estado)) throw new ErrorCliente('Esta cita ya no se puede cambiar.', 409);
   if (horasPara(cita) < HORAS_SIN_COSTO) throw new ErrorCliente('Faltan menos de 48 horas: para cambiarla escríbenos por WhatsApp.', 409);
-  const fecha = String(b?.fecha || ''), hora = String(b?.hora || '');
-  if (!FECHA.test(fecha) || !HORA.test(hora)) throw new ErrorCliente('Elige fecha y hora');
-  if (fecha <= hoyHermosillo()) throw new ErrorCliente('Las citas para hoy las revisa Cristina en su agenda: escríbenos por WhatsApp.');
+  const pedidas = preferenciasDe(b);
   const servicioId = String(b?.servicioId || cita.servicioId), otroServicio = servicioId !== cita.servicioId;
   // Otro servicio solo mientras no se valora (sin precio acordado ni anticipo pagado): después lo cambia Cristina
-  if (otroServicio && (cita.estado !== 'pendiente' || cita.precioAcordado != null || cita.anticipoConfirmado))
+  if (otroServicio && (cita.estado === 'confirmada' || cita.precioAcordado != null || cita.anticipoConfirmado))
     throw new ErrorCliente('Cristina ya revisó tu cita: para cambiar de servicio escríbenos por WhatsApp.', 409);
-  if (!otroServicio && fecha === cita.fecha && hora === cita.hora) return json(await vistaCita(env, cita));
-  const ag = await cargarAgenda(env, fecha, masDias(fecha, 1));
+  const fechas = pedidas.map(p => p.fecha).sort();
+  const ag = await cargarAgenda(env, fechas[0], masDias(fechas[fechas.length - 1], 1));
   const s = ag.servicios.find(x => x.id === servicioId && enLinea(x));
   if (!s) throw new ErrorCliente('Este servicio se cambia por WhatsApp.');
   if (otroServicio) {
-    const repetida = await citaQueSeRepite(env, cita.clienteId, servicioId, fecha, hora, ag.servicios, cita.id);
+    const repetida = await citaQueSeRepite(env, cita.clienteId, servicioId, '', '', ag.servicios, cita.id);
     if (repetida) throw new ErrorCliente(`Ya tienes ${repetida}.`, 409);
   }
-  const libres = (await libresDelDia(env, ag, fecha, servicioId, cita.id)).filter(h => h.hora === hora);
-  const libre = libres.find(h => h.personaId === cita.atiendeId) || libres[0];
-  if (!libre) throw new ErrorCliente('Ese horario se acaba de ocupar. Elige otro, por favor.', 409);
+  const preferencias = await preferenciasQueCaben(env, ag, pedidas, servicioId, cita.id);
+  if (!preferencias.length) throw new ErrorCliente('Esos días se acaban de llenar. Elige otros, por favor.', 409);
   const actual = await conCandado(env, ref, cita.id);
   if (actual.estado !== cita.estado || actual.fecha !== cita.fecha || actual.hora !== cita.hora)
     throw new ErrorCliente('Tu cita acaba de cambiar. Revísala y vuelve a intentarlo.', 409);
-  // Sin `recordatorio`: el del día anterior se vuelve a mandar para la fecha nueva
-  const nueva = { ...actual, fecha, hora, atiendeId: libre.personaId, recordatorio: undefined, reagendadaEn: new Date().toISOString(),
+  const sinHora = actual.estado === 'solicitud' || !!actual.propuestaVence;
+  const nueva = { ...actual, preferencias, reagendadaEn: new Date().toISOString(), propuestaVencida: undefined,
+    ...(sinHora ? { estado: 'solicitud', fecha: preferencias[0].fecha, hora: '', atiendeId: undefined, propuestaVence: undefined } : { cambioPedido: true }),
     ...(otroServicio ? { servicioId, montoAnticipo: s.anticipoSugerido || 0 } : {}) };
   await guardar(env, 'citas', [nueva]);
   const cliente = await uno<any>(env, 'clientes', cita.clienteId);
   await aviso(env, ctx, cita.realmId, {
-    tipo: 'cita', titulo: `Cambió su cita desde la app: ${cliente?.nombre || 'Clienta'}`,
-    detalle: `${otroServicio ? `Ahora pide ${s.nombre} (antes ${ag.servicios.find(x => x.id === cita.servicioId)?.nombre || 'otro servicio'}): ` : `${s.nombre}: `}del ${fechaLegible(cita.fecha)} a las ${cita.hora} al ${fechaLegible(fecha)} a las ${hora}. ${cita.estado === 'confirmada' ? 'Sigue confirmada.' : 'Sigue por confirmar.'}`,
+    tipo: 'cita', titulo: `Pide cambiar su cita: ${cliente?.nombre || 'Clienta'}`,
+    detalle: `${otroServicio ? `Ahora pide ${s.nombre} (antes ${ag.servicios.find(x => x.id === cita.servicioId)?.nombre || 'otro servicio'}): ` : `${s.nombre}: `}${textoPreferencias(preferencias)}. ${sinHora ? 'Espera que le asignes hora.' : `Conserva ${cuando(cita)} hasta que le asignes otra.`}`,
     refId: cita.id, clienteId: cita.clienteId
   });
   return json(await vistaCita(env, nueva));

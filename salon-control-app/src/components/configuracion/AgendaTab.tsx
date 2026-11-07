@@ -75,7 +75,7 @@ export default function AgendaTab() {
       <section className="bg-white rounded-lg shadow p-5">
         <h3 className="font-semibold text-lg mb-3">Reglas</h3>
         <div className="grid sm:grid-cols-4 gap-4 text-sm">
-          <label>Margen entre citas (min)<input type="number" min="0" value={cfg.margen} onChange={e => num('margen', e.target.value)} className={`${campo} w-full mt-1`} /></label>
+          <label>Preparación entre clientas (min)<input type="number" min="0" value={cfg.margen} onChange={e => num('margen', e.target.value)} className={`${campo} w-full mt-1`} /></label>
           <label>Horarios cada (min)
             <select value={cfg.intervalo} onChange={e => num('intervalo', e.target.value)} className={`${campo} w-full mt-1`}>
               {[15, 30, 60].map(n => <option key={n} value={n}>{n}</option>)}
@@ -102,6 +102,62 @@ export default function AgendaTab() {
           ))}
           <button type="button" onClick={() => setLargos([...largos, { horas: 3, ultimaHora: '14:00' }])} className="flex items-center gap-1 text-purple-700 mt-1"><Plus size={14} /> Agregar regla</button>
         </div>
+      </section>
+
+      <section className="bg-white rounded-lg shadow p-5">
+        <h3 className="font-semibold text-lg mb-1">Mañana protegida</h3>
+        <p className="text-sm text-gray-500 mb-3">Las clientas no ven esa parte del día para servicios cortos mientras un trabajo largo todavía quepa ahí, y se va liberando conforme se acerca la fecha. Los huecos donde ya no cabe un trabajo largo sí se ofrecen. A ti solo te avisa: tú puedes asignar cualquier hora.</p>
+        <label className="flex items-center gap-2 text-sm mb-3">
+          <input type="checkbox" checked={!!cfg.proteccion} onChange={e => setCfg({ ...cfg, proteccion: e.target.checked ? AGENDA_INICIAL.proteccion : null })} /> Proteger la mañana
+        </label>
+        {cfg.proteccion && (() => {
+          const p = cfg.proteccion;
+          return (
+            <div className="space-y-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                De
+                <input type="time" value={p.desde} onChange={e => setCfg({ ...cfg, proteccion: { ...p, desde: e.target.value } })} className={campo} aria-label="Protegida desde" />
+                a
+                <input type="time" value={p.hasta} onChange={e => setCfg({ ...cfg, proteccion: { ...p, hasta: e.target.value } })} className={campo} aria-label="Protegida hasta" />
+              </div>
+              {p.niveles.map((n, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2">
+                  Con más de
+                  <input type="number" min="0" value={n.masDeHoras} onChange={e => setCfg({ ...cfg, proteccion: { ...p, niveles: p.niveles.map((x, j) => j === i ? { ...x, masDeHoras: Math.max(0, Number(e.target.value) || 0) } : x) } })} className={`${campo} w-20`} aria-label="Horas de anticipación" />
+                  horas de anticipación, solo trabajos de
+                  <input type="number" min="0.5" step="0.5" value={n.horas} onChange={e => setCfg({ ...cfg, proteccion: { ...p, niveles: p.niveles.map((x, j) => j === i ? { ...x, horas: Math.max(0.5, Number(e.target.value) || 1) } : x) } })} className={`${campo} w-20`} aria-label="Horas del trabajo" />
+                  horas o más
+                </div>
+              ))}
+              <p className="text-xs text-gray-500">Con menos anticipación que el último nivel, la mañana queda libre para todas. El mismo día siempre es por WhatsApp.</p>
+            </div>
+          );
+        })()}
+      </section>
+
+      <section className="bg-white rounded-lg shadow p-5">
+        <h3 className="font-semibold text-lg mb-1">Comida y plazos</h3>
+        <p className="text-sm text-gray-500 mb-3">A las clientas no se les ofrece lo que quite el último hueco para comer. El tiempo de proceso de un color cuenta como hueco; la preparación entre clientas, no.</p>
+        <label className="flex items-center gap-2 text-sm mb-3">
+          <input type="checkbox" checked={!!cfg.comida} onChange={e => setCfg({ ...cfg, comida: e.target.checked ? AGENDA_INICIAL.comida : null })} /> Cuidar el hueco de comida
+        </label>
+        {cfg.comida && (() => {
+          const c = cfg.comida;
+          return (
+            <div className="flex flex-wrap items-center gap-2 text-sm mb-3">
+              <input type="number" min="5" step="5" value={c.minutos} onChange={e => setCfg({ ...cfg, comida: { ...c, minutos: Math.max(5, Number(e.target.value) || 30) } })} className={`${campo} w-20`} aria-label="Minutos para comer" />
+              minutos entre las
+              <input type="time" value={c.desde} onChange={e => setCfg({ ...cfg, comida: { ...c, desde: e.target.value } })} className={campo} aria-label="Comida desde" />
+              y las
+              <input type="time" value={c.hasta} onChange={e => setCfg({ ...cfg, comida: { ...c, hasta: e.target.value } })} className={campo} aria-label="Comida hasta" />
+            </div>
+          );
+        })()}
+        <label className="flex flex-wrap items-center gap-2 text-sm">
+          La clienta tiene
+          <input type="number" min="1" value={cfg.plazoPropuestaHoras ?? 24} onChange={e => setCfg({ ...cfg, plazoPropuestaHoras: Math.max(1, Number(e.target.value) || 24) })} className={`${campo} w-20`} aria-label="Horas para aceptar" />
+          horas para aceptar la hora que le propones; después se libera.
+        </label>
       </section>
 
       <section className="bg-white rounded-lg shadow p-5">

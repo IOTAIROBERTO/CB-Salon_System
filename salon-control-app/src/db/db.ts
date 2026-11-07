@@ -107,7 +107,7 @@ export interface Cita {
     servicioId: string;
     fecha: string;
     hora: string;
-    estado: 'confirmada' | 'pendiente' | 'iniciada' | 'cancelada' | 'completada' | 'no_llego';
+    estado: 'solicitud' | 'confirmada' | 'pendiente' | 'iniciada' | 'cancelada' | 'completada' | 'no_llego'; // solicitud: aún sin hora, no ocupa agenda
     notas?: string;
     montoAnticipo?: number;
     anticipoConfirmado?: boolean;
@@ -132,7 +132,12 @@ export interface Cita {
     ubicacion?: string; // 'salon' o id de zona (utils/zonas); claves viejas: tucson, phoenix…
     pagadoConSaldo?: number; // Parte del cobro pagada con saldo a favor (ya contó como ingreso al venderse la tarjeta)
     atiendeId?: string; // Quién la atiende en la agenda ('cristina' o id de empleado)
-    origen?: 'app' | 'bot'; // agendada por la clienta (llega «pendiente» hasta que el salón la confirma)
+    origen?: 'app' | 'bot'; // pedida por la clienta (llega «solicitud» y el salón le pone hora)
+    preferencias?: { fecha: string; franja: 'manana' | 'mediodia' | 'tarde' | 'cualquiera' }[]; // hasta 3: cuándo le acomoda
+    propuestaVence?: string; // ISO: hasta cuándo puede aceptar la hora que le propuso Cristina; después se libera
+    cambioPedido?: boolean; // ya tiene hora y pidió otra: conserva la suya hasta que Cristina se la cambie
+    propuestaVencida?: boolean; // no aceptó la hora a tiempo y volvió a esperar otra
+    canceladaMotivo?: string; // por qué se canceló sola (Worker cb-avisos)
     avisoConfirmacion?: string; // ISO: cuándo se le mandó la confirmación por WhatsApp (Worker cb-avisos)
     recordatorio?: string; // ISO: cuándo se le mandó el recordatorio del día anterior
     creada?: string; // ISO: cuándo llegó desde la app
@@ -195,6 +200,7 @@ export interface Servicio {
     comision?: number;
     categoria?: string;
     archivado?: boolean; // Fuera del catálogo (uñas, «otros»); se conserva por las citas viejas
+    prioritario?: boolean; // Puede tomar la mañana protegida aunque dure poco (maquillaje)
     // ponytail: precios por lista del esquema anterior; la lista activa es precioSugerido.
     precio2026?: number;
     anticipo2026?: number;

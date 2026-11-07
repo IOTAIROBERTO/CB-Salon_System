@@ -1,9 +1,10 @@
-// Check: npx esbuild scripts/micita.check.ts --bundle --platform=node --format=esm --log-level=warning | node --input-type=module
+﻿// Check: npx esbuild scripts/micita.check.ts --bundle --platform=node --format=esm --log-level=warning | node --input-type=module
 // «Mi cita»: enlace personal de la cita (ver, cambiar y cancelar sola con la política de 48 h y el saldo a favor),
 // «no llegó» libera la agenda y el anticipo que se queda el salón cuenta como ingreso. Dexie Cloud simulado con fetch.
 import assert from 'node:assert/strict';
 import { atender } from '../api/salon';
 import { firmar } from '../api/sesion';
+import { vencerSolicitudes } from '../avisos/index';
 import { ingresoCita } from '../../salon-control-app/src/utils/reportUtils';
 
 const HORA = 3600 * 1000;
@@ -50,7 +51,7 @@ assert.equal(cita(id).enlace, ref.split('.')[1]);
 let v = await (await pedir(`cita/${ref}`)).json();
 assert.ok(!/6621234567|Laura|Soto/.test(JSON.stringify(v)));
 assert.deepEqual([v.estado, v.precio, v.precioAcordado, v.anticipo, v.anticipoPagado, v.datosPago, v.puedeCancelar, v.puedeReagendar],
-  ['pendiente', 500, false, 150, false, '', true, true]);
+  ['solicitud', 500, false, 150, false, '', true, true]);
 Object.assign(cita(id), { precioAcordado: 650, formaAnticipo: 'transferencia' });
 v = await (await pedir(`cita/${ref}`)).json();
 assert.deepEqual([v.precio, v.precioAcordado, v.datosPago], [650, true, 'BBVA 0123 4567']);
@@ -60,19 +61,24 @@ assert.equal((await pedir(`cita/${id}`)).status, 404);
 tablas.citas.push({ ...cita(id), id: 'ajena', realmId: 'otra' });
 assert.equal((await pedir(`cita/ajena.${ref.split('.')[1]}`)).status, 404);
 
-// 3. Cambiar: a un horario ocupado no; a uno libre sí (sigue como estaba, el recordatorio se vuelve a mandar)
+// 3. Cambiar: hoy no. Sin hora todavía solo cambian sus opciones; con hora acordada, la conserva hasta que le asignen otra;
+// con una hora solo propuesta, la suelta y vuelve a esperar
 tablas.citas.push({ id: 'otra', clienteId: 'k9', servicioId: 's1', fecha: otroLejos, hora: '12:00', estado: 'confirmada', realmId: 'r' });
-assert.equal((await pedir(`cita/${ref}/reagendar`, { fecha: otroLejos, hora: '12:00' })).status, 409);
-assert.equal((await pedir(`cita/${ref}/reagendar`, { fecha: dia(0), hora: '12:00' })).status, 400);   // hoy, no
-cita(id).recordatorio = '2026-01-01T00:00:00Z';
-v = await (await pedir(`cita/${ref}/reagendar`, { fecha: otroLejos, hora: '15:00' })).json();
-assert.deepEqual([v.fecha, v.hora, v.estado], [otroLejos, '15:00', 'pendiente']);
-assert.equal(cita(id).recordatorio, undefined);
-assert.ok(tablas.avisos.some(a => /Cambió su cita/.test(a.titulo) && a.refId === id));
-// Cambiar dentro de la misma hora no choca consigo misma (pasados los 5 s del candado de la escritura anterior)
+assert.equal((await pedir(`cita/${ref}/reagendar`, { preferencias: [{ fecha: dia(0), franja: 'tarde' }] })).status, 400);
+assert.equal((await pedir(`cita/${ref}/reagendar`, { preferencias: [{ fecha: dia(30), franja: 'tarde' }] })).status, 400);   // más de 14 días
+assert.equal((await pedir(`cita/${ref}/reagendar`, {})).status, 400);
+v = await (await pedir(`cita/${ref}/reagendar`, { preferencias: [{ fecha: otroLejos, franja: 'tarde' }, { fecha: lejos, franja: 'cualquiera' }] })).json();
+assert.deepEqual([v.fecha, v.hora, v.estado, v.preferencias.length], [otroLejos, '', 'solicitud', 2]);
+assert.ok(tablas.avisos.some(a => /Pide cambiar su cita/.test(a.titulo) && a.refId === id));
 await new Promise(r => setTimeout(r, 5100));
-assert.equal((await pedir(`cita/${ref}/reagendar`, { fecha: otroLejos, hora: '15:30' })).status, 200);
-
+Object.assign(cita(id), { estado: 'confirmada', hora: '15:00', recordatorio: '2026-01-01T00:00:00Z' });
+v = await (await pedir(`cita/${ref}/reagendar`, { preferencias: [{ fecha: lejos, franja: 'tarde' }] })).json();
+assert.deepEqual([v.fecha, v.hora, v.estado, v.cambioPedido], [otroLejos, '15:00', 'confirmada', true]);
+await new Promise(r => setTimeout(r, 5100));
+Object.assign(cita(id), { estado: 'pendiente', cambioPedido: undefined, propuestaVence: new Date(Date.now() + 3600000).toISOString() });
+v = await (await pedir(`cita/${ref}/reagendar`, { preferencias: [{ fecha: lejos, franja: 'tarde' }] })).json();
+assert.deepEqual([v.fecha, v.hora, v.estado, cita(id).propuestaVence], [lejos, '', 'solicitud', undefined]);
+Object.assign(cita(id), { fecha: otroLejos, hora: '15:30' });
 // 4. «No llegó» y canceladas no ocupan: ese horario vuelve a estar libre
 tablas.citas.find(c => c.id === 'otra').estado = 'no_llego';
 const libres = await (await pedir(`disponibilidad?servicioId=s1&desde=${otroLejos}&dias=1`)).json();
@@ -118,12 +124,7 @@ const verificada = (cuerpo: object) => atender(new Request('https://app/api/cita
   headers: { Authorization: `Bearer ${sesion}`, 'CF-Connecting-IP': `10.3.0.${++ip}` } }), { ...env, SESION_SECRETO: 'secreto' }, ctx);
 const mismo = await verificada({ hora: '18:00' });
 assert.equal(mismo.status, 409);
-assert.match((await mismo.json()).error, /Ya tienes una cita de Corte de cabello/);
-tablas.empleados.push({ id: 'e1', nombre: 'Ana', activo: true, tomaCitas: true, realmId: 'r' });   // otra persona libre a esa hora
-const cruza = await verificada({ servicioId: 's2', hora: '16:30' });
-assert.equal(cruza.status, 409);
-assert.match((await cruza.json()).error, /Ya tienes una cita de Corte de cabello/);
-tablas.empleados = [];
+assert.match((await mismo.json()).error, /Ya tienes una solicitud de Corte de cabello/);
 assert.equal(tablas.citas.filter(c => c.clienteId === cita(e1.cita.id).clienteId).length, 1);
 // Sin verificar: misma respuesta que cualquier cita (aquí sí se aparta; la limitan los topes por teléfono)
 const sinVerificar = await (await pedir('citas', { ...eva, hora: '17:30' })).json();
@@ -144,7 +145,7 @@ assert.ok(tablas.avisos.some(a => /Ahora pide Peinado \(antes Corte de cabello\)
 
 // 9. Cristina valora: la clienta acepta el resumen (lo que se hará, precio final y anticipo). Con anticipo por
 // transferencia pendiente sigue por confirmar; si no falta anticipo, queda confirmada al aceptar. Una sola vez.
-Object.assign(cita(idEva), { precioAcordado: 950, montoAnticipo: 300, formaAnticipo: 'transferencia', resumenClienta: 'Peinado de graduación con ondas' });
+Object.assign(cita(idEva), { estado: 'pendiente', hora: '16:00', propuestaVence: new Date(Date.now() + 3600000).toISOString(), precioAcordado: 950, montoAnticipo: 300, formaAnticipo: 'transferencia', resumenClienta: 'Peinado de graduación con ondas' });
 v = await (await pedir(`cita/${refEva}`)).json();
 assert.deepEqual([v.porAceptar, v.resumen, v.precio, v.anticipo, v.puedeCambiarServicio], [true, 'Peinado de graduación con ondas', 950, 300, false]);
 assert.equal((await pedir(`cita/${refEva}/reagendar`, { fecha: lejos, hora: '16:00', servicioId: 's1' })).status, 409);   // ya valorada
@@ -164,5 +165,24 @@ const enSalon = { id: 'salon1', clienteId: 'k1', servicioId: 's1', fecha: lejos,
 tablas.citas.push(enSalon);
 v = await (await pedir(`cita/salon1.${'b'.repeat(32)}/aceptar`, { precio: 500, anticipo: 150, resumen: '' })).json();
 assert.equal(v.estado, 'confirmada');
+
+// 10. Hora propuesta sin aceptar: se suelta y vuelve a esperar hora. Sin fechas por delante, se cancela sola y suelta el carrito
+const opciones = [{ fecha: lejos, franja: 'tarde' }];
+tablas.citas.push({ id: 'prop', clienteId: 'k1', servicioId: 's1', fecha: lejos, hora: '17:00', estado: 'pendiente', origen: 'app', preferencias: opciones, atiendeId: 'cristina', precioAcordado: 500, propuestaVence: new Date(Date.now() - 1000).toISOString(), realmId: 'r' },
+  { id: 'prop2', clienteId: 'k1', servicioId: 's1', fecha: lejos, hora: '18:00', estado: 'pendiente', origen: 'app', preferencias: opciones, aceptadaEn: 'ya', propuestaVence: new Date(Date.now() - 1000).toISOString(), realmId: 'r' },
+  { id: 'sinFechas', clienteId: 'k1', servicioId: 's1', fecha: dia(0), hora: '', estado: 'solicitud', origen: 'app', preferencias: [{ fecha: dia(0), franja: 'tarde' }], realmId: 'r' });
+tablas.pedidos.push({ id: 'pSin', clienteId: 'k1', citaId: 'sinFechas', items: [], totalProductos: 0, anticipo: 0, total: 0, estado: 'por_pagar', realmId: 'r' });
+assert.deepEqual(await vencerSolicitudes(env, dia(0)), { liberadas: 1, canceladas: 1 });
+assert.deepEqual([cita('prop').estado, cita('prop').hora, cita('prop').propuestaVence, cita('prop').propuestaVencida], ['solicitud', '', undefined, true]);
+assert.equal(cita('prop2').estado, 'pendiente');   // ya aceptó: no se toca
+assert.deepEqual([cita('sinFechas').estado, cita('sinFechas').canceladaPor], ['cancelada', 'sistema']);
+assert.equal(tablas.pedidos.find(p => p.id === 'pSin').estado, 'cancelado');
+assert.deepEqual(await vencerSolicitudes(env, dia(0)), { liberadas: 0, canceladas: 0 });
+// Sin hora nada corre: se puede cancelar sin perder nada y no cuenta como «por aceptar»
+tablas.citas.push({ id: 'sola', clienteId: 'k1', servicioId: 's1', fecha: lejos, hora: '', estado: 'solicitud', precioAcordado: 500, enlace: 'c'.repeat(32), realmId: 'r' });
+v = await (await pedir(`cita/sola.${'c'.repeat(32)}`)).json();
+assert.deepEqual([v.sinCosto, v.puedeCancelar, v.puedeReagendar, v.porAceptar], [true, true, true, false]);
+v = await (await pedir(`cita/sola.${'c'.repeat(32)}/cancelar`, {})).json();
+assert.equal(v.estado, 'cancelada');
 
 console.log('micita ok');

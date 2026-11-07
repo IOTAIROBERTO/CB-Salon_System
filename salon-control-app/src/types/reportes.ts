@@ -4,7 +4,7 @@ export interface Cita {
   servicioId: string;
   fecha: string;
   hora: string;
-  estado: 'pendiente' | 'confirmada' | 'iniciada' | 'completada' | 'cancelada' | 'no_llego';
+  estado: 'solicitud' | 'pendiente' | 'confirmada' | 'iniciada' | 'completada' | 'cancelada' | 'no_llego';
   anticipoASaldo?: number; // anticipo que pasó a saldo a favor al cancelar a tiempo
   anticipoPerdido?: number; // anticipo que se quedó el salón (canceló tarde o no llegó)
   precioFinal?: number;

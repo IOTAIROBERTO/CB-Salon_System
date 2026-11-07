@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Cake, Check, MessageCircle, Play, Plus, Search, UserX, Wallet } from 'lucide-react';
+import { Cake, Check, Clock, MessageCircle, Play, Plus, Search, UserX, Wallet } from 'lucide-react';
 import { db } from '../db/db';
 import useCitas from '../hooks/useCitas';
 import { useRolSalon } from '../db/salon';
@@ -11,6 +11,7 @@ import CitaExpres from '../components/hoy/CitaExpres';
 import CobroModal from '../components/citas/CobroModal';
 import ValorarSolicitud from '../components/avisos/ValorarSolicitud';
 import { cobroExpres } from '../utils/cobro';
+import { porAsignar, resumenPreferencias, ultimaPreferencia } from '../utils/agenda';
 import { ingresoCita } from '../utils/reportUtils';
 import { enlaceWhatsApp } from '../utils/lealtad';
 import { esCumpleanosHoy } from '../utils/clientesUtils';
@@ -20,7 +21,7 @@ import { DATOS_SALON } from '../data/datosSalon';
 import { confirmar } from '../components/Confirmar';
 
 // «Hoy»: lo que toca hacer en el salón, cada cosa con su siguiente paso a un toque (pensada para el celular).
-// Solicitudes por valorar, anticipos por recibir, citas del día (iniciar → cobrar), recordatorios de mañana y
+// Solicitudes por asignar hora o valorar, anticipos por recibir, citas del día (iniciar → cobrar), recordatorios de mañana y
 // cumpleañeras. «Buscar» abre la búsqueda global (BuscarGlobal escucha el evento cb-buscar).
 const diaLargo = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
 const diaDe = (f = '') => f.length > 10 ? fechaLocalISO(new Date(f)) : f;   // ISO con hora → día local
@@ -41,8 +42,15 @@ export default function HoyPage() {
   const servicio = (id: string) => servicios.find(s => s.id === id)?.nombre || 'Servicio';
   const porHora = (a: Cita, b: Cita) => `${a.fecha}${a.hora}`.localeCompare(`${b.fecha}${b.hora}`);
 
-  const deHoy = citas.filter(c => c.fecha === hoy && c.estado !== 'cancelada').sort(porHora);
-  const porValorar = citas.filter(c => c.estado === 'pendiente' && c.origen && c.precioAcordado == null && c.fecha >= hoy).sort(porHora);
+  const deHoy = citas.filter(c => c.fecha === hoy && c.estado !== 'cancelada' && c.estado !== 'solicitud').sort(porHora);
+  // Primero las que llevan más tiempo esperando (la meta es contestar en 12 h)
+  const llego = (c: Cita) => (c as Cita & { creada?: string }).creada || '';
+  const porAtender = [
+    ...citas.filter(c => porAsignar(c) && ultimaPreferencia(c) >= hoy).sort((a, b) => llego(a).localeCompare(llego(b))),
+    ...citas.filter(c => c.estado === 'pendiente' && !c.cambioPedido && c.origen && c.precioAcordado == null && c.fecha >= hoy).sort(porHora)
+  ];
+  const horasEsperando = (c: Cita) => llego(c) ? Math.floor((Date.now() - Date.parse(llego(c))) / 3600000) : 0;
+  const esperandoClienta = citas.filter(c => c.estado === 'pendiente' && c.propuestaVence && !c.aceptadaEn && c.fecha >= hoy).sort(porHora);
   const anticipos = citas.filter(c => ['pendiente', 'confirmada'].includes(c.estado) && c.fecha >= hoy && (c.montoAnticipo || 0) > 0 && !c.anticipoConfirmado
     && c.precioAcordado != null && ['transferencia', 'deposito'].includes(c.formaAnticipo || '')).sort(porHora);
   const deManana = citas.filter(c => c.fecha === manana && ['pendiente', 'confirmada'].includes(c.estado)).sort(porHora);
@@ -79,18 +87,40 @@ export default function HoyPage() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
         <div className="min-w-0 space-y-5">
-          {porValorar.length > 0 && (
+          {porAtender.length > 0 && (
             <section className={`${tarjeta} border-red-200 bg-red-50/40`}>
-              <p className={titulo}><span className="text-red-700">Solicitudes por valorar · {porValorar.length}</span></p>
+              <p className={titulo}><span className="text-red-700">Solicitudes por atender · {porAtender.length}</span></p>
               <div className="divide-y">
-                {porValorar.map(c => (
-                  <div key={c.id} className="flex items-center gap-3 py-2.5">
-                    <div className="min-w-0 flex-1 text-sm">
-                      <p className="font-medium text-gray-900">{nombre(c.clienteId)}</p>
-                      <p className="text-gray-600">{servicio(c.servicioId)} · {new Date(`${c.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })} {c.hora}</p>
+                {porAtender.map(c => {
+                  const espera = horasEsperando(c);
+                  return (
+                    <div key={c.id} className="flex items-center gap-3 py-2.5">
+                      <div className="min-w-0 flex-1 text-sm">
+                        <p className="font-medium text-gray-900">{nombre(c.clienteId)}</p>
+                        <p className="text-gray-600">{servicio(c.servicioId)}{c.cambioPedido ? ` · tiene ${new Date(`${c.fecha}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })} ${c.hora}, pide cambiar` : ''}</p>
+                        <p className="text-gray-600">{porAsignar(c) ? resumenPreferencias(c.preferencias) : `${new Date(`${c.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })} ${c.hora}`}</p>
+                        {espera >= 1 && <p className={`text-xs ${espera >= 12 ? 'font-medium text-red-700' : 'text-gray-500'}`}>Esperando {espera} h{espera >= 12 ? ' · pasó la meta de 12 h' : ''}</p>}
+                      </div>
+                      <button onClick={() => setValorando(c.id)} className={`${boton} bg-marca-negro text-white`}><Check size={14} /> {porAsignar(c) ? 'Asignar' : 'Valorar'}</button>
                     </div>
-                    <button onClick={() => setValorando(c.id)} className={`${boton} bg-marca-negro text-white`}><Check size={14} /> Valorar</button>
-                  </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {esperandoClienta.length > 0 && (
+            <section className={tarjeta}>
+              <p className={titulo}><span>Esperando respuesta de la clienta · {esperandoClienta.length}</span></p>
+              <div className="divide-y">
+                {esperandoClienta.map(c => (
+                  <button key={c.id} onClick={() => setValorando(c.id)} className="flex min-h-[40px] w-full items-center gap-3 py-2.5 text-left text-sm">
+                    <Clock size={14} className="shrink-0 text-gray-400" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-gray-900">{nombre(c.clienteId)} · {servicio(c.servicioId)}</span>
+                      <span className="block text-gray-600">{new Date(`${c.fecha}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })} {c.hora} · se libera {new Date(c.propuestaVence!).toLocaleString('es-MX', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</span>
+                    </span>
+                  </button>
                 ))}
               </div>
             </section>

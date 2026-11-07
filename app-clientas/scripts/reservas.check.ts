@@ -1,4 +1,4 @@
-// Check: npx esbuild scripts/reservas.check.ts --bundle --platform=node --format=esm --log-level=warning | node --input-type=module
+﻿// Check: npx esbuild scripts/reservas.check.ts --bundle --platform=node --format=esm --log-level=warning | node --input-type=module
 // Reglas contra citas falsas: «no soy robot» (Turnstile), código por WhatsApp antes de apartar y recordatorio al salón de
 // las citas sin confirmar. Dexie Cloud, Turnstile y WhatsApp simulados con fetch.
 import assert from 'node:assert/strict';
@@ -40,12 +40,13 @@ const post = (env: object, ruta: string, cuerpo: object, token?: string) => aten
   headers: { 'CF-Connecting-IP': `10.1.0.${++ip}`, ...(token ? { Authorization: `Bearer ${token}` } : {}) }
 }), env as any, ctx);
 const ana = (tel: string) => ({ nombre: 'Ana López', telefono: tel });
-const cita = (tel: string, extra = {}) => ({ ...ana(tel), servicioId: 's1', fecha: lunes, hora: '10:00', ...extra });
+const cita = (tel: string, extra = {}) => ({ ...ana(tel), servicioId: 's1', fecha: lunes, hora: '15:00', ...extra });
 
 // Una cita en el realm privado de una cuenta ajena no ocupa horarios de la app
-tablas.citas.push({ id: 'ajena', clienteId: 'x', servicioId: 's1', fecha: lunes, hora: '10:00', estado: 'confirmada', realmId: 'u-ajeno' });
+tablas.citas.push({ id: 'ajena', clienteId: 'x', servicioId: 's1', fecha: lunes, hora: '15:00', estado: 'confirmada', realmId: 'u-ajeno' });
 const libres = await (await atender(new Request(`https://app/api/disponibilidad?servicioId=s1&desde=${lunes}&dias=1`), base as any, ctx)).json();
-assert.ok(libres.dias[0].horas.includes('10:00'));
+assert.ok(libres.dias[0].horas.includes('15:00'));
+assert.ok(!libres.dias[0].horas.includes('10:00'));   // la mañana se guarda para lo más largo del catálogo
 tablas.citas = tablas.citas.filter(c => c.id !== 'ajena');
 
 // Sin secreto de Turnstile no se pide (como hoy en producción)
@@ -71,23 +72,23 @@ assert.equal(tablas.citas.length, antes.citas);
 assert.equal((await post(conRobot, 'club', { ...ana('6620000002'), turnstile: 'humana' })).status, 201);
 assert.equal((await post(conRobot, 'citas', cita('6620000003', { turnstile: 'humana' }))).status, 201);
 
-// Con WhatsApp conectado: sin código confirmado no se aparta horario (428, antes de gastar el token del robot)
+// Con WhatsApp conectado: sin código confirmado no se registra (428, antes de gastar el token del robot)
 const conWhatsApp = { ...conRobot, WA_TOKEN: 't', WA_PHONE_ID: 'p', WA_AVISOS: '526620000000' };
 const citasAntes = tablas.citas.length;
-const sinCodigo = await post(conWhatsApp, 'citas', cita('6620000004', { hora: '12:00', turnstile: 'humana' }));
+const sinCodigo = await post(conWhatsApp, 'citas', cita('6620000004', { turnstile: 'humana' }));
 assert.equal(sinCodigo.status, 428);
 assert.match((await sinCodigo.json()).error, /código/);
 assert.equal(tablas.citas.length, citasAntes);
-// Con el teléfono confirmado (sesión) aparta sin robot, con el teléfono de la sesión y se le avisa por WhatsApp
+// Con el teléfono confirmado (sesión) pasa sin robot, con el teléfono de la sesión; llega como solicitud, sin hora
 const sesion = await firmar({ tipo: 'sesion', tel: '6620000004', vence: Date.now() + HORA }, base.SESION_SECRETO);
-assert.equal((await post(conWhatsApp, 'citas', cita('6629999999', { hora: '12:00' }), sesion)).status, 201);
-const nueva = tablas.citas.find(c => c.hora === '12:00');
+assert.equal((await post(conWhatsApp, 'citas', cita('6629999999'), sesion)).status, 201);
+const nueva = tablas.citas[tablas.citas.length - 1];
 assert.equal(tablas.clientes.find(c => c.id === nueva.clienteId).telefono, '6620000004');
-assert.ok(nueva.creada && whatsapp.includes('cita_recibida'));
+assert.deepEqual([!!nueva.creada, nueva.estado, nueva.hora, nueva.preferencias], [true, 'solicitud', '', [{ fecha: lunes, franja: 'mediodia' }]]);
 
 // El mismo día no se agenda en línea (Cristina lo revisa por WhatsApp): sin horarios y rechazo al pedirlo
 const hoyDisp = await (await atender(new Request(`https://app/api/disponibilidad?servicioId=s1&desde=${dia(0)}&dias=1`), base as any, ctx)).json();
-assert.deepEqual(hoyDisp.dias, [{ fecha: dia(0), horas: [] }]);
+assert.deepEqual(hoyDisp.dias, [{ fecha: dia(0), horas: [], franjas: [] }]);
 const paraHoy = await post(base, 'citas', cita('6620000005', { fecha: dia(0) }));
 assert.equal(paraHoy.status, 400);
 assert.match((await paraHoy.json()).error, /WhatsApp/);
@@ -103,7 +104,7 @@ const jpg = 'data:image/jpeg;base64,' + 'A'.repeat(400);
 assert.equal((await post(base, 'citas', cita('6620000006', { hora: '14:00',
   valoracion: { largo: 'hombros', color: 'tinte', quimicos: false, busca: 'Rubio miel', extra: 'x' },
   fotos: [jpg, jpg, '<svg onload=alert(1)>', 'data:image/svg+xml;base64,AAAA'] }))).status, 201);
-const conFotos = tablas.citas.find(c => c.hora === '14:00');
+const conFotos = tablas.citas.find(c => c.valoracion);
 assert.deepEqual(conFotos.valoracion, { largo: 'hombros', color: 'tinte', quimicos: false, busca: 'Rubio miel' });
 assert.equal(tablas.fotos.filter(f => f.citaId === conFotos.id).length, 2);
 assert.ok(tablas.avisos.some(a => a.refId === conFotos.id && /2 foto\(s\)/.test(a.detalle) && /cabello: hombros, tinte/.test(a.detalle)));
